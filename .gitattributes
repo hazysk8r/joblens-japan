@@ -1,0 +1,6 @@
+# 모든 텍스트 파일은 저장소와 작업 폴더에서 LF를 기본으로 사용
+* text=auto eol=lf
+
+# Windows 배치 파일만 CRLF를 사용
+*.bat text eol=crlf
+*.cmd text eol=crlf
