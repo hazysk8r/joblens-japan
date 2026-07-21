@@ -4,6 +4,7 @@ import com.joblens.jobposting.domain.JobPosting;
 import com.joblens.jobposting.dto.CreateJobPostingRequest;
 import com.joblens.jobposting.dto.JobPostingResponse;
 import com.joblens.jobposting.repository.JobPostingRepository;
+import com.joblens.jobposting.exception.JobPostingNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,14 +38,14 @@ public class JobPostingService {
                 .map(JobPostingResponse::from)
                 .toList();
     }
-
+    /**
+     * orElseThrow()
+     * 데이터 있음 → JobPosting 반환
+     * 데이터 없음 → JobPostingNotFoundException 발생
+     */
     public JobPostingResponse findById(Long id) {
         JobPosting jobPosting = jobPostingRepository.findById(id)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "채용공고를 찾을 수 없습니다. id=" + id
-                        )
-                );
+                .orElseThrow(() -> new JobPostingNotFoundException(id));
 
         return JobPostingResponse.from(jobPosting);
     }
