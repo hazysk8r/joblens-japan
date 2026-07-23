@@ -49,4 +49,23 @@ public class JobPosting {
         this.originalText = originalText;
         this.createdAt = Instant.now();
     }
+
+     /**
+    * 채용공고의 내용을 변경한다.
+    *
+    * 엔티티의 각 필드에 public setter를 제공하지 않아,
+    * 외부 코드가 상태를 임의로 변경하지 못하게 한다.
+    * 의미가 명확한 도메인 메서드를 통해서만 상태를 변경한다.
+    */
+    public void update(
+            String companyName,
+            String title,
+            String sourceUrl,
+            String originalText
+    ) {
+        this.companyName = companyName;
+        this.title = title;
+        this.sourceUrl = sourceUrl;
+        this.originalText = originalText;
+    }   
 }

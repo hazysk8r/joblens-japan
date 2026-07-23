@@ -3,6 +3,7 @@ package com.joblens.jobposting.service;
 import com.joblens.jobposting.domain.JobPosting;
 import com.joblens.jobposting.dto.CreateJobPostingRequest;
 import com.joblens.jobposting.dto.JobPostingResponse;
+import com.joblens.jobposting.dto.UpdateJobPostingRequest;
 import com.joblens.jobposting.repository.JobPostingRepository;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,53 @@ public class JobPostingService {
 
         return JobPostingResponse.from(savedJobPosting);
     }
+    
+    /**
+     * 기존 채용공고를 수정한다.
+     *
+     * @Transactional이 적용된 상태에서 조회한 엔티티를 변경하면
+     * JPA의 변경 감지(Dirty Checking)가 동작하여 UPDATE SQL을 실행한다.
+     *
+     * 따라서 별도로 repository.save(jobPosting)를 호출하지 않아도 된다.
+     */
+    @Transactional
+    public JobPostingResponse update(
+            Long id,
+            UpdateJobPostingRequest request
+    ) {
+        JobPosting jobPosting = findEntityById(id);
+
+        jobPosting.update(
+                request.companyName(),
+                request.title(),
+                request.sourceUrl(),
+                request.originalText()
+        );
+
+        return JobPostingResponse.from(jobPosting);
+    }
+
+    /**
+     * 채용공고를 삭제한다.
+     *
+     * 먼저 조회하는 이유는 존재하지 않는 ID를 삭제했을 때
+     * 조용히 성공 처리하지 않고 404를 반환하기 위해서다.
+     */
+    @Transactional
+    public void delete(Long id) {
+        JobPosting jobPosting = findEntityById(id);
+        jobPostingRepository.delete(jobPosting);
+    }
+
+    /**
+     * ID 조회와 예외 처리를 한곳에 모은 내부 메서드다.
+     *
+     * 수정, 삭제, 단건 조회에서 같은 조회 코드를 반복하지 않도록 한다.
+     */
+    private JobPosting findEntityById(Long id) {
+        return jobPostingRepository.findById(id)
+                .orElseThrow(() -> new JobPostingNotFoundException(id));
+    }
 
     public List<JobPostingResponse> findAll() {
         return jobPostingRepository.findAll()
@@ -42,11 +90,10 @@ public class JobPostingService {
      * orElseThrow()
      * 데이터 있음 → JobPosting 반환
      * 데이터 없음 → JobPostingNotFoundException 발생
+     * 공통 메서드 사용하도록 수정함
      */
     public JobPostingResponse findById(Long id) {
-        JobPosting jobPosting = jobPostingRepository.findById(id)
-                .orElseThrow(() -> new JobPostingNotFoundException(id));
-
+        JobPosting jobPosting = findEntityById(id);
         return JobPostingResponse.from(jobPosting);
     }
 }
