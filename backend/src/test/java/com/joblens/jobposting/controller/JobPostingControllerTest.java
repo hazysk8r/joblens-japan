@@ -1,8 +1,12 @@
 package com.joblens.jobposting.controller;
 
+import com.joblens.jobposting.domain.JobPosting;
 import com.joblens.jobposting.repository.JobPostingRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,6 +17,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 /**
  * 실제 Spring 애플리케이션 컨텍스트를 실행하고,
@@ -77,4 +83,90 @@ class JobPostingControllerTest {
                         .value("공고 원문은 필수입니다."));
         //mockMvc는 실제 브라우저나 curl.exe 없이 Spring MVC에 가짜 HTTP 요청을 보낸다.
     }
+
+    @Test
+    void 채용공고를_수정하면_변경된_내용과_200을_반환한다() throws Exception {
+        /*
+        * 수정하려면 기존 데이터가 먼저 존재해야 하므로
+        * Repository를 통해 테스트용 채용공고를 저장한다.
+        */
+        JobPosting savedJobPosting = jobPostingRepository.save(
+                new JobPosting(
+                        "기존 회사",
+                        "기존 제목",
+                        "https://example.com/old",
+                        "기존 채용공고 원문"
+                )
+        );
+
+        String requestBody = """
+                {
+                "companyName": "札幌クラウド株式会社",
+                "title": "Java・AWSエンジニア",
+                "sourceUrl": "https://example.com/jobs/updated",
+                "originalText": "Spring BootとAWSを利用した開発業務です。"
+                }
+                """;
+
+        mockMvc.perform(put(
+                        "/api/job-postings/{id}",
+                        savedJobPosting.getId()
+                )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id")
+                        .value(savedJobPosting.getId()))
+                .andExpect(jsonPath("$.companyName")
+                        .value("札幌クラウド株式会社"))
+                .andExpect(jsonPath("$.title")
+                        .value("Java・AWSエンジニア"))
+                .andExpect(jsonPath("$.sourceUrl")
+                        .value("https://example.com/jobs/updated"));
+
+        JobPosting updatedJobPosting = jobPostingRepository
+                .findById(savedJobPosting.getId())
+                .orElseThrow();
+
+        assertEquals(
+                "Java・AWSエンジニア",
+                updatedJobPosting.getTitle()
+        );              
+        /**
+         * HTTP 응답만 수정된 척한 것이 아니라
+         * PostgreSQL 안의 실제 데이터도 바뀌었는지 검사
+        */  
+    }
+
+    @Test
+    void 채용공고를_삭제하면_204를_반환하고_DB에서_제거된다() throws Exception {
+        JobPosting savedJobPosting = jobPostingRepository.save(
+                new JobPosting(
+                        "삭제 테스트 회사",
+                        "삭제 테스트 공고",
+                        "https://example.com/delete",
+                        "삭제할 채용공고 원문"
+                )
+        );
+
+        Long jobPostingId = savedJobPosting.getId();
+
+        /*
+        * 삭제 성공 시 응답 본문이 필요 없으므로
+        * API는 204 No Content를 반환한다.
+        */
+        mockMvc.perform(delete(
+                        "/api/job-postings/{id}",
+                        jobPostingId
+                ))
+                .andExpect(status().isNoContent());
+
+        /*
+        * 상태 코드뿐 아니라 실제 DB에서도 데이터가 삭제됐는지 확인한다.
+        */
+        boolean exists = jobPostingRepository.existsById(jobPostingId);
+
+        assertFalse(exists);
+    }
+
 }
