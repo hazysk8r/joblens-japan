@@ -169,4 +169,62 @@ class JobPostingControllerTest {
         assertFalse(exists);
     }
 
+    @Test
+    void 키워드로_채용공고를_검색할_수_있다() throws Exception {
+        jobPostingRepository.save(
+                new JobPosting(
+                        "北海道クラウド株式会社",
+                        "AWSクラウドエンジニア",
+                        "https://example.com/aws",
+                        "AWS環境の設計と構築を担当します。"
+                )
+        );
+
+        jobPostingRepository.save(
+                new JobPosting(
+                        "札幌Java株式会社",
+                        "Javaバックエンドエンジニア",
+                        "https://example.com/java",
+                        "Spring Bootを利用した開発を担当します。"
+                )
+        );
+
+        mockMvc.perform(get("/api/job-postings")
+                    .param("keyword", "AWS")
+                    .param("page", "0")
+                    .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content.length()").value(1))
+            .andExpect(jsonPath("$.content[0].title")
+                    .value("AWSクラウドエンジニア"))
+            .andExpect(jsonPath("$.totalElements").value(1));
+
+        }
+
+    @Test
+    void 채용공고를_페이지_단위로_조회할_수_있다() throws Exception {
+        jobPostingRepository.save(
+                new JobPosting("회사 1", "공고 1", null, "원문 1")
+        );
+        jobPostingRepository.save(
+                new JobPosting("회사 2", "공고 2", null, "원문 2")
+        );
+        jobPostingRepository.save(
+                new JobPosting("회사 3", "공고 3", null, "원문 3")
+        );
+
+        mockMvc.perform(get("/api/job-postings")
+                    .param("page", "0")
+                    .param("size", "2")
+                    .param("sort", "id,asc"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content.length()").value(2))
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(2))
+            .andExpect(jsonPath("$.totalElements").value(3))
+            .andExpect(jsonPath("$.totalPages").value(2))
+            .andExpect(jsonPath("$.first").value(true))
+            .andExpect(jsonPath("$.last").value(false));
+    }
+
 }

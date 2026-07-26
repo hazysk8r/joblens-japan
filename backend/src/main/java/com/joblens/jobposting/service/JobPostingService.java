@@ -1,5 +1,6 @@
 package com.joblens.jobposting.service;
 
+import com.joblens.common.response.PageResponse;
 import com.joblens.jobposting.domain.JobPosting;
 import com.joblens.jobposting.dto.CreateJobPostingRequest;
 import com.joblens.jobposting.dto.JobPostingResponse;
@@ -9,8 +10,9 @@ import com.joblens.jobposting.exception.JobPostingNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -80,11 +82,45 @@ public class JobPostingService {
                 .orElseThrow(() -> new JobPostingNotFoundException(id));
     }
 
-    public List<JobPostingResponse> findAll() {
-        return jobPostingRepository.findAll()
-                .stream()
-                .map(JobPostingResponse::from)
-                .toList();
+    /**
+     * 채용공고를 페이지 단위로 조회한다.
+     *
+     * keyword가 없으면 전체 공고를 조회하고,
+     * keyword가 있으면 제목·회사명·원문에서 검색한다.
+     */
+    public PageResponse<JobPostingResponse> findAll(
+            String keyword,
+            Pageable pageable
+    ) {
+        Page<JobPosting> jobPostingPage;
+
+        if (keyword == null || keyword.isBlank()) {
+            jobPostingPage = jobPostingRepository.findAll(pageable);
+        } else {
+            /*
+            * 사용자가 앞뒤에 공백을 입력하더라도
+            * 검색 결과에 영향을 주지 않도록 trim()한다.
+            */
+            String normalizedKeyword = keyword.trim();
+
+            jobPostingPage =
+                    jobPostingRepository
+                            .findByTitleContainingIgnoreCaseOrCompanyNameContainingIgnoreCaseOrOriginalTextContainingIgnoreCase(
+                                    normalizedKeyword,
+                                    normalizedKeyword,
+                                    normalizedKeyword,
+                                    pageable
+                            );
+        }
+
+        /*
+        * Page<JobPosting>을 Page<JobPostingResponse>로 변환한다.
+        * 페이지 번호와 전체 개수 같은 정보는 그대로 유지된다.
+        */
+        Page<JobPostingResponse> responsePage =
+                jobPostingPage.map(JobPostingResponse::from);
+
+        return PageResponse.from(responsePage);
     }
     /**
      * orElseThrow()
