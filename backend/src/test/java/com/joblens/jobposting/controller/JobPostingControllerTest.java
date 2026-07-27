@@ -2,6 +2,7 @@ package com.joblens.jobposting.controller;
 
 import com.joblens.jobposting.domain.JobPosting;
 import com.joblens.jobposting.repository.JobPostingRepository;
+import com.joblens.TestcontainersConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -12,6 +13,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.context.annotation.Import;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -29,6 +31,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(TestcontainersConfiguration.class)
 class JobPostingControllerTest {
 
     @Autowired
@@ -37,6 +40,13 @@ class JobPostingControllerTest {
     @Autowired
     private JobPostingRepository jobPostingRepository;
 
+    /**
+    * 각 테스트가 이전 테스트 데이터의 영향을 받지 않도록
+    * 임시 테스트 DB의 채용공고 데이터를 초기화한다.
+    *
+    * Testcontainers가 만든 DB에만 실행되므로
+    * 개발용 PostgreSQL 데이터는 영향을 받지 않는다.
+    */
     @BeforeEach
     void setUp() {
         /*
