@@ -11,10 +11,15 @@ import type {
  */
 export async function fetchJobPostings(
   keyword: string,
+  page: number,
 ): Promise<PageResponse<JobPosting>> {
   const params = new URLSearchParams({
-    page: '0',
-    size: '10',
+    /*
+     * React가 관리하는 현재 페이지 번호를 API에 전달한다.
+     * 백엔드의 페이지 번호는 0부터 시작한다.
+     */
+    page: page.toString(),
+    size: '5',
     sort: 'id,desc',
   });
 
