@@ -4,6 +4,9 @@ import type { FormEvent } from 'react';
 import { fetchJobPostings } from './api/jobPostingApi';
 import type { JobPosting } from './types/jobPosting';
 
+import JobPostingCreateForm
+  from './components/JobPostingCreateForm';
+
 function App() {
   const [keyword, setKeyword] = useState('');
   const [jobPostings, setJobPostings] = useState<JobPosting[]>([]);
@@ -88,9 +91,30 @@ function App() {
     void loadJobPostings(keyword, currentPage + 1);
   };
 
+  const handleJobPostingCreated = async () => {
+  /*
+   * 등록한 공고가 현재 검색 조건과 일치하지 않아
+   * 화면에 보이지 않는 상황을 막기 위해 검색어를 초기화한다.
+   */
+    setKeyword('');
+
+  /*
+   * 최신 공고부터 첫 페이지를 다시 조회한다.
+   */
+    await loadJobPostings('', 0);
+  };
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
   return (
     <main>
       <h1>JobLens Japan</h1>
+
+      <JobPostingCreateForm
+      onCreated={handleJobPostingCreated}
+      />
+
+      <hr />
+
+      <h2>채용공고 검색</h2>
 
       <form onSubmit={handleSubmit}>
         <input

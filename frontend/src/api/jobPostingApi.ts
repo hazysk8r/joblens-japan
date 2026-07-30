@@ -1,4 +1,5 @@
 import type {
+  CreateJobPostingRequest,
   JobPosting,
   PageResponse,
 } from '../types/jobPosting';
@@ -40,4 +41,34 @@ export async function fetchJobPostings(
   }
 
   return (await response.json()) as PageResponse<JobPosting>;
+}
+
+/**
+ * 새로운 채용공고를 백엔드에 등록한다.
+ */
+export async function createJobPosting(
+  request:CreateJobPostingRequest,
+): Promise<JobPosting> {
+  const response = await fetch('api/job-postings', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    /*
+     * JavaScript 객체를 HTTP 요청 본문으로 보내기 위해
+     * JSON 문자열로 변환한다.
+     */
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+
+    throw new Error(
+      `채용공고 등록에 실패했습니다. ` +
+        `status=${response.status}, body=${errorBody}`,
+    );
+  }
+
+  return (await response.json()) as JobPosting;
 }

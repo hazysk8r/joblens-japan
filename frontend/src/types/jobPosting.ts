@@ -17,3 +17,13 @@ export interface PageResponse<T> {
   first: boolean;
   last: boolean;
 }
+
+/**
+* 채용공고 등록 API에 전달할 요청 데이터다.
+*/
+export interface CreateJobPostingRequest {
+  companyName: string | null;
+  title: string;
+  sourceUrl: string | null;
+  originalText: string;
+}
