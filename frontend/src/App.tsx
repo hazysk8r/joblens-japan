@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 
-import { fetchJobPostings } from './api/jobPostingApi';
+import { 
+  deleteJobPosting,
+  fetchJobPostings,
+} from './api/jobPostingApi';
 import type { JobPosting } from './types/jobPosting';
 
 import JobPostingCreateForm
   from './components/JobPostingCreateForm';
+
 
 function App() {
   const [keyword, setKeyword] = useState('');
@@ -16,6 +20,7 @@ function App() {
   const [totalPages, setTotalPages] = useState(0);
   const [first, setFirst] = useState(true);
   const [last, setLast] = useState(true);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   /**
    * 검색어를 받아 백엔드 API를 호출하고,
@@ -91,6 +96,51 @@ function App() {
     void loadJobPostings(keyword, currentPage + 1);
   };
 
+  const handleDelete = async (
+    jobPosting: JobPosting,
+  ) => {
+    const confirmed = window.confirm(
+      `「${jobPosting.title}」を削除しますか？`,
+    );
+
+    /*
+     * 사용자가 취소를 누르면
+     * DELETE API를 호출하지 않는다.
+     */
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingId(jobPosting.id);
+    setError(null);
+
+    try {
+      await deleteJobPosting(jobPosting.id);
+
+      /*
+       * 현재 페이지에 공고가 한 개뿐이고
+       * 첫 페이지가 아니라면,
+       * 삭제 후 빈 페이지가 되므로 이전 페이지를 조회한다.
+       */
+      const pageAfterDelete = 
+        jobPostings.length === 1 && currentPage > 0
+          ? currentPage - 1
+          : currentPage;
+      await loadJobPostings(
+        keyword,
+        pageAfterDelete,
+      );
+    } catch (caughtError) {
+      const message = 
+        caughtError instanceof Error
+          ? caughtError.message
+          : '삭제 중 알 수 없는 오류가 발생했습니다.';
+      setError(message);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const handleJobPostingCreated = async () => {
   /*
    * 등록한 공고가 현재 검색 조건과 일치하지 않아
@@ -145,6 +195,18 @@ function App() {
             </p>
 
             <p>{jobPosting.originalText}</p>
+
+            <button
+              type="button"
+              onClick={() => {
+                void handleDelete(jobPosting);
+              }}
+              disabled={deletingId === jobPosting.id}
+            >
+              {deletingId === jobPosting.id 
+                ? '삭제 중...' 
+                : '삭제'}
+            </button>
           </li>
         ))}
       </ul>

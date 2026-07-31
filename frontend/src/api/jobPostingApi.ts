@@ -72,3 +72,31 @@ export async function createJobPosting(
 
   return (await response.json()) as JobPosting;
 }
+
+/**
+ * 지정한 ID의 채용공고를 삭제한다.
+ */
+export async function deleteJobPosting(
+  id: number,
+): Promise<void> {
+  const response = await fetch(
+    `/api/job-postings/${id}`,
+    {
+      method: 'DELETE',
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+
+    throw new Error(
+      `채용공고 삭제에 실패했습니다.` + 
+        `status=${response.status}, body=${errorBody}`,
+    );
+  }
+
+  /*
+   * 삭제 성공 응답은 204 No Content이므로
+   * response.json()을 호출하지 않는다.
+   */
+}
