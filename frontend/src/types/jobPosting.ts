@@ -27,3 +27,10 @@ export interface CreateJobPostingRequest {
   sourceUrl: string | null;
   originalText: string;
 }
+
+export interface UpdateJobPostingRequest {
+  companyName: string | null;
+  title: string;
+  sourceUrl: string | null;
+  originalText: string;
+}

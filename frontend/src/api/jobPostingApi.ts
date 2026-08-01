@@ -1,5 +1,6 @@
 import type {
   CreateJobPostingRequest,
+  UpdateJobPostingRequest,
   JobPosting,
   PageResponse,
 } from '../types/jobPosting';
@@ -99,4 +100,31 @@ export async function deleteJobPosting(
    * 삭제 성공 응답은 204 No Content이므로
    * response.json()을 호출하지 않는다.
    */
+}
+
+export async function updateJobPosting(
+  id: number,
+  request: UpdateJobPostingRequest,
+): Promise<JobPosting> {
+  const response = await fetch(
+    `/api/job-postings/${id}`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+
+    throw new Error(
+      `채용공고 수정에 실패했습니다. ` + 
+        `status=${response.status}, body =${errorBody}`,
+    );
+  }
+
+  return (await response.json()) as JobPosting;
 }
