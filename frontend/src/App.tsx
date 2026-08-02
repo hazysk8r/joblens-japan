@@ -6,10 +6,16 @@ import {
   fetchJobPostings,
   updateJobPosting,
 } from './api/jobPostingApi';
-import type { JobPosting } from './types/jobPosting';
+import type { 
+  JobPosting,
+  UpdateJobPostingRequest,
+} from './types/jobPosting';
 
 import JobPostingCreateForm
   from './components/JobPostingCreateForm';
+
+import JobPostingEditForm
+  from './components/JobPostingEditForm';
 
 
 function App() {
@@ -23,12 +29,6 @@ function App() {
   const [last, setLast] = useState(true);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState({
-    companyName:'',
-    title:'',
-    sourceUrl:'',
-    originalText:'',
-  });
   const [savingId, setSavingId] = useState<number | null>(null);
 
   /**
@@ -167,75 +167,41 @@ function App() {
     jobPosting: JobPosting,
   ) => {
     setEditingId(jobPosting.id);
-
-    setEditForm({
-      companyName: jobPosting.companyName ?? '',
-      title: jobPosting.title,
-      sourceUrl: jobPosting.sourceUrl ?? '',
-      originalText: jobPosting.originalText,
-    });
+    setError(null);
   };
 
   const handleCancelEdit = () => {
     setEditingId(null);
-
-    setEditForm({
-      companyName: '',
-      title: '',
-      sourceUrl: '',
-      originalText: '',
-    });
   };
 
   const handleSaveEdit = async (
     id: number,
-  ) => {
-    const trimmedTitle = editForm.title.trim();
-    const trimmedOriginalText =
-      editForm.originalText.trim();
-
-    /*
-    * 백엔드 요청 전에 필수 입력값을 확인한다.
-    */
-    if (!trimmedTitle || !trimmedOriginalText) {
-      setError(
-        '공고 제목과 공고 원문을 입력해 주세요.',
-      );
-      return;
-    }
-
+    request: UpdateJobPostingRequest,
+  ): Promise<void> => {
     setSavingId(id);
     setError(null);
 
     try {
-      await updateJobPosting(id, {
-        companyName:
-          editForm.companyName.trim() || null,
-        title: trimmedTitle,
-        sourceUrl:
-          editForm.sourceUrl.trim() || null,
-        originalText: trimmedOriginalText,
-      });
+      await updateJobPosting(id, request);
 
       /*
-      * 수정 모드를 종료한다.
-      */
+       * PUT 요청 성공 후 수정 모드를 종료
+       */
       setEditingId(null);
 
       /*
-      * 현재 검색어와 페이지를 유지하면서
-      * 수정된 목록을 다시 조회한다.
-      */
+       * 현재 검색어와 페이지를 유지하며
+       * 서버의 최신 목록을 다시 가져온다
+       */
       await loadJobPostings(
         keyword,
         currentPage,
       );
     } catch (caughtError) {
-      const message =
+      const message = 
         caughtError instanceof Error
           ? caughtError.message
           : '수정 중 알 수 없는 오류가 발생했습니다.';
-
       setError(message);
     } finally {
       setSavingId(null);
@@ -278,124 +244,14 @@ function App() {
         {jobPostings.map((jobPosting) => (
           <li key={jobPosting.id}>
             {editingId === jobPosting.id ? (
-              /*
-              * 현재 공고가 수정 중이면
-              * 편집 폼을 표시한다.
-              */
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-
-                  void handleSaveEdit(
-                    jobPosting.id,
-                  );
-                }}
-              >
-                <div>
-                  <label
-                    htmlFor={`edit-company-${jobPosting.id}`}
-                  >
-                    회사명
-                  </label>
-
-                  <input
-                    id={`edit-company-${jobPosting.id}`}
-                    type="text"
-                    value={editForm.companyName}
-                    onChange={(event) => {
-                      setEditForm((previous) => ({
-                        ...previous,
-                        companyName:
-                          event.target.value,
-                      }));
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor={`edit-title-${jobPosting.id}`}
-                  >
-                    공고 제목
-                  </label>
-
-                  <input
-                    id={`edit-title-${jobPosting.id}`}
-                    type="text"
-                    value={editForm.title}
-                    onChange={(event) => {
-                      setEditForm((previous) => ({
-                        ...previous,
-                        title: event.target.value,
-                      }));
-                    }}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor={`edit-url-${jobPosting.id}`}
-                  >
-                    공고 URL
-                  </label>
-
-                  <input
-                    id={`edit-url-${jobPosting.id}`}
-                    type="url"
-                    value={editForm.sourceUrl}
-                    onChange={(event) => {
-                      setEditForm((previous) => ({
-                        ...previous,
-                        sourceUrl:
-                          event.target.value,
-                      }));
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor={`edit-text-${jobPosting.id}`}
-                  >
-                    공고 원문
-                  </label>
-
-                  <textarea
-                    id={`edit-text-${jobPosting.id}`}
-                    value={editForm.originalText}
-                    onChange={(event) => {
-                      setEditForm((previous) => ({
-                        ...previous,
-                        originalText:
-                          event.target.value,
-                      }));
-                    }}
-                    required
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={
-                    savingId === jobPosting.id
-                  }
-                >
-                  {savingId === jobPosting.id
-                    ? '저장 중...'
-                    : '저장'}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleCancelEdit}
-                  disabled={
-                    savingId === jobPosting.id
-                  }
-                >
-                  취소
-                </button>
-              </form>
+              <JobPostingEditForm
+                jobPosting={jobPosting}
+                saving={
+                  savingId === jobPosting.id
+                }
+                onSave={handleSaveEdit}
+                onCancel={handleCancelEdit}
+              />
             ) : (
               /*
               * 수정 중이 아니면 기존 공고 내용을 표시한다.
