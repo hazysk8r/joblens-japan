@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 
 import { 
@@ -20,8 +20,10 @@ import JobPostingEditForm
 
 function App() {
   const [keyword, setKeyword] = useState('');
+  const [appliedKeyword, setAppliedKeyword] = useState('');
   const [jobPostings, setJobPostings] = useState<JobPosting[]>([]);
   const [loading, setLoading] = useState(false);
+  // false = 현재 목록 API 요청이 진행 중이지 않음, true = 현재 목록 API 요청 진행 중
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -35,10 +37,14 @@ function App() {
    * 검색어를 받아 백엔드 API를 호출하고,
    * 응답의 content를 화면 상태에 저장한다.
    */
-  const loadJobPostings = async (
+  const loadJobPostings = useCallback(async (
     searchKeyword: string,
     pageNumber: number,
   ) => {
+    /*
+     * API 요청을 시작하기 직전에
+     * 목록을 로딩 중인 상태로 변경
+     */
     setLoading(true);
     setError(null);
 
@@ -60,13 +66,14 @@ function App() {
       const message =
         caughtError instanceof Error
           ? caughtError.message
-          : '알 수 없는 오류가 발생했습니다.';
+          : '채용공고를 불러오는 중 알 수 없는 오류가 발생했습니다.';
 
       setError(message);
     } finally {
+      //성공하거나 실패해도 반드시 실행. 버튼 비활성화된 상태 방지
       setLoading(false);
     }
-  };
+  }, []);
 
   /*
    * 화면이 처음 열리면 검색어 없이 전체 공고를 조회한다.
@@ -77,11 +84,16 @@ function App() {
     * 검색어 없이 첫 번째 페이지를 조회한다.
     */
     void loadJobPostings('', 0);
-  }, []);
+  }, [loadJobPostings]);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
     event.preventDefault();
 
+    const nextKeyword = keyword.trim();
+
+    setAppliedKeyword(nextKeyword);
     /*
     * 새로운 검색을 시작할 때는
     * 이전 페이지 위치와 관계없이 첫 페이지부터 조회한다.
@@ -90,19 +102,25 @@ function App() {
   };
 
   const handlePreviousPage = () => {
-    if (first) {
+    if (first || loading) {
       return;
     }
 
-    void loadJobPostings(keyword, currentPage - 1);
+    void loadJobPostings(
+      appliedKeyword, 
+      currentPage - 1,
+    );
   };
 
   const handleNextPage = () => {
-    if (last) {
+    if (last || loading) {
       return;
     }
 
-    void loadJobPostings(keyword, currentPage + 1);
+    void loadJobPostings(
+      appliedKeyword, 
+      currentPage + 1,
+    );
   };
 
   const handleDelete = async (
@@ -136,7 +154,7 @@ function App() {
           ? currentPage - 1
           : currentPage;
       await loadJobPostings(
-        keyword,
+        appliedKeyword,
         pageAfterDelete,
       );
     } catch (caughtError) {
@@ -156,6 +174,7 @@ function App() {
    * 화면에 보이지 않는 상황을 막기 위해 검색어를 초기화한다.
    */
     setKeyword('');
+    setAppliedKeyword('');
 
   /*
    * 최신 공고부터 첫 페이지를 다시 조회한다.
@@ -194,7 +213,7 @@ function App() {
        * 서버의 최신 목록을 다시 가져온다
        */
       await loadJobPostings(
-        keyword,
+        appliedKeyword,
         currentPage,
       );
     } catch (caughtError) {
@@ -229,89 +248,96 @@ function App() {
           placeholder="AWS, Java, 회사명 검색"
         />
 
-        <button type="submit">검색</button>
+        <button type="submit"
+                disabled={loading}
+        >
+          {loading ? '검색 중...' : '검색'}
+        </button>
       </form>
 
-      {loading && <p>불러오는 중...</p>}
-
-      {error && <p>{error}</p>}
-
-      {!loading && !error && jobPostings.length === 0 && (
+      {loading ? (
+        <p role="status">
+        채용공고를 불러오는 중...
+        </p>
+      ) : error ? (
+        <p role="alert">
+          {error}
+        </p>
+      ) : jobPostings.length === 0 ? (
         <p>검색 결과가 없습니다.</p>
+      ) : (
+        <ul>
+          {jobPostings.map((jobPosting) => (
+            <li key={jobPosting.id}>
+              {editingId === jobPosting.id ? (
+                <JobPostingEditForm
+                  jobPosting={jobPosting}
+                  saving={
+                    savingId === jobPosting.id
+                  }
+                  onSave={handleSaveEdit}
+                  onCancel={handleCancelEdit}
+                />
+              ) : (
+                <>
+                  <h2>{jobPosting.title}</h2>
+
+                  <p>
+                    {jobPosting.companyName ??
+                      '회사명 미등록'}
+                  </p>
+
+                  {jobPosting.sourceUrl && (
+                    <p>
+                      <a
+                        href={jobPosting.sourceUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        원문 보기
+                      </a>
+                    </p>
+                  )}
+
+                  <p>
+                    {jobPosting.originalText}
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleStartEdit(jobPosting);
+                    }}
+                  >
+                    수정
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleDelete(jobPosting);
+                    }}
+                    disabled={
+                      deletingId === jobPosting.id
+                    }
+                  >
+                    {deletingId === jobPosting.id
+                      ? '삭제 중...'
+                      : '삭제'}
+                  </button>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>        
       )}
 
-      <ul>
-        {jobPostings.map((jobPosting) => (
-          <li key={jobPosting.id}>
-            {editingId === jobPosting.id ? (
-              <JobPostingEditForm
-                jobPosting={jobPosting}
-                saving={
-                  savingId === jobPosting.id
-                }
-                onSave={handleSaveEdit}
-                onCancel={handleCancelEdit}
-              />
-            ) : (
-              /*
-              * 수정 중이 아니면 기존 공고 내용을 표시한다.
-              */
-              <>
-                <h2>{jobPosting.title}</h2>
-
-                <p>
-                  {jobPosting.companyName ??
-                    '회사명 미등록'}
-                </p>
-
-                {jobPosting.sourceUrl && (
-                  <p>
-                    <a
-                      href={jobPosting.sourceUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      원문 보기
-                    </a>
-                  </p>
-                )}
-
-                <p>{jobPosting.originalText}</p>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleStartEdit(jobPosting);
-                  }}
-                >
-                  수정
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    void handleDelete(jobPosting);
-                  }}
-                  disabled={
-                    deletingId === jobPosting.id
-                  }
-                >
-                  {deletingId === jobPosting.id
-                    ? '삭제 중...'
-                    : '삭제'}
-                </button>
-              </>
-            )}
-          </li>
-        ))}
-      </ul>
-
-      {!loading && !error && totalPages > 0 && (
+      {!loading && totalPages > 0 && (
         <div>
           <button
             type="button"
             onClick={handlePreviousPage}
-            disabled={first}
+            disabled={first || loading}
           >
             이전
           </button>
@@ -323,7 +349,7 @@ function App() {
           <button
             type="button"
             onClick={handleNextPage}
-            disabled={last}
+            disabled={last || loading}
           >
             다음
           </button>
