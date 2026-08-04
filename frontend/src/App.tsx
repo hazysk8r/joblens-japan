@@ -14,8 +14,8 @@ import type {
 import JobPostingCreateForm
   from './components/JobPostingCreateForm';
 
-import JobPostingEditForm
-  from './components/JobPostingEditForm';
+import JobPostingListItem
+  from './components/JobPostingListItem';
 
 
 function App() {
@@ -98,7 +98,7 @@ function App() {
     * 새로운 검색을 시작할 때는
     * 이전 페이지 위치와 관계없이 첫 페이지부터 조회한다.
     */
-    void loadJobPostings(keyword, 0);
+    void loadJobPostings(nextKeyword, 0);
   };
 
   const handlePreviousPage = () => {
@@ -268,71 +268,28 @@ function App() {
       ) : (
         <ul>
           {jobPostings.map((jobPosting) => (
-            <li key={jobPosting.id}>
-              {editingId === jobPosting.id ? (
-                <JobPostingEditForm
-                  jobPosting={jobPosting}
-                  saving={
-                    savingId === jobPosting.id
-                  }
-                  onSave={handleSaveEdit}
-                  onCancel={handleCancelEdit}
-                />
-              ) : (
-                <>
-                  <h2>{jobPosting.title}</h2>
-
-                  <p>
-                    {jobPosting.companyName ??
-                      '회사명 미등록'}
-                  </p>
-
-                  {jobPosting.sourceUrl && (
-                    <p>
-                      <a
-                        href={jobPosting.sourceUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        원문 보기
-                      </a>
-                    </p>
-                  )}
-
-                  <p>
-                    {jobPosting.originalText}
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleStartEdit(jobPosting);
-                    }}
-                  >
-                    수정
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void handleDelete(jobPosting);
-                    }}
-                    disabled={
-                      deletingId === jobPosting.id
-                    }
-                  >
-                    {deletingId === jobPosting.id
-                      ? '삭제 중...'
-                      : '삭제'}
-                  </button>
-                </>
-              )}
-            </li>
+            <JobPostingListItem
+              key={jobPosting.id}
+              jobPosting={jobPosting}
+              isEditing={
+                editingId === jobPosting.id
+              }
+              isSaving={
+                savingId === jobPosting.id
+              }
+              isDeleting={
+                deletingId === jobPosting.id
+              }
+              onStartEdit={handleStartEdit}
+              onSave={handleSaveEdit}
+              onCancel={handleCancelEdit}
+              onDelete={handleDelete}
+            />
           ))}
         </ul>        
       )}
 
-      {!loading && totalPages > 0 && (
+      {!error && totalPages > 0 && (
         <div>
           <button
             type="button"
