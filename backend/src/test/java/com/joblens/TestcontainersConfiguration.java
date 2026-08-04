@@ -21,6 +21,7 @@ public class TestcontainersConfiguration {
      * @ServiceConnection 덕분에 Spring Boot가 컨테이너의
      * JDBC URL, 사용자 이름, 비밀번호를 자동으로 DataSource와
      * Flyway에 연결한다.
+     * Github Author 수정
      */
     @Bean
     @ServiceConnection
