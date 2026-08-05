@@ -5,6 +5,7 @@ import com.joblens.jobposting.domain.JobPosting;
 import com.joblens.jobposting.dto.CreateJobPostingRequest;
 import com.joblens.jobposting.dto.JobPostingResponse;
 import com.joblens.jobposting.dto.UpdateJobPostingRequest;
+import com.joblens.jobposting.dto.UpdateApplicationStatusRequest;
 import com.joblens.jobposting.repository.JobPostingRepository;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -132,4 +133,21 @@ public class JobPostingService {
         JobPosting jobPosting = findEntityById(id);
         return JobPostingResponse.from(jobPosting);
     }
+
+
+    @Transactional
+    public JobPostingResponse updateApplicationStatus(
+        Long id,
+        UpdateApplicationStatusRequest request
+    ) {
+        // 1. 기존 공고 조회
+        JobPosting jobPosting = findEntityById(id);
+        // 2. 요청받은 상태로 엔티티 변경
+        jobPosting.changeApplicationStatus(
+            request.status()
+        );
+        // 3. 변경된 엔티티를 DTO로 변환
+        return JobPostingResponse.from(jobPosting);
+    }
+
 }

@@ -5,6 +5,7 @@ import com.joblens.jobposting.dto.CreateJobPostingRequest;
 import com.joblens.jobposting.dto.JobPostingResponse;
 import com.joblens.jobposting.service.JobPostingService;
 import com.joblens.jobposting.dto.UpdateJobPostingRequest;
+import com.joblens.jobposting.dto.UpdateApplicationStatusRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -13,6 +14,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -96,4 +98,13 @@ public class JobPostingController {
     public JobPostingResponse findById(@PathVariable Long id) {
         return jobPostingService.findById(id);
     }
+
+    @PatchMapping("/{id}/status")
+    public JobPostingResponse updateApplicationResponse(
+        @PathVariable Long id,
+        @Valid @RequestBody UpdateApplicationStatusRequest request
+    ) {
+        return jobPostingService.updateApplicationStatus(id, request);
+    }
+
 }

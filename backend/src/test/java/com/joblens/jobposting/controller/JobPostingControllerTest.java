@@ -2,6 +2,7 @@ package com.joblens.jobposting.controller;
 
 import com.joblens.jobposting.domain.JobPosting;
 import com.joblens.jobposting.repository.JobPostingRepository;
+import com.joblens.jobposting.domain.ApplicationStatus;
 import com.joblens.TestcontainersConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,21 +14,26 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.testcontainers.shaded.org.checkerframework.checker.units.qual.A;
 import org.springframework.context.annotation.Import;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import javax.print.attribute.standard.Media;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 
 /**
  * 실제 Spring 애플리케이션 컨텍스트를 실행하고,
- * HTTP 요청이 Controller부터 예외 처리기까지 정상적으로 흐르는지 확인한다.
+ * HTTP 요청이 Controller부터 예외 처리기까지 정상적으로 흐르는지 확인
  *
  * 단순한 메서드 단위 테스트가 아니라 DB, Controller, Service,
- * GlobalExceptionHandler가 함께 동작하는 통합 테스트에 가깝다.
+ * GlobalExceptionHandler가 함께 동작하는 통합 테스트라고 할 수 있음
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -42,16 +48,16 @@ class JobPostingControllerTest {
 
     /**
     * 각 테스트가 이전 테스트 데이터의 영향을 받지 않도록
-    * 임시 테스트 DB의 채용공고 데이터를 초기화한다.
+    * 임시 테스트 DB의 채용공고 데이터를 초기화
     *
     * Testcontainers가 만든 DB에만 실행되므로
-    * 개발용 PostgreSQL 데이터는 영향을 받지 않는다.
+    * 개발용 PostgreSQL 데이터는 영향을 받지 않음
     */
     @BeforeEach
     void setUp() {
         /*
          * 각 테스트가 이전 테스트 데이터의 영향을 받지 않도록
-         * 테스트 실행 전 채용공고 데이터를 초기화한다.
+         * 테스트 실행 전 채용공고 데이터를 초기화
          */
         jobPostingRepository.deleteAll();
     }
@@ -68,7 +74,7 @@ class JobPostingControllerTest {
                 .andExpect(jsonPath("$.path")
                         .value("/api/job-postings/9999"));
     }
-    //JsonPath는 응답 JSON의 특정 값을 검사한다. $는 JSON 전체를 의미함.
+    //JsonPath는 응답 JSON의 특정 값을 검사한다. $는 JSON 전체를 의미함
     @Test
     void 제목과_원문이_비어있으면_400을_반환한다() throws Exception {
         String requestBody = """
@@ -235,6 +241,145 @@ class JobPostingControllerTest {
             .andExpect(jsonPath("$.totalPages").value(2))
             .andExpect(jsonPath("$.first").value(true))
             .andExpect(jsonPath("$.last").value(false));
+    }
+
+    @Test
+    void 채용공고의_지원_상태를_변경하면_응답과_DB에_반영된다() throws Exception {
+        // 테스트용 공고 DB에 저장
+        JobPosting savedJobPosting = jobPostingRepository.save(
+                new JobPosting("상태 변경 테스트 회사", "백엔드 엔지니어", "https://example.com/status", "지원 상태 변경 테스트용 원문")
+        );
+
+        // SAVED에서 다른 지원 상태로 변경하는 요청
+        String requestBody = """
+                {
+                  "status": "APPLIED"
+                }
+                """;
+
+        // PATCH API 호출 후, HTTP 응답 확인
+        mockMvc.perform(patch(
+                        "/api/job-postings/{id}/status",
+                        savedJobPosting.getId()
+                )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id")
+                        .value(savedJobPosting.getId()))
+                .andExpect(jsonPath("$.applicationStatus")
+                        .value("APPLIED"));
+
+        JobPosting updatedJobPosting = jobPostingRepository
+                .findById(savedJobPosting.getId())
+                .orElseThrow();
+        
+        assertEquals(
+                ApplicationStatus.APPLIED, 
+                updatedJobPosting.getApplicationStatus()
+        );
+
+    }
+
+    @Test
+    void 존재하지_않는_채용공고의_지원_상태를_변경하면_404를_반환한다() throws Exception {
+        String requestBody = """
+                {
+                  "status": "APPLIED"       
+                }
+                """;
+        mockMvc.perform(patch(
+                        "/api/job-postings/{id}/status",
+                        9999L
+                )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.code").value("JOB_POSTING_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("채용공고를 찾을 수 없습니다. id=9999"))
+                .andExpect(jsonPath("$.path").value("/api/job-postings/9999/status"));
+    }
+
+    @Test
+    void 지원_상태를_누락하면_400을_반환하고_DB는_변경되지_않는다() throws Exception {
+        
+        // 기본 상태가 SAVED인 상태 저장
+        JobPosting savedJobPosting = jobPostingRepository.save(
+                new JobPosting(
+                        "검증 테스트 회사", 
+                        "백엔드 엔지니어", 
+                        "https://example.com/status-validation", 
+                        "지원 상태 검증 테스트용 원문"
+                )
+        );
+
+        // status 필드가 없는 요청
+        String requestBody = """
+                        {
+                        }
+                        """;
+        
+        // PATCH 요청 후 검증 오류 확인
+        mockMvc.perform(patch(
+                        "/api/job-postings/{id}/status",
+                        savedJobPosting.getId()      
+                )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status")
+                        .value(400))
+                .andExpect(jsonPath("$.code")
+                        .value("VALIDATION_FAILED")) 
+                .andExpect(jsonPath("$.fieldErrors.status").exists());
+
+        // 실패한 요청이 DB 상태를 변경하지 않았는 지 확인
+        JobPosting unchangedJobPosting = jobPostingRepository
+                        .findById(savedJobPosting.getId())
+                        .orElseThrow();
+        assertEquals(
+                ApplicationStatus.SAVED,
+                unchangedJobPosting.getApplicationStatus()
+        );
+
+
+    }
+
+    @Test
+    void 채용공고를_등록하면_기본_지원_상태는_SAVED이다() throws Exception {
+
+        // 정상적인 채용 공고 등록 요청
+        String requestBody = """
+                {
+                  "companyName": "기본 상태 테스트 회사",
+                  "title": "Java 백엔드 엔지니어",
+                  "sourceUrl": "https://example.com/default-status",
+                  "originalText": "신규 공고 기본 상태 테스트용 원문"
+                }
+                """;
+
+        // POST 요청 후 응답 상태 확인
+        mockMvc.perform(post("/api/job-postings")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.applicationStatus")
+                        .value("SAVED"));
+                  
+        // DB에 실제 저장된 공고 조회 
+        JobPosting savedJobPosting = jobPostingRepository
+                .findAll()
+                .stream()
+                .findFirst()
+                .orElseThrow();
+        
+        // DB에서도 기본 상태가 SAVED인지 확인
+        assertEquals(
+                ApplicationStatus.SAVED, 
+                savedJobPosting.getApplicationStatus()
+        );
     }
 
 }

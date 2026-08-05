@@ -2,6 +2,8 @@ package com.joblens.jobposting.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType; 
 import jakarta.persistence.Id;
@@ -37,6 +39,10 @@ public class JobPosting {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "application_status", nullable = false, length = 20)
+    private ApplicationStatus applicationStatus = ApplicationStatus.SAVED;
+
     public JobPosting(
             String companyName,
             String title,
@@ -68,4 +74,10 @@ public class JobPosting {
         this.sourceUrl = sourceUrl;
         this.originalText = originalText;
     }   
+
+    public void changeApplicationStatus(
+        ApplicationStatus applicationStatus
+    ) {
+        this.applicationStatus = applicationStatus;
+    }
 }

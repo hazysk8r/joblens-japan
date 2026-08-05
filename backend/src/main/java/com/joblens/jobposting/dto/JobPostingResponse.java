@@ -1,6 +1,7 @@
 package com.joblens.jobposting.dto;
 
 import com.joblens.jobposting.domain.JobPosting;
+import com.joblens.jobposting.domain.ApplicationStatus;
 
 import java.time.Instant;
 //엔티티를 API에서 그대로 반환하지 않고 응답 DTO로 변환
@@ -10,7 +11,8 @@ public record JobPostingResponse(
         String title,
         String sourceUrl,
         String originalText,
-        Instant createdAt
+        Instant createdAt,
+        ApplicationStatus applicationStatus
 ) {
 
     public static JobPostingResponse from(JobPosting jobPosting) {
@@ -20,7 +22,8 @@ public record JobPostingResponse(
                 jobPosting.getTitle(),
                 jobPosting.getSourceUrl(),
                 jobPosting.getOriginalText(),
-                jobPosting.getCreatedAt()
+                jobPosting.getCreatedAt(),
+                jobPosting.getApplicationStatus()
         );
     }
 }
