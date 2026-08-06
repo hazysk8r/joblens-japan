@@ -1,3 +1,12 @@
+// Status(ApplicationStatus) 타입 추가
+export type ApplicationStatus =
+  | 'SAVED'
+  | 'APPLIED'
+  | 'INTERVIEWING'
+  | 'OFFERED'
+  | 'REJECTED';
+
+
 //백엔드의 JSON 응답 구조를 typescript로 표현한 것
 export interface JobPosting {
   id: number;
@@ -6,6 +15,7 @@ export interface JobPosting {
   sourceUrl: string | null;
   originalText: string;
   createdAt: string;
+  applicationStatus: ApplicationStatus;
 }
 
 export interface PageResponse<T> {
@@ -33,4 +43,8 @@ export interface UpdateJobPostingRequest {
   title: string;
   sourceUrl: string | null;
   originalText: string;
+}
+
+export interface UpdateApplicationStatusRequest {
+  status: ApplicationStatus;
 }

@@ -4,9 +4,11 @@ import type { FormEvent } from 'react';
 import { 
   deleteJobPosting,
   fetchJobPostings,
+  updateApplicationStatus,
   updateJobPosting,
 } from './api/jobPostingApi';
 import type { 
+  ApplicationStatus,
   JobPosting,
   UpdateJobPostingRequest,
 } from './types/jobPosting';
@@ -32,6 +34,7 @@ function App() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [savingId, setSavingId] = useState<number | null>(null);
+  const [updatingStatusId, setUpdatingStatusId] = useState<number | null>(null);
 
   /**
    * 검색어를 받아 백엔드 API를 호출하고,
@@ -226,6 +229,31 @@ function App() {
       setSavingId(null);
     }
   };
+
+  const handleApplicationStatusChange = async (
+    id: number,
+    status: ApplicationStatus,
+  ): Promise<void> => {
+    setUpdatingStatusId(id);
+    setError(null);
+
+    try {
+      await updateApplicationStatus(id, { status });
+
+      await loadJobPostings(
+        appliedKeyword,
+        currentPage,
+      );
+    } catch (caughtError) {
+      const message = 
+        caughtError instanceof Error
+          ? caughtError.message
+          : '상태 업데이트에 실패하였습니다.';
+        setError(message);
+    } finally {
+      setUpdatingStatusId(null);
+    }
+  };
   
                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
   return (
@@ -284,6 +312,12 @@ function App() {
               onSave={handleSaveEdit}
               onCancel={handleCancelEdit}
               onDelete={handleDelete}
+              isUpdatingStatus={
+                updatingStatusId === jobPosting.id
+              }
+              onApplicationStatusChange={
+                handleApplicationStatusChange
+              }
             />
           ))}
         </ul>        

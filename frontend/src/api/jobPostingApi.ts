@@ -3,6 +3,7 @@ import type {
   UpdateJobPostingRequest,
   JobPosting,
   PageResponse,
+  UpdateApplicationStatusRequest,
 } from '../types/jobPosting';
 
 /**
@@ -128,3 +129,31 @@ export async function updateJobPosting(
 
   return (await response.json()) as JobPosting;
 }
+
+export async function updateApplicationStatus(
+  id: number,
+  request: UpdateApplicationStatusRequest,
+): Promise<JobPosting> {
+  const response = await fetch(
+    `/api/job-postings/${id}/status`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+
+    throw new Error(
+      `지원 상태 변경에 실패하였습니다. ` + 
+        `status=${response.status}, body=${errorBody}`,
+    );
+  }
+
+  return (await response.json()) as JobPosting;
+}
+
