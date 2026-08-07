@@ -1,5 +1,6 @@
 package com.joblens.jobposting.repository;
 
+import com.joblens.jobposting.domain.ApplicationStatus;
 import com.joblens.jobposting.domain.JobPosting;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,5 +19,9 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long> {
             String companyNameKeyword,
             String originalTextKeyword,
             Pageable pageable
+    );
+
+    long countByApplicationStatus(
+        ApplicationStatus applicationStatus
     );
 }

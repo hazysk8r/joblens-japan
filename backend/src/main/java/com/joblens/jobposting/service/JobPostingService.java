@@ -1,7 +1,9 @@
 package com.joblens.jobposting.service;
 
 import com.joblens.common.response.PageResponse;
+import com.joblens.jobposting.domain.ApplicationStatus;
 import com.joblens.jobposting.domain.JobPosting;
+import com.joblens.jobposting.dto.ApplicationStatusSummaryResponse;
 import com.joblens.jobposting.dto.CreateJobPostingRequest;
 import com.joblens.jobposting.dto.JobPostingResponse;
 import com.joblens.jobposting.dto.UpdateJobPostingRequest;
@@ -148,6 +150,27 @@ public class JobPostingService {
         );
         // 3. 변경된 엔티티를 DTO로 변환
         return JobPostingResponse.from(jobPosting);
+    }
+
+    public ApplicationStatusSummaryResponse getApplicationStatusSummary() {
+        long saved = jobPostingRepository
+                .countByApplicationStatus(ApplicationStatus.SAVED);
+        long applied = jobPostingRepository
+                .countByApplicationStatus(ApplicationStatus.APPLIED);
+        long interviewing = jobPostingRepository
+                .countByApplicationStatus(ApplicationStatus.INTERVIEWING);
+        long offered = jobPostingRepository
+                .countByApplicationStatus(ApplicationStatus.OFFERED);
+        long rejected = jobPostingRepository
+                .countByApplicationStatus(ApplicationStatus.REJECTED);
+        
+        return new ApplicationStatusSummaryResponse(
+            saved,
+            applied,
+            interviewing,
+            offered,
+            rejected
+        );
     }
 
 }

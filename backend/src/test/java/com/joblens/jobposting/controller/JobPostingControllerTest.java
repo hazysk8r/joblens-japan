@@ -380,4 +380,39 @@ class JobPostingControllerTest {
         );
     }
 
+    @Test
+    void 지원_상태별_채용공고_개수를_조회할_수_있다() throws Exception {
+        // 1. SAVED 상태 공고 2개
+        jobPostingRepository.save(
+                new JobPosting("회사1", "공고1", null, "원문1")
+        );
+        jobPostingRepository.save(
+                        new JobPosting("회사2", "공고2", null, "원문2")
+        );
+
+        // 2. APPLIED 상태 공고 1개
+        JobPosting appliedJobPosting = new JobPosting("회사3", "공고3", null, "원문3");
+        appliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
+        jobPostingRepository.save(appliedJobPosting);
+
+        // 3. INTERVIEWING 상태 공고 1개
+        JobPosting interviewingJobPosting = new JobPosting("회사4", "공고4", null, "원문4");
+        interviewingJobPosting.changeApplicationStatus(ApplicationStatus.INTERVIEWING);
+        jobPostingRepository.save(interviewingJobPosting);
+
+        // 4. OFFERED 상태 공고 1개
+        JobPosting offeredJobPosting = new JobPosting("회사5", "공고5", null, "원문5");
+        offeredJobPosting.changeApplicationStatus(ApplicationStatus.OFFERED);
+        jobPostingRepository.save(offeredJobPosting);
+
+        // 5. 상태 요약 API 호출
+        mockMvc.perform(get("/api/job-postings/status-summary"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.saved").value(2))
+                .andExpect(jsonPath("$.applied").value(1))
+                .andExpect(jsonPath("$.interviewing").value(1))
+                .andExpect(jsonPath("$.offered").value(1))
+                .andExpect(jsonPath("$.rejected").value(0));
+    }
+
 }

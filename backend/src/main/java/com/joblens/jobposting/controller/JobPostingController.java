@@ -1,6 +1,7 @@
 package com.joblens.jobposting.controller;
 
 import com.joblens.common.response.PageResponse;
+import com.joblens.jobposting.dto.ApplicationStatusSummaryResponse;
 import com.joblens.jobposting.dto.CreateJobPostingRequest;
 import com.joblens.jobposting.dto.JobPostingResponse;
 import com.joblens.jobposting.service.JobPostingService;
@@ -106,5 +107,12 @@ public class JobPostingController {
     ) {
         return jobPostingService.updateApplicationStatus(id, request);
     }
+
+    @GetMapping("/status-summary")
+    public ApplicationStatusSummaryResponse getApplicationStatusSummaryResponse(
+    ) {
+        return jobPostingService.getApplicationStatusSummary();
+    }
+    
 
 }
