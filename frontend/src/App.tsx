@@ -29,7 +29,7 @@ function App() {
   const [keyword, setKeyword] = useState('');
   const [appliedKeyword, setAppliedKeyword] = useState('');
   const [jobPostings, setJobPostings] = useState<JobPosting[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   // false = 현재 목록 API 요청이 진행 중이지 않음, true = 현재 목록 API 요청 진행 중
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
@@ -50,8 +50,6 @@ function App() {
     searchKeyword: string,
     pageNumber: number,
   ) => {
-    setLoading(true);
-    setError(null);
     try {
       const page = await fetchJobPostings(
         searchKeyword,
@@ -97,17 +95,49 @@ function App() {
    * 화면이 처음 열리면 검색어 없이 전체 공고를 조회한다.
    */
   useEffect(() => {
-    /*
-    * 화면을 처음 열었을 때
-    * 검색어 없이 첫 번째 페이지를 조회한다.
-    */
-    void loadJobPostings('', 0);
-    void loadApplicationStatusSummary();
+    let ignore = false;
 
-  }, [
-    loadJobPostings,
-    loadApplicationStatusSummary,
-  ]);
+    const loadInitialData = async () => {
+      try {
+        const [page, summary] = await Promise.all([
+          fetchJobPostings('', 0),
+          fetchApplicationStatusSummary(),
+        ]);
+
+        if (ignore) {
+          return;
+        }
+
+        setJobPostings(page.content);
+        setCurrentPage(page.page);
+        setTotalPages(page.totalPages);
+        setFirst(page.first);
+        setLast(page.last);
+        setStatusSummary(summary);
+      } catch (caughtError) {
+        if (ignore) {
+          return;
+        }
+
+        const message =
+          caughtError instanceof Error
+            ? caughtError.message
+            : '초기 데이터를 불러오는 중 알 수 없는 오류가 발생했습니다.';
+
+        setError(message);
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadInitialData();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const handleSubmit = (
     event: FormEvent<HTMLFormElement>,
@@ -121,6 +151,10 @@ function App() {
     * 새로운 검색을 시작할 때는
     * 이전 페이지 위치와 관계없이 첫 페이지부터 조회한다.
     */
+
+    setLoading(true);
+    setError(null);
+
     void loadJobPostings(nextKeyword, 0);
   };
 
@@ -128,6 +162,9 @@ function App() {
     if (first || loading) {
       return;
     }
+
+    setLoading(true);
+    setError(null);
 
     void loadJobPostings(
       appliedKeyword, 
@@ -139,6 +176,9 @@ function App() {
     if (last || loading) {
       return;
     }
+
+    setLoading(true);
+    setError(null);
 
     void loadJobPostings(
       appliedKeyword, 
