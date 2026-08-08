@@ -6,6 +6,15 @@ export type ApplicationStatus =
   | 'OFFERED'
   | 'REJECTED';
 
+// Status(ApplicationStatus) 요약
+export interface ApplicationStatusSummaryResponse {
+  saved: number;
+  applied: number;
+  interviewing: number;
+  offered: number;
+  rejected: number;
+}
+
 
 //백엔드의 JSON 응답 구조를 typescript로 표현한 것
 export interface JobPosting {

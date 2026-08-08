@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 
 import { 
   deleteJobPosting,
+  fetchApplicationStatusSummary,
   fetchJobPostings,
   updateApplicationStatus,
   updateJobPosting,
@@ -11,6 +12,7 @@ import type {
   ApplicationStatus,
   JobPosting,
   UpdateJobPostingRequest,
+  ApplicationStatusSummaryResponse,
 } from './types/jobPosting';
 
 import JobPostingCreateForm
@@ -18,6 +20,9 @@ import JobPostingCreateForm
 
 import JobPostingListItem
   from './components/JobPostingListItem';
+
+import ApplicationStatusSummary
+  from './components/ApplicationStatusSummary';
 
 
 function App() {
@@ -35,6 +40,7 @@ function App() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [savingId, setSavingId] = useState<number | null>(null);
   const [updatingStatusId, setUpdatingStatusId] = useState<number | null>(null);
+  const [statusSummary, setStatusSummary] = useState<ApplicationStatusSummaryResponse | null>(null);
 
   /**
    * 검색어를 받아 백엔드 API를 호출하고,
@@ -44,13 +50,8 @@ function App() {
     searchKeyword: string,
     pageNumber: number,
   ) => {
-    /*
-     * API 요청을 시작하기 직전에
-     * 목록을 로딩 중인 상태로 변경
-     */
     setLoading(true);
     setError(null);
-
     try {
       const page = await fetchJobPostings(
         searchKeyword,
@@ -78,6 +79,20 @@ function App() {
     }
   }, []);
 
+  const loadApplicationStatusSummary = useCallback(async () => {
+    try {
+      const summary = await fetchApplicationStatusSummary();
+
+      setStatusSummary(summary);
+    } catch (caughtError) {
+      const message =
+        caughtError instanceof Error
+          ? caughtError.message
+          : '지원 상태 요약을 불러오는 데 실패하였습니다.';
+      setError(message);
+    }
+  }, []);
+
   /*
    * 화면이 처음 열리면 검색어 없이 전체 공고를 조회한다.
    */
@@ -87,7 +102,12 @@ function App() {
     * 검색어 없이 첫 번째 페이지를 조회한다.
     */
     void loadJobPostings('', 0);
-  }, [loadJobPostings]);
+    void loadApplicationStatusSummary();
+
+  }, [
+    loadJobPostings,
+    loadApplicationStatusSummary,
+  ]);
 
   const handleSubmit = (
     event: FormEvent<HTMLFormElement>,
@@ -160,6 +180,7 @@ function App() {
         appliedKeyword,
         pageAfterDelete,
       );
+      await loadApplicationStatusSummary();
     } catch (caughtError) {
       const message = 
         caughtError instanceof Error
@@ -183,6 +204,7 @@ function App() {
    * 최신 공고부터 첫 페이지를 다시 조회한다.
    */
     await loadJobPostings('', 0);
+    await loadApplicationStatusSummary();
   };
 
   const handleStartEdit = (
@@ -244,6 +266,9 @@ function App() {
         appliedKeyword,
         currentPage,
       );
+
+      await loadApplicationStatusSummary();
+
     } catch (caughtError) {
       const message = 
         caughtError instanceof Error
@@ -254,7 +279,6 @@ function App() {
       setUpdatingStatusId(null);
     }
   };
-  
                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
   return (
     <main>
@@ -263,6 +287,12 @@ function App() {
       <JobPostingCreateForm
       onCreated={handleJobPostingCreated}
       />
+
+      {statusSummary && (
+        <ApplicationStatusSummary
+          summary={statusSummary}
+        />
+      )}
 
       <hr />
 

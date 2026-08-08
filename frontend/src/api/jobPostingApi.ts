@@ -4,6 +4,7 @@ import type {
   JobPosting,
   PageResponse,
   UpdateApplicationStatusRequest,
+  ApplicationStatusSummaryResponse,
 } from '../types/jobPosting';
 
 /**
@@ -155,5 +156,23 @@ export async function updateApplicationStatus(
   }
 
   return (await response.json()) as JobPosting;
+}
+
+export async function fetchApplicationStatusSummary(
+): Promise<ApplicationStatusSummaryResponse> {
+  const response = await fetch(
+    `/api/job-postings/status-summary`,
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+
+    throw new Error(
+      `지원 상태 요약을 불러오는 데 실패하였습니다. ` +
+        `status=${response.status}, body=${errorBody}`,
+    );
+  }
+
+  return (await response.json()) as ApplicationStatusSummaryResponse;
 }
 
