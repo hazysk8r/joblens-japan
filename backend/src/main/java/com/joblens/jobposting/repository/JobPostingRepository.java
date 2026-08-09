@@ -5,8 +5,10 @@ import com.joblens.jobposting.domain.JobPosting;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-public interface JobPostingRepository extends JpaRepository<JobPosting, Long> {
+
+public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, JpaSpecificationExecutor<JobPosting> {
     /**
      * 제목, 회사명, 공고 원문 중 하나라도 키워드를 포함하면 조회한다.
      *

@@ -5,8 +5,9 @@ import com.joblens.jobposting.dto.ApplicationStatusSummaryResponse;
 import com.joblens.jobposting.dto.CreateJobPostingRequest;
 import com.joblens.jobposting.dto.JobPostingResponse;
 import com.joblens.jobposting.service.JobPostingService;
-import com.joblens.jobposting.dto.UpdateJobPostingRequest;
 import com.joblens.jobposting.dto.UpdateApplicationStatusRequest;
+import com.joblens.jobposting.dto.UpdateJobPostingRequest;
+import com.joblens.jobposting.domain.ApplicationStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -90,9 +91,10 @@ public class JobPostingController {
                     sort = "createdAt",
                     direction = Sort.Direction.DESC
             )
-            Pageable pageable
+            Pageable pageable,
+            @RequestParam(name = "status", required = false) ApplicationStatus applicationStatus
     ) {
-        return jobPostingService.findAll(keyword, pageable);
+        return jobPostingService.findAll(keyword, pageable, applicationStatus);
     }
 
     @GetMapping("/{id}")

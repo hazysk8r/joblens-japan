@@ -9,12 +9,14 @@ import com.joblens.jobposting.dto.JobPostingResponse;
 import com.joblens.jobposting.dto.UpdateJobPostingRequest;
 import com.joblens.jobposting.dto.UpdateApplicationStatusRequest;
 import com.joblens.jobposting.repository.JobPostingRepository;
+import com.joblens.jobposting.specification.JobPostingSpecifications;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 
 @Service
@@ -93,28 +95,17 @@ public class JobPostingService {
      */
     public PageResponse<JobPostingResponse> findAll(
             String keyword,
-            Pageable pageable
+            Pageable pageable,
+            ApplicationStatus applicationStatus
     ) {
-        Page<JobPosting> jobPostingPage;
+        String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword.strip();
 
-        if (keyword == null || keyword.isBlank()) {
-            jobPostingPage = jobPostingRepository.findAll(pageable);
-        } else {
-            /*
-            * 사용자가 앞뒤에 공백을 입력하더라도
-            * 검색 결과에 영향을 주지 않도록 trim()한다.
-            */
-            String normalizedKeyword = keyword.trim();
+        Specification<JobPosting> spec = Specification.allOf(
+            JobPostingSpecifications.hasKeyword(normalizedKeyword),
+            JobPostingSpecifications.hasStatus(applicationStatus)
+        );
 
-            jobPostingPage =
-                    jobPostingRepository
-                            .findByTitleContainingIgnoreCaseOrCompanyNameContainingIgnoreCaseOrOriginalTextContainingIgnoreCase(
-                                    normalizedKeyword,
-                                    normalizedKeyword,
-                                    normalizedKeyword,
-                                    pageable
-                            );
-        }
+        Page<JobPosting> jobPostingPage = jobPostingRepository.findAll(spec, pageable);
 
         /*
         * Page<JobPosting>을 Page<JobPostingResponse>로 변환한다.

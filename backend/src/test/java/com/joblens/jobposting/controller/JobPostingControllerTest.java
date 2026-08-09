@@ -415,4 +415,114 @@ class JobPostingControllerTest {
                 .andExpect(jsonPath("$.rejected").value(0));
     }
 
+    @Test
+    void 지원_상태_및_키워드를_통해서_필터링_할_수_있다() throws Exception {
+
+        jobPostingRepository.save(
+                new JobPosting("회사1", "공고1", null, "원문1")
+        );
+
+        JobPosting appliedJobPosting = new JobPosting("회사2", "공고2", null, "원문2");
+        appliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
+        jobPostingRepository.save(appliedJobPosting);
+
+
+        mockMvc.perform(get("/api/job-postings")
+                        .param("keyword", "공고")
+                        .param("status", "APPLIED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].applicationStatus").value("APPLIED"))
+                .andExpect(jsonPath("$.content[0].title").value("공고2"));
+    }
+
+    @Test
+    void 지원_상태로_필터링_할_수_있다() throws Exception {
+
+        jobPostingRepository.save(
+                new JobPosting("회사1", "공고1", null, "원문1"));
+
+        JobPosting appliedJobPosting = new JobPosting("회사2", "공고2", null, "원문2");
+        appliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
+        jobPostingRepository.save(appliedJobPosting);
+
+        JobPosting secondAppliedJobPosting = new JobPosting("회사2", "공고2", null, "원문2");
+        secondAppliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
+        jobPostingRepository.save(secondAppliedJobPosting);
+
+        mockMvc.perform(get("/api/job-postings")
+                        .param("status", "APPLIED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.content[0].applicationStatus").value("APPLIED"))
+                .andExpect(jsonPath("$.content[1].applicationStatus").value("APPLIED"));
+    }
+
+    @Test
+    void 대소문자_상관_없이_필터링_할_수_있다() throws Exception {
+
+            jobPostingRepository.save(
+                            new JobPosting("회사1", "Spring Backend Engineer", null, "원문1"));
+
+            mockMvc.perform(get("/api/job-postings")
+                            .param("keyword", "spring"))
+                            .andExpect(status().isOk())
+                            .andExpect(jsonPath("$.content.length()").value(1))
+                            .andExpect(jsonPath("$.content[0].title").value("Spring Backend Engineer"));
+    }
+
+    @Test
+    void 와일드카드_이스케이프_할_수_있다() throws Exception {
+
+            jobPostingRepository.save(
+                            new JobPosting("회사1", "100% Remote Engineer", null, "원문1"));
+            jobPostingRepository.save(
+                            new JobPosting("회사2", "Java Developer", null, "원문2"));
+
+            mockMvc.perform(get("/api/job-postings")
+                            .param("keyword", "%"))
+                            .andExpect(status().isOk())
+                            .andExpect(jsonPath("$.content.length()").value(1))
+                            .andExpect(jsonPath("$.content[0].title").value("100% Remote Engineer"));
+    }
+
+    @Test
+    void 유효하지_않는_상태는_Bad_Request_전송한다() throws Exception {
+
+        mockMvc.perform(get("/api/job-postings?status=INVALID"))
+                        .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void 상태와_페이지네이션을_활용해_필터링_할_수_있다() throws Exception {
+            JobPosting appliedJobPosting = new JobPosting("회사1", "공고1", null, "원문1");
+            appliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
+            jobPostingRepository.save(appliedJobPosting);
+
+            JobPosting secondAppliedJobPosting = new JobPosting("회사2", "공고2", null, "원문2");
+            secondAppliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
+            jobPostingRepository.save(secondAppliedJobPosting);
+
+            JobPosting thirdAppliedJobPosting = new JobPosting("회사3", "공고3", null, "원문3");
+            thirdAppliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
+            jobPostingRepository.save(thirdAppliedJobPosting);
+
+            jobPostingRepository.save(
+                            new JobPosting("회사4", "100% Remote Engineer", null, "원문4"));
+            jobPostingRepository.save(
+                            new JobPosting("회사5", "Java Developer", null, "원문5"));
+                        
+            mockMvc.perform(get("/api/job-postings")
+                        .param("status", "APPLIED")
+                        .param("page", "0")
+                        .param("size", "2"))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.page").value(0))
+                        .andExpect(jsonPath("$.content.length()").value(2))
+                        .andExpect(jsonPath("$.content[0].applicationStatus").value("APPLIED"))
+                        .andExpect(jsonPath("$.content[1].applicationStatus").value("APPLIED"))
+                        .andExpect(jsonPath("$.totalElements").value(3));
+    }
+
+
 }
