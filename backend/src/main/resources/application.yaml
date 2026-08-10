@@ -4,7 +4,7 @@ spring:
 
   datasource:
     # 환경변수가 있으면 그 값을 사용하고, 없으면 콜론 뒤의 로컬 기본값을 사용
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/joblens}
+    url: ${DB_URL:jdbc:postgresql://localhost:15432/joblens}
     username: ${DB_USERNAME:joblens}
     password: ${DB_PASSWORD:local-password}
     driver-class-name: org.postgresql.Driver

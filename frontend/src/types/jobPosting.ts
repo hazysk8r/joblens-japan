@@ -6,6 +6,11 @@ export type ApplicationStatus =
   | 'OFFERED'
   | 'REJECTED';
 
+// ApplicationStatus or ""(전체), 이상한 필터가 입력되는 것 방지
+export type StatusFilter =
+  ApplicationStatus | "";
+
+
 // Status(ApplicationStatus) 요약
 export interface ApplicationStatusSummaryResponse {
   saved: number;

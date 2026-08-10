@@ -5,6 +5,7 @@ import type {
   PageResponse,
   UpdateApplicationStatusRequest,
   ApplicationStatusSummaryResponse,
+  StatusFilter,
 } from '../types/jobPosting';
 
 /**
@@ -15,6 +16,7 @@ import type {
  */
 export async function fetchJobPostings(
   keyword: string,
+  status: StatusFilter,
   page: number,
 ): Promise<PageResponse<JobPosting>> {
   const params = new URLSearchParams({
@@ -25,12 +27,17 @@ export async function fetchJobPostings(
     page: page.toString(),
     size: '5',
     sort: 'id,desc',
+
   });
 
   const normalizedKeyword = keyword.trim();
 
   if (normalizedKeyword) {
     params.set('keyword', normalizedKeyword);
+  }
+
+  if (status !== '') {
+    params.set('status', status);
   }
 
   const response = await fetch(

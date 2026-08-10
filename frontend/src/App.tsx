@@ -13,6 +13,7 @@ import type {
   JobPosting,
   UpdateJobPostingRequest,
   ApplicationStatusSummaryResponse,
+  StatusFilter,
 } from './types/jobPosting';
 
 import JobPostingCreateForm
@@ -41,6 +42,8 @@ function App() {
   const [savingId, setSavingId] = useState<number | null>(null);
   const [updatingStatusId, setUpdatingStatusId] = useState<number | null>(null);
   const [statusSummary, setStatusSummary] = useState<ApplicationStatusSummaryResponse | null>(null);
+  const [status, setStatus] = useState<StatusFilter>("");
+  const [appliedStatus, setAppliedStatus] = useState<StatusFilter>("");
 
   /**
    * 검색어를 받아 백엔드 API를 호출하고,
@@ -48,11 +51,13 @@ function App() {
    */
   const loadJobPostings = useCallback(async (
     searchKeyword: string,
+    searchFilter: StatusFilter,
     pageNumber: number,
   ) => {
     try {
       const page = await fetchJobPostings(
         searchKeyword,
+        searchFilter,
         pageNumber,
       );
       /*
@@ -100,7 +105,7 @@ function App() {
     const loadInitialData = async () => {
       try {
         const [page, summary] = await Promise.all([
-          fetchJobPostings('', 0),
+          fetchJobPostings('', '', 0),
           fetchApplicationStatusSummary(),
         ]);
 
@@ -145,8 +150,10 @@ function App() {
     event.preventDefault();
 
     const nextKeyword = keyword.trim();
+    const nextStatus = status;
 
     setAppliedKeyword(nextKeyword);
+    setAppliedStatus(nextStatus);
     /*
     * 새로운 검색을 시작할 때는
     * 이전 페이지 위치와 관계없이 첫 페이지부터 조회한다.
@@ -155,8 +162,9 @@ function App() {
     setLoading(true);
     setError(null);
 
-    void loadJobPostings(nextKeyword, 0);
+    void loadJobPostings(nextKeyword, nextStatus, 0);
   };
+
 
   const handlePreviousPage = () => {
     if (first || loading) {
@@ -168,6 +176,7 @@ function App() {
 
     void loadJobPostings(
       appliedKeyword, 
+      appliedStatus,
       currentPage - 1,
     );
   };
@@ -182,9 +191,11 @@ function App() {
 
     void loadJobPostings(
       appliedKeyword, 
+      appliedStatus,
       currentPage + 1,
     );
   };
+
 
   const handleDelete = async (
     jobPosting: JobPosting,
@@ -218,6 +229,7 @@ function App() {
           : currentPage;
       await loadJobPostings(
         appliedKeyword,
+        appliedStatus,
         pageAfterDelete,
       );
       await loadApplicationStatusSummary();
@@ -238,12 +250,14 @@ function App() {
    * 화면에 보이지 않는 상황을 막기 위해 검색어를 초기화한다.
    */
     setKeyword('');
+    setStatus("");
     setAppliedKeyword('');
+    setAppliedStatus("");
 
   /*
    * 최신 공고부터 첫 페이지를 다시 조회한다.
    */
-    await loadJobPostings('', 0);
+    await loadJobPostings('', '', 0);
     await loadApplicationStatusSummary();
   };
 
@@ -279,6 +293,7 @@ function App() {
        */
       await loadJobPostings(
         appliedKeyword,
+        appliedStatus,
         currentPage,
       );
     } catch (caughtError) {
@@ -304,6 +319,7 @@ function App() {
 
       await loadJobPostings(
         appliedKeyword,
+        appliedStatus,
         currentPage,
       );
 
@@ -345,6 +361,33 @@ function App() {
           onChange={(event) => setKeyword(event.target.value)}
           placeholder="AWS, Java, 회사명 검색"
         />
+
+        <select
+          value={status}
+          onChange={(event) =>
+            setStatus(event.target.value as StatusFilter)
+          }
+        >
+          <option value="">
+            전체
+          </option>
+          <option value="SAVED">
+            저장
+          </option>
+          <option value="APPLIED">
+            지원완료
+          </option>
+          <option value="INTERVIEWING">
+            면접진행중
+          </option>
+          <option value="OFFERED">
+            오퍼수령
+          </option>
+          <option value="REJECTED">
+            거절됨
+          </option>
+          
+        </select>
 
         <button type="submit"
                 disabled={loading}

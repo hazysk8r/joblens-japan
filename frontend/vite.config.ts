@@ -12,6 +12,8 @@ export default defineConfig({
    * 로컬 개발 단계에서 CORS 문제도 피할 수 있다.
    */
   server: {
+    host: '127.0.0.1',
+    port: 5250,
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
