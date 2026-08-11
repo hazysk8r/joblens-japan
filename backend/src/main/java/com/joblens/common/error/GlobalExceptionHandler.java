@@ -1,5 +1,6 @@
 package com.joblens.common.error;
 
+import com.joblens.jobposting.exception.InvalidSortFieldException;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -70,6 +71,25 @@ public class GlobalExceptionHandler {
                 "입력값이 올바르지 않습니다.",
                 request.getRequestURI(),
                 fieldErrors
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(response);
+    }
+
+    @ExceptionHandler(InvalidSortFieldException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidSortField(
+            InvalidSortFieldException exception,
+            HttpServletRequest request
+    ) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                Instant.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                "INVALID_SORT_FIELD",
+                exception.getMessage(),
+                request.getRequestURI(),
+                Map.of()
         );
 
         return ResponseEntity

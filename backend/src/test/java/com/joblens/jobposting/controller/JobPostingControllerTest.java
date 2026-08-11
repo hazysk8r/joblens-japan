@@ -21,6 +21,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -229,8 +230,7 @@ class JobPostingControllerTest {
 
         mockMvc.perform(get("/api/job-postings")
                     .param("page", "0")
-                    .param("size", "2")
-                    .param("sort", "id,asc"))
+                    .param("size", "2"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content.length()").value(2))
             .andExpect(jsonPath("$.page").value(0))
@@ -522,6 +522,59 @@ class JobPostingControllerTest {
                         .andExpect(jsonPath("$.content[0].applicationStatus").value("APPLIED"))
                         .andExpect(jsonPath("$.content[1].applicationStatus").value("APPLIED"))
                         .andExpect(jsonPath("$.totalElements").value(3));
+    }
+
+    @Test
+    void 허용_목록에_없는_필드의_정렬_요청은_거부된다() throws Exception {
+            mockMvc.perform(get("/api/job-postings").param("sort", "id,asc"))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(jsonPath("$.status").value(400))   
+                        .andExpect(jsonPath("$.code").value("INVALID_SORT_FIELD"))
+                        .andExpect(jsonPath("$.message").value("허용되지 않는 정렬 필드입니다: id"));
+    }
+
+    @Test
+    void 회사명_으로_정렬기능이_동작하는지_확인한다() throws Exception {
+            jobPostingRepository.save(
+                            new JobPosting("B", "Java Developer", null, "원문1"));
+            jobPostingRepository.save(
+                            new JobPosting("A", "Python Developer", null, "원문2"));
+            jobPostingRepository.save(
+                            new JobPosting("C", "C++ Developer", null, "원문3"));
+        
+            mockMvc.perform(get("/api/job-postings").param("sort", "companyName,asc"))
+                            .andExpect(status().isOk())
+                            .andExpect(jsonPath("$.content[0].companyName").value("A"))
+                            .andExpect(jsonPath("$.content[1].companyName").value("B"))
+                            .andExpect(jsonPath("$.content[2].companyName").value("C"));
+    }
+
+    @Test
+    void 키워드와_지원상태로_필터링하고_회사명순으로_정렬할_수_있다() throws Exception {
+            JobPosting charlie = jobPostingRepository.save(
+                            new JobPosting("Charlie Company","AWS Engineer","https://example.com/charlie","Cloud"));
+            JobPosting alpha = jobPostingRepository.save(
+                            new JobPosting("Alpha Company", "AWS Engineer", "https://example.com/alpha", "Cloud"));
+            JobPosting wrongKeyword = jobPostingRepository.save(
+                            new JobPosting("Beta Company", "JAVA Engineer", "https://example.com/beta", "Spring"));
+            JobPosting wrongStatus = jobPostingRepository.save(
+                            new JobPosting("Delta Company", "AWS Engineer", "https://example.com/delta", "Cloud"));
+            
+            charlie.changeApplicationStatus(ApplicationStatus.APPLIED);
+            alpha.changeApplicationStatus(ApplicationStatus.APPLIED);
+            wrongKeyword.changeApplicationStatus(ApplicationStatus.APPLIED);
+            wrongStatus.changeApplicationStatus(ApplicationStatus.SAVED);
+
+            jobPostingRepository.saveAll(List.of(charlie, alpha, wrongKeyword, wrongStatus));
+
+            mockMvc.perform(get("/api/job-postings")
+                            .param("keyword", "AWS")
+                            .param("status", "APPLIED")
+                            .param("sort", "companyName,asc"))
+                            .andExpect(status().isOk())
+                            .andExpect(jsonPath("$.content.length()").value(2))
+                            .andExpect(jsonPath("$.content[0].companyName").value("Alpha Company"))
+                            .andExpect(jsonPath("$.content[1].companyName").value("Charlie Company"));
     }
 
 

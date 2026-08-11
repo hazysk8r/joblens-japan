@@ -76,7 +76,7 @@ public class JobPostingController {
      * 채용공고를 검색하고 페이지 단위로 반환한다.
      *
      * 요청 예시:
-     * GET /api/job-postings?keyword=AWS&page=0&size=10&sort=id,desc
+     * GET /api/job-postings?keyword=AWS&page=0&size=10&sort=createdAt,desc
      */
     @GetMapping
     public PageResponse<JobPostingResponse> findAll(

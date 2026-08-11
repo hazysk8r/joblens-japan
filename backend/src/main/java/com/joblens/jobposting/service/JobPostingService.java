@@ -11,11 +11,14 @@ import com.joblens.jobposting.dto.UpdateApplicationStatusRequest;
 import com.joblens.jobposting.repository.JobPostingRepository;
 import com.joblens.jobposting.specification.JobPostingSpecifications;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
+import com.joblens.jobposting.validation.JobPostingSortValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 
 
@@ -24,7 +27,9 @@ import org.springframework.data.jpa.domain.Specification;
 @Transactional(readOnly = true)
 public class JobPostingService {
 
+    private final JobPostingSortValidator jobPostingSortValidator;
     private final JobPostingRepository jobPostingRepository;
+
 
     @Transactional
     public JobPostingResponse create(CreateJobPostingRequest request) {
@@ -98,6 +103,24 @@ public class JobPostingService {
             Pageable pageable,
             ApplicationStatus applicationStatus
     ) {
+        // pageable에서 sort만 꺼냄
+        Sort requestedSort = pageable.getSort();
+        // validator에서 검증
+        jobPostingSortValidator.validate(requestedSort);
+        // 사용자가 요청한 정렬 뒤에 id 정렬 추가
+        Sort finalSort = requestedSort.and(
+            Sort.by(
+                requestedSort.iterator().next().getDirection(),
+                "id"
+            )
+        );
+        // 기존 pageable의 page 및 size는 유지, sort만 finalsort로 바꾼 새로운 pageable 생성
+        Pageable finalPageable = PageRequest.of(
+            pageable.getPageNumber(),
+            pageable.getPageSize(),
+            finalSort
+        );
+
         String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword.strip();
 
         Specification<JobPosting> spec = Specification.allOf(
@@ -105,7 +128,7 @@ public class JobPostingService {
             JobPostingSpecifications.hasStatus(applicationStatus)
         );
 
-        Page<JobPosting> jobPostingPage = jobPostingRepository.findAll(spec, pageable);
+        Page<JobPosting> jobPostingPage = jobPostingRepository.findAll(spec, finalPageable);
 
         /*
         * Page<JobPosting>을 Page<JobPostingResponse>로 변환한다.
