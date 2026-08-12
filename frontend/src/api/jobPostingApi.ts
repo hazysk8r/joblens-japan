@@ -6,6 +6,7 @@ import type {
   UpdateApplicationStatusRequest,
   ApplicationStatusSummaryResponse,
   StatusFilter,
+  JobPostingSorting,
 } from '../types/jobPosting';
 
 /**
@@ -18,6 +19,7 @@ export async function fetchJobPostings(
   keyword: string,
   status: StatusFilter,
   page: number,
+  sort: JobPostingSorting,
 ): Promise<PageResponse<JobPosting>> {
   const params = new URLSearchParams({
     /*
@@ -26,7 +28,7 @@ export async function fetchJobPostings(
      */
     page: page.toString(),
     size: '5',
-    sort: 'id,desc',
+    sort,
 
   });
 

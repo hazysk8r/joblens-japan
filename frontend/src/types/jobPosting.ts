@@ -10,6 +10,11 @@ export type ApplicationStatus =
 export type StatusFilter =
   ApplicationStatus | "";
 
+export type JobPostingSorting =
+  | 'createdAt,desc'
+  | 'createdAt,asc'
+  | 'companyName,asc';
+
 
 // Status(ApplicationStatus) 요약
 export interface ApplicationStatusSummaryResponse {

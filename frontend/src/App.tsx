@@ -8,12 +8,13 @@ import {
   updateApplicationStatus,
   updateJobPosting,
 } from './api/jobPostingApi';
-import type { 
-  ApplicationStatus,
-  JobPosting,
-  UpdateJobPostingRequest,
-  ApplicationStatusSummaryResponse,
-  StatusFilter,
+import { 
+  type ApplicationStatus,
+  type JobPosting,
+  type UpdateJobPostingRequest,
+  type ApplicationStatusSummaryResponse,
+  type StatusFilter,
+  type JobPostingSorting,
 } from './types/jobPosting';
 
 import JobPostingCreateForm
@@ -44,6 +45,7 @@ function App() {
   const [statusSummary, setStatusSummary] = useState<ApplicationStatusSummaryResponse | null>(null);
   const [status, setStatus] = useState<StatusFilter>("");
   const [appliedStatus, setAppliedStatus] = useState<StatusFilter>("");
+  const [sorting, setSorting] = useState<JobPostingSorting>('createdAt,desc');
 
   /**
    * 검색어를 받아 백엔드 API를 호출하고,
@@ -53,12 +55,14 @@ function App() {
     searchKeyword: string,
     searchFilter: StatusFilter,
     pageNumber: number,
+    sort: JobPostingSorting,
   ) => {
     try {
       const page = await fetchJobPostings(
         searchKeyword,
         searchFilter,
         pageNumber,
+        sort,
       );
       /*
       * 공고 목록뿐 아니라 백엔드가 반환한 페이지 정보도
@@ -105,7 +109,7 @@ function App() {
     const loadInitialData = async () => {
       try {
         const [page, summary] = await Promise.all([
-          fetchJobPostings('', '', 0),
+          fetchJobPostings('', '', 0, sorting),
           fetchApplicationStatusSummary(),
         ]);
 
@@ -162,7 +166,7 @@ function App() {
     setLoading(true);
     setError(null);
 
-    void loadJobPostings(nextKeyword, nextStatus, 0);
+    void loadJobPostings(nextKeyword, nextStatus, 0, sorting);
   };
 
 
@@ -178,6 +182,7 @@ function App() {
       appliedKeyword, 
       appliedStatus,
       currentPage - 1,
+      sorting,
     );
   };
 
@@ -193,6 +198,7 @@ function App() {
       appliedKeyword, 
       appliedStatus,
       currentPage + 1,
+      sorting,
     );
   };
 
@@ -231,6 +237,7 @@ function App() {
         appliedKeyword,
         appliedStatus,
         pageAfterDelete,
+        sorting,
       );
       await loadApplicationStatusSummary();
     } catch (caughtError) {
@@ -253,11 +260,12 @@ function App() {
     setStatus("");
     setAppliedKeyword('');
     setAppliedStatus("");
+    setSorting('createdAt,desc');
 
   /*
    * 최신 공고부터 첫 페이지를 다시 조회한다.
    */
-    await loadJobPostings('', '', 0);
+    await loadJobPostings('', '', 0, 'createdAt,desc');
     await loadApplicationStatusSummary();
   };
 
@@ -295,6 +303,7 @@ function App() {
         appliedKeyword,
         appliedStatus,
         currentPage,
+        sorting,
       );
     } catch (caughtError) {
       const message = 
@@ -321,6 +330,7 @@ function App() {
         appliedKeyword,
         appliedStatus,
         currentPage,
+        sorting,
       );
 
       await loadApplicationStatusSummary();
@@ -387,6 +397,36 @@ function App() {
             거절됨
           </option>
           
+        </select>
+        
+        <select
+        // 새로운 정렬값을 먼저 보관(nextSorting), UI와 이후의 렌더링을 위한 상태 저장(setSorting)
+         value={sorting}
+         onChange={(event) => {
+          const nextSorting = 
+            event.target.value as JobPostingSorting;
+          setSorting(nextSorting);
+
+          setLoading(true);
+          setError(null);
+          // 지금 당장 API 요청에 사용할 값
+          void loadJobPostings(
+            appliedKeyword,
+            appliedStatus,
+            0,
+            nextSorting,
+          );
+         }} 
+        >
+          <option value='createdAt,desc'>
+            최신순
+          </option>
+          <option value='createdAt,asc'>
+            오래된순
+          </option>
+          <option value='companyName,asc'>
+            회사명순
+          </option>
         </select>
 
         <button type="submit"
