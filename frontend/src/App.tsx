@@ -365,14 +365,18 @@ function App() {
       <h2>채용공고 검색</h2>
 
       <form onSubmit={handleSubmit}>
+        <label htmlFor='search'>검색어</label>
         <input
+          id='search'
           type="text"
           value={keyword}
           onChange={(event) => setKeyword(event.target.value)}
           placeholder="AWS, Java, 회사명 검색"
         />
 
+        <label htmlFor="status">상태</label>
         <select
+          id="status"
           value={status}
           onChange={(event) =>
             setStatus(event.target.value as StatusFilter)
@@ -399,8 +403,10 @@ function App() {
           
         </select>
         
+        <label htmlFor="sorting">정렬</label>
         <select
         // 새로운 정렬값을 먼저 보관(nextSorting), UI와 이후의 렌더링을 위한 상태 저장(setSorting)
+         id="sorting"
          value={sorting}
          onChange={(event) => {
           const nextSorting = 

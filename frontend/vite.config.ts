@@ -1,9 +1,13 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
 
+  test: {
+    environment: 'jsdom',
+  },
   /*
    * 브라우저에서 /api로 시작하는 요청을 보내면
    * Vite 개발 서버가 Spring Boot의 8080 포트로 전달한다.
