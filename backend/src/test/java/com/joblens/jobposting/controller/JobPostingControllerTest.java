@@ -578,4 +578,37 @@ class JobPostingControllerTest {
     }
 
 
+    @Test
+    void 기술이_포함된_공고에서__해당_포스트의_기술_스택을_확인할_수_있다() throws Exception {
+            JobPosting charlie = jobPostingRepository.save(
+                            new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie", "JavaとSpring Bootを使ったバックエンド開発です"));
+            JobPosting alpha = jobPostingRepository.save(
+                            new JobPosting("Alpha Company", "AWS Engineer", "https://example.com/alpha", "AWSとDockerを利用します。"));
+
+            mockMvc.perform(get("/api/job-postings/{id}/skills", charlie.getId()))
+                            .andExpect(status().isOk())
+                            .andExpect(jsonPath("$[0]").value("Java" ))
+                            .andExpect(jsonPath("$[1]").value("Spring Boot"));
+            mockMvc.perform(get("/api/job-postings/{id}/skills", alpha.getId()))
+                            .andExpect(status().isOk())
+                            .andExpect(jsonPath("$[0]").value("AWS"))
+                            .andExpect(jsonPath("$[1]").value("Docker"));
+            
+    }
+
+    @Test
+    void 기술이_기입되어_있지_않는_포스트의_경우_공백을_보여준다() throws Exception {
+            JobPosting charlie = jobPostingRepository.save(
+                            new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
+                                            "営業部求人中"));
+            mockMvc.perform(get("/api/job-postings/{id}/skills", charlie.getId()))
+                            .andExpect(status().isOk())
+                            .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test 
+    void 존재하지_않는_채용공고의_기술스택을_조회하면_404를_반환한다() throws Exception {
+            mockMvc.perform(get("/api/job-postings/{id}/skills", 9999L))
+                   .andExpect(status().isNotFound());
+    }
 }

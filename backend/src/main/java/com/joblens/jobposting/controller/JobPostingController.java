@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 
 import java.net.URI;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/job-postings")
@@ -114,6 +115,11 @@ public class JobPostingController {
     public ApplicationStatusSummaryResponse getApplicationStatusSummaryResponse(
     ) {
         return jobPostingService.getApplicationStatusSummary();
+    }
+    
+    @GetMapping("/{id}/skills")
+    public List<String> getExtractedSkills(@PathVariable Long id) {
+        return jobPostingService.extractSkills(id);
     }
     
 

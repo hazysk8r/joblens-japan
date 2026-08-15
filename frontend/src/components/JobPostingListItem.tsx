@@ -4,7 +4,10 @@ import type {
 	UpdateJobPostingRequest,
 } from '../types/jobPosting';
 
+import { useState } from 'react';
+
 import JobPostingEditForm from './JobPostingEditForm';
+import { extractRequiredSkills } from '../api/jobPostingApi';
 
 interface JobPostingListItemProps {
 	jobPosting: JobPosting;
@@ -34,6 +37,7 @@ interface JobPostingListItemProps {
 	) => Promise<void>;
 }
 
+
 function JobPostingListItem({
 	jobPosting,
 	isEditing,
@@ -46,8 +50,50 @@ function JobPostingListItem({
 	onDelete,
 	onApplicationStatusChange,
 }: JobPostingListItemProps) {
+	const [skills, setSkills] = useState<string[] | null>(null);
+	const [skillsError, setSkillsError] = useState<string | null>(null);
+	async function handlePostingSkill() {
+		try {
+			setSkillsError(null);
+
+			const extractedSkills = await extractRequiredSkills(jobPosting.id);
+			setSkills(extractedSkills);
+		} catch (error) {
+			setSkills(null);
+
+			if (error instanceof Error) {
+				setSkillsError(error.message);
+			} else {
+				setSkillsError('기술 스택 조회에 실패하였습니다.');
+			}
+		}
+	}
 	return (
 		<li>
+			<button
+				type='button'
+				onClick={() => {
+					void handlePostingSkill();
+				}}
+			>
+				기술 스택 보기
+			</button>
+			{skills !== null && (
+				skills.length > 0
+					? <ul>
+						{skills.map((skill) => (
+							<li key={skill}>
+								{skill}
+							</li>
+						))}
+						</ul>
+					: <p>추출된 기술 스택이 없습니다.</p>
+			)}
+			{skillsError !== null && (
+				<p role="alert">
+					{skillsError}
+				</p>
+			)}
 			{isEditing ? (
 				<JobPostingEditForm
 					jobPosting={jobPosting}

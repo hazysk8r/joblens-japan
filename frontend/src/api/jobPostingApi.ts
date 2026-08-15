@@ -185,3 +185,19 @@ export async function fetchApplicationStatusSummary(
   return (await response.json()) as ApplicationStatusSummaryResponse;
 }
 
+export async function extractRequiredSkills(
+  id: number
+): Promise<string[]> {
+  const response = await fetch(
+    `/api/job-postings/${id}/skills`,
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `기술 스택 조회에 실패하였습니다. status=${response.status}`,
+    );
+  }
+
+  return (await response.json()) as string[];
+}
+

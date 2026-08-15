@@ -15,6 +15,11 @@ import com.joblens.jobposting.validation.JobPostingSortValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -29,6 +34,14 @@ public class JobPostingService {
 
     private final JobPostingSortValidator jobPostingSortValidator;
     private final JobPostingRepository jobPostingRepository;
+    private static final List<String> SUPPORTED_SKILLS = List.of(
+            "Java",
+            "Spring Boot",
+            "AWS",
+            "Docker",
+            "PostgreSQL",
+            "React",
+            "TypeScript");
 
 
     @Transactional
@@ -186,5 +199,24 @@ public class JobPostingService {
             rejected
         );
     }
+
+    public List<String> extractSkills(Long id) {
+        // 
+        JobPosting jobPosting = findEntityById(id);
+        String originalText = jobPosting.getOriginalText();
+        
+        if (originalText == null || originalText.isBlank()) {
+            return List.of();
+        }
+        String normalizedOriginalText = originalText.toLowerCase(Locale.ROOT);
+        List<String> extractedSkills = new ArrayList<>();
+        for (String skill : SUPPORTED_SKILLS) {
+            if (normalizedOriginalText.contains(skill.toLowerCase(Locale.ROOT))) {
+                extractedSkills.add(skill);
+            }
+        }
+        return extractedSkills;
+    }   
+
 
 }
