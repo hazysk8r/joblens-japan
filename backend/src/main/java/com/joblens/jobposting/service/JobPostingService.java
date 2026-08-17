@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.*;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -41,7 +42,9 @@ public class JobPostingService {
             "Docker",
             "PostgreSQL",
             "React",
-            "TypeScript");
+            "TypeScript",
+            "C",
+            "C++");
 
 
     @Transactional
@@ -210,8 +213,16 @@ public class JobPostingService {
         }
         String normalizedOriginalText = originalText.toLowerCase(Locale.ROOT);
         List<String> extractedSkills = new ArrayList<>();
+        String lookbehind = "(?<![a-zA-Z0-9+#.])";
+        String lookahead = "(?![a-zA-Z0-9+#.])";
         for (String skill : SUPPORTED_SKILLS) {
-            if (normalizedOriginalText.contains(skill.toLowerCase(Locale.ROOT))) {
+            String normalizedSkill = skill.toLowerCase(Locale.ROOT);
+            String escapedSkill = Pattern.quote(normalizedSkill);
+            String finalRegex = lookbehind + escapedSkill + lookahead;
+            Pattern pattern = Pattern.compile(finalRegex);
+            Matcher matcher = pattern.matcher(normalizedOriginalText);
+            
+            if (matcher.find()) {
                 extractedSkills.add(skill);
             }
         }

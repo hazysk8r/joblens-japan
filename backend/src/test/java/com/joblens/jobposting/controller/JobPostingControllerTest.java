@@ -27,6 +27,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 
+import static org.hamcrest.Matchers.hasSize;
+
 /**
  * 실제 Spring 애플리케이션 컨텍스트를 실행하고,
  * HTTP 요청이 Controller부터 예외 처리기까지 정상적으로 흐르는지 확인
@@ -610,5 +612,38 @@ class JobPostingControllerTest {
     void 존재하지_않는_채용공고의_기술스택을_조회하면_404를_반환한다() throws Exception {
             mockMvc.perform(get("/api/job-postings/{id}/skills", 9999L))
                    .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void JavaScript가_포함된_내용을_조회하면_Java를_추출하지_않는다() throws Exception {
+            JobPosting charlie = jobPostingRepository.save(
+                            new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
+                                            "JavaScript開発者求人中"));
+            mockMvc.perform(get("/api/job-postings/{id}/skills", charlie.getId()))
+                            .andExpect(status().isOk())
+                            .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    void 내용에_Cpp과_C가_모두_있을_때_Cpp과_C를_구분하여_추출한다() throws Exception {
+            JobPosting charlie = jobPostingRepository.save(
+                            new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
+                                            "CとC++を全部開発できる人は大歓迎"));
+            mockMvc.perform(get("/api/job-postings/{id}/skills", charlie.getId()))
+                            .andExpect(status().isOk())
+                            .andExpect(jsonPath("$", hasSize(2)))
+                            .andExpect(jsonPath("$[0]").value("C"))
+                            .andExpect(jsonPath("$[1]").value("C++"));
+    }
+
+    @Test
+    void 내용에_Cpp만_있을_때_C를_추출하지_않는다() throws Exception {
+            JobPosting charlie = jobPostingRepository.save(
+                            new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
+                                            "C++を開発できる人は大歓迎"));
+            mockMvc.perform(get("/api/job-postings/{id}/skills", charlie.getId()))
+                            .andExpect(status().isOk())
+                            .andExpect(jsonPath("$", hasSize(1)))
+                            .andExpect(jsonPath("$[0]").value("C++"));
     }
 }
