@@ -52,7 +52,10 @@ function JobPostingListItem({
 }: JobPostingListItemProps) {
 	const [skills, setSkills] = useState<string[] | null>(null);
 	const [skillsError, setSkillsError] = useState<string | null>(null);
+	const [loading, setLoading] = useState(false);
 	async function handlePostingSkill() {
+		// 요청 시작 상태로 변경하는 단계
+		setLoading(true);
 		try {
 			setSkillsError(null);
 
@@ -66,17 +69,21 @@ function JobPostingListItem({
 			} else {
 				setSkillsError('기술 스택 조회에 실패하였습니다.');
 			}
+		// 성공/실패 관계없이 요청 종료 상태로 복원
+		} finally {
+			setLoading(false);
 		}
 	}
 	return (
 		<li>
 			<button
 				type='button'
+				disabled={loading}
 				onClick={() => {
 					void handlePostingSkill();
 				}}
 			>
-				기술 스택 보기
+				{loading ? '처리중...' : '기술 스택 보기'}
 			</button>
 			{skills !== null && (
 				skills.length > 0
