@@ -53,16 +53,23 @@ function JobPostingListItem({
 	const [skills, setSkills] = useState<string[] | null>(null);
 	const [skillsError, setSkillsError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
+	const [skillsVisible, setSkillsVisible] = useState(false);
 	async function handlePostingSkill() {
+		// 데이터가 이미 들어있는 지 확인 (Early return)
+		if (skills !== null) {
+			setSkillsVisible(skillsVisible => !skillsVisible);
+			return;
+		}
 		// 요청 시작 상태로 변경하는 단계
 		setLoading(true);
 		try {
 			setSkillsError(null);
-
 			const extractedSkills = await extractRequiredSkills(jobPosting.id);
 			setSkills(extractedSkills);
+			setSkillsVisible(true);
 		} catch (error) {
 			setSkills(null);
+			setSkillsVisible(false);
 
 			if (error instanceof Error) {
 				setSkillsError(error.message);
@@ -85,7 +92,7 @@ function JobPostingListItem({
 			>
 				{loading ? '처리중...' : '기술 스택 보기'}
 			</button>
-			{skills !== null && (
+			{skills !== null && skillsVisible && (
 				skills.length > 0
 					? <ul>
 						{skills.map((skill) => (

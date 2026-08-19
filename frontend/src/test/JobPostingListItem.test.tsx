@@ -247,3 +247,50 @@ test('첫번째 시도에서 실패하더라도 두번째에서 재시도할 수
   expect(extractRequiredSkills).toHaveBeenCalledTimes(2);
 
 })
+
+test('기술 스택 보기를 누르면 기술이 데이터에 남아있고 추가 API호출 없이 데이터를 사용할 수 있다', async () => {
+  const mockContent: JobPosting = {
+    id: 1,
+    companyName: '黄猿',
+    title: 'エンジニア求人',
+    sourceUrl: 'http://example.com/kizaruengineer',
+    originalText: 'エンジニア求人',
+    createdAt: '2026-08-14T00:00:00Z',
+    applicationStatus: 'SAVED',
+  };
+
+  vi.mocked(extractRequiredSkills)
+    .mockResolvedValueOnce(['AWS']);
+
+  const user = userEvent.setup();
+  render(
+    <JobPostingListItem
+      jobPosting={mockContent}
+      isEditing={false}
+      isSaving={false}
+      isDeleting={false}
+      isUpdatingStatus={false}
+      onStartEdit={vi.fn()}
+      onSave={vi.fn()}
+      onCancel={vi.fn()}
+      onDelete={vi.fn()}
+      onApplicationStatusChange={vi.fn()}
+    />
+  );
+
+  const extractedSkills = await screen.findByRole('button', {
+    name: '기술 스택 보기',
+  });
+  await user.click(extractedSkills);
+  expect(await screen.findByText('AWS')).toBeInTheDocument();
+  expect(extractRequiredSkills).toHaveBeenCalledTimes(1);
+
+  await user.click(extractedSkills);
+  expect(await screen.queryByText('AWS')).not.toBeInTheDocument();
+  expect(extractRequiredSkills).toHaveBeenCalledTimes(1);
+
+  await user.click(extractedSkills);
+  expect(await screen.findByText('AWS')).toBeInTheDocument();
+  expect(extractRequiredSkills).toHaveBeenCalledTimes(1);
+
+})
