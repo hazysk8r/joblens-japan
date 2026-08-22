@@ -320,3 +320,92 @@ test('특정 정렬 상태에서 수정 행위가 이뤄져도 사용자가 선�
       );
   });
 });
+
+test('검색어나 필터가 적용된 상태에서 JobLens Japan 을 누르면, 첫페이지 기본정렬로 돌아간다', async() => {
+  const mockContent: JobPosting = {
+    id: 0,
+    companyName: '黄猿',
+    title: 'エンジニア求人',
+    sourceUrl: 'http://example.com/kizaruengineer',
+    originalText: 'AWSエンジニア求人',
+    createdAt: '2026-08-14T00:00:00Z',
+    applicationStatus: 'SAVED',
+  };
+
+  const pageWithContent= {
+    ...mockPage,
+    content: [mockContent],
+    totalElements: 1,
+  };
+
+  const firstPage = {
+    ...mockPage,
+    page: 0,
+    first: true,
+    last: false,
+  };
+  const secondPage = {
+    ...mockPage,
+    page: 1,
+    first: false,
+    last: true,
+  };
+
+  vi.mocked(fetchJobPostings).mockResolvedValue(pageWithContent);
+  vi.mocked(fetchJobPostings)
+    .mockResolvedValueOnce(firstPage) //초기 render
+    .mockResolvedValueOnce(firstPage) //검색
+    .mockResolvedValueOnce(firstPage) //정렬변경
+    .mockResolvedValueOnce(secondPage); //다음 페이지
+
+  const user= userEvent.setup();
+  render(<App />);
+
+  const keywordInput = screen.getByRole('textbox', {
+    name: '검색어',
+  });
+  const statusSelect = screen.getByRole('combobox', {
+    name: '상태',
+  });
+  const sortingSelect = screen.getByRole('combobox', {
+    name: '정렬',
+  });
+
+  const searchButton = await screen.findByRole('button', {
+    name: '검색',
+  });
+
+  const goBackToHome = await screen.findByRole('button', {
+    name: 'JobLens Japan'
+  })
+
+  await user.type(keywordInput, 'AWS');
+
+  await user.selectOptions(statusSelect, 'APPLIED');
+
+  await user.click(searchButton);
+
+  await user.selectOptions(sortingSelect, 'companyName,asc');
+
+  const nextPageButton = await screen.findByRole('button', {
+    name: '다음',
+  });
+  await waitFor(() => {
+    expect(
+      (nextPageButton as HTMLButtonElement).disabled
+    ).toBe(false);
+  });
+  await user.click(nextPageButton);
+
+  await user.click(goBackToHome);
+
+  await waitFor(() => {
+    expect(fetchJobPostings)
+      .toHaveBeenLastCalledWith(
+        '',
+        '',
+        0,
+        'createdAt,desc'
+      );
+  });
+});

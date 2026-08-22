@@ -345,10 +345,29 @@ function App() {
       setUpdatingStatusId(null);
     }
   };
+
+  const handleGoBackToHomepage = async () => {
+
+    setKeyword('');
+    setStatus("");
+    setAppliedKeyword('');
+    setAppliedStatus("");
+    setSorting('createdAt,desc');
+
+    await loadJobPostings('', '', 0, 'createdAt,desc');
+  };
                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
   return (
     <main>
-      <h1>JobLens Japan</h1>
+      <h1>
+        <button
+          type="button"
+          className="home-title-button"
+          onClick={handleGoBackToHomepage}
+        >
+          JobLens Japan
+        </button>
+      </h1>
 
       <JobPostingCreateForm
       onCreated={handleJobPostingCreated}
