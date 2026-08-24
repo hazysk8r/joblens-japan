@@ -1,0 +1,38 @@
+package com.joblens.note.controller;
+
+import java.net.URI;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.joblens.note.dto.CreateJobPostingMemoRequest;
+import com.joblens.note.dto.JobPostingMemoResponse;
+import com.joblens.note.service.JobPostingMemoService;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+
+@RestController
+@RequestMapping("/api/job-postings/{jobPostingId}/notes")
+@RequiredArgsConstructor
+
+public class JobPostingMemoController {
+  private final JobPostingMemoService jobPostingMemoService;
+
+  @PostMapping
+  public ResponseEntity<JobPostingMemoResponse> create(
+        @PathVariable Long jobPostingId, // URL 경로 안에 들어있는 값을 Controller의 변수로 꺼내오기 위함
+        @Valid @RequestBody CreateJobPostingMemoRequest request //@Valid를 사용하여 잘못된 Content는 Controller에서 걸러냄
+  ) {
+    JobPostingMemoResponse response = jobPostingMemoService.create(jobPostingId, request);
+
+    return ResponseEntity
+            .created(URI.create("/api/job-postings/" + jobPostingId + "/notes/" + response.id()))
+            .body(response);
+  }
+  
+}
