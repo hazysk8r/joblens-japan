@@ -1,8 +1,10 @@
 package com.joblens.note.controller;
 
 import java.net.URI;
+import java.util.List;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -34,5 +36,10 @@ public class JobPostingMemoController {
             .created(URI.create("/api/job-postings/" + jobPostingId + "/notes/" + response.id()))
             .body(response);
   }
-  
+
+  @GetMapping
+  public ResponseEntity<List<JobPostingMemoResponse>> getMemos(@PathVariable Long jobPostingId) {
+    List<JobPostingMemoResponse> response = jobPostingMemoService.getMemos(jobPostingId);
+    return ResponseEntity.ok(response);
+  }
 }

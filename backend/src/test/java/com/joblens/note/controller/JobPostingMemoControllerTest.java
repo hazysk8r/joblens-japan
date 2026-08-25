@@ -11,12 +11,17 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
+
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 
 import com.joblens.TestcontainersConfiguration;
 import com.joblens.jobposting.domain.JobPosting;
 import com.joblens.jobposting.repository.JobPostingRepository;
+import com.joblens.note.domain.JobPostingMemo;
 import com.joblens.note.repository.JobPostingMemoRepository;
 
 @SpringBootTest
@@ -123,4 +128,32 @@ public class JobPostingMemoControllerTest {
         .content(requestBody))
         .andExpect(status().isBadRequest());
   }
+
+  @Test
+  void 저장된_메모_목록을_조회할_수_있다() throws Exception {
+    JobPosting savedJobPosting = jobPostingRepository.save(
+        new JobPosting(
+            "テスト会社",
+            "メモテスト情報",
+            "https://example.com/memotest",
+            "メモが正常に作動するかな"));
+    
+    jobPostingMemoRepository.save(new JobPostingMemo("メモテストA", savedJobPosting));
+    jobPostingMemoRepository.save(new JobPostingMemo("メモテストB", savedJobPosting));
+
+
+    Long jobPostingId = savedJobPosting.getId();
+
+    mockMvc.perform(get("/api/job-postings/{jobPostingId}/notes", jobPostingId))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$", hasSize(2)))
+          .andExpect(jsonPath("$[*].content", containsInAnyOrder("メモテストA", "メモテストB")));
+  }
+
+  @Test
+  void 존재하지_않는_채용공고의_메모를_조회하면_404를_반환한다() throws Exception {
+    mockMvc.perform(get("/api/job-postings/{jobPostingId}/notes", 9999L))
+          .andExpect(status().isNotFound());
+  }
+
 }

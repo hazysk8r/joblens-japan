@@ -1,0 +1,28 @@
+import type {
+  CreateJobPostingMemoRequest,
+  JobPostingMemo,
+} from '../types/jobPostingMemo'
+
+export async function createJobPostingMemo(
+  jobPostingId: number,
+  request: CreateJobPostingMemoRequest,
+): Promise<JobPostingMemo>  {
+  const response = await fetch(`/api/job-postings/${jobPostingId}/notes`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
+
+  if(!response.ok) {
+    const errorBody = await response.text();
+
+    throw new Error(
+      `메모 등록에 실패했습니다. ` +
+        `status=${response.status}, body=${errorBody}`,
+    );
+  }
+
+  return (await response.json()) as JobPostingMemo;
+}

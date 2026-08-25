@@ -1,5 +1,7 @@
 package com.joblens.note.service;
 
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +35,19 @@ public class JobPostingMemoService {
     JobPostingMemo savedJobPostingMemo = jobPostingMemoRepository.save(jobPostingMemo);
 
     return JobPostingMemoResponse.from(savedJobPostingMemo);
+  }
+
+  public List<JobPostingMemoResponse> getMemos(Long jobPostingId) {
+
+    jobPostingRepository.findById(jobPostingId)
+        .orElseThrow(() -> new JobPostingNotFoundException(jobPostingId));
+
+    List<JobPostingMemo> jobPostingMemos = jobPostingMemoRepository.findByJobPosting_Id(jobPostingId);
+    
+    // List 변환은 stream() 활용
+    return jobPostingMemos.stream()
+          .map(JobPostingMemoResponse::from)
+          .toList();
   }
 
 }

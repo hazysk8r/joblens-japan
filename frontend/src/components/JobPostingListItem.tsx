@@ -6,6 +6,7 @@ import type {
 
 import { useState } from 'react';
 
+import JobPostingMemoCreateForm from './JobPostingMemoCreateForm';
 import JobPostingEditForm from './JobPostingEditForm';
 import { extractRequiredSkills } from '../api/jobPostingApi';
 
@@ -187,6 +188,10 @@ function JobPostingListItem({
 							? '삭제 중...'
 							: '삭제'}
 					</button>
+
+					<JobPostingMemoCreateForm
+						jobPostingId={jobPosting.id}
+					/>
 				</>
 			)}
 		</li>
