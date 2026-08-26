@@ -5,17 +5,23 @@ import { afterEach, beforeEach, vi, test, expect } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 
 import { extractRequiredSkills } from '../api/jobPostingApi';
+import { getJobPostingMemos } from '../api/jobPostingMemoApi';
 import type { JobPosting } from '../types/jobPosting';
 import JobPostingListItem from '../components/JobPostingListItem';
+import type { JobPostingMemo } from '../types/jobPostingMemo';
 
 beforeEach(() => {
   vi.clearAllMocks();
+
+  vi.mocked(getJobPostingMemos)
+    .mockResolvedValue([]);
 });
 afterEach(() => {
   cleanup();
 });
 
 vi.mock('../api/jobPostingApi');
+vi.mock('../api/jobPostingMemoApi')
 
 
 test('기술이 있는 공고의 기술 스택 보기 버튼을 누르면 기술 스택을 볼 수 있다', async () => {
@@ -294,3 +300,178 @@ test('기술 스택 보기를 누르면 기술이 데이터에 남아있고 추�
   expect(extractRequiredSkills).toHaveBeenCalledTimes(1);
 
 })
+
+test('등록된 메모 목록이 정상적으로 표시된다.', async () => {
+  const mockContent: JobPosting = {
+    id: 1,
+    companyName: '黄猿',
+    title: 'エンジニア求人',
+    sourceUrl: 'http://example.com/kizaruengineer',
+    originalText: 'AWSエンジニア求人',
+    createdAt: '2026-08-14T00:00:00Z',
+    applicationStatus: 'SAVED',
+  };
+  const mockMemo: JobPostingMemo = {
+    id: 1,
+    content: '面談準備中',
+    createdAt: '2026-08-26T00:00:00Z',
+    updatedAt: '2026-08-26T00:00:00Z',
+  }
+  vi.mocked(getJobPostingMemos)
+    .mockResolvedValueOnce([mockMemo]);
+
+  render(
+    <JobPostingListItem
+      jobPosting={mockContent}
+      isEditing={false}
+      isSaving={false}
+      isDeleting={false}
+      isUpdatingStatus={false}
+      onStartEdit={vi.fn()}
+      onSave={vi.fn()}
+      onCancel={vi.fn()}
+      onDelete={vi.fn()}
+      onApplicationStatusChange={vi.fn()}
+    />
+  );
+
+  expect(getJobPostingMemos)
+    .toHaveBeenLastCalledWith(
+      1
+    );
+
+  expect(await screen.findByText('面談準備中')).toBeInTheDocument();
+});
+
+test('메모가 없을 때 메시지로 메모가 없음을 확인할 수 있다.', async () => {
+  const mockContent: JobPosting = {
+    id: 1,
+    companyName: '黄猿',
+    title: 'エンジニア求人',
+    sourceUrl: 'http://example.com/kizaruengineer',
+    originalText: 'AWSエンジニア求人',
+    createdAt: '2026-08-14T00:00:00Z',
+    applicationStatus: 'SAVED',
+  };
+  vi.mocked(getJobPostingMemos)
+    .mockResolvedValueOnce([]);
+
+  render(
+    <JobPostingListItem
+      jobPosting={mockContent}
+      isEditing={false}
+      isSaving={false}
+      isDeleting={false}
+      isUpdatingStatus={false}
+      onStartEdit={vi.fn()}
+      onSave={vi.fn()}
+      onCancel={vi.fn()}
+      onDelete={vi.fn()}
+      onApplicationStatusChange={vi.fn()}
+    />
+  );
+
+  expect(getJobPostingMemos)
+    .toHaveBeenLastCalledWith(
+      1
+    );
+
+  expect(await screen.findByText('등록된 메모가 없습니다.')).toBeInTheDocument();
+});
+
+test('존재하지 않는 공고의 경우 에러 메시지를 표기한다', async () => {
+  const mockContent: JobPosting = {
+    id: 1,
+    companyName: '黄猿',
+    title: 'エンジニア求人',
+    sourceUrl: 'http://example.com/kizaruengineer',
+    originalText: '営業部求人',
+    createdAt: '2026-08-14T00:00:00Z',
+    applicationStatus: 'SAVED',
+  };
+
+  vi.mocked(getJobPostingMemos)
+    .mockRejectedValueOnce(new Error('존재하지 않는 공고입니다.'));
+
+  render(
+    <JobPostingListItem
+      jobPosting={mockContent}
+      isEditing={false}
+      isSaving={false}
+      isDeleting={false}
+      isUpdatingStatus={false}
+      onStartEdit={vi.fn()}
+      onSave={vi.fn()}
+      onCancel={vi.fn()}
+      onDelete={vi.fn()}
+      onApplicationStatusChange={vi.fn()}
+    />
+  );
+
+  expect(getJobPostingMemos)
+    .toHaveBeenCalledWith(
+      1
+    );
+
+  expect(await screen.findByText('존재하지 않는 공고입니다.')).toBeInTheDocument();
+  expect(screen.queryByText('등록된 메모가 없습니다.')).not.toBeInTheDocument(); // 없어야 하는 요소를 검사할 때는 query 사용(지금 없다면 null을 반환)
+});
+
+test('메모를 등록한 후 재조회가 가능하다', async () => {
+  const mockContent: JobPosting = {
+    id: 1,
+    companyName: '黄猿',
+    title: 'エンジニア求人',
+    sourceUrl: 'http://example.com/kizaruengineer',
+    originalText: '営業部求人',
+    createdAt: '2026-08-14T00:00:00Z',
+    applicationStatus: 'SAVED',
+  };
+  const mockMemo: JobPostingMemo = {
+    id: 1,
+    content: '面談準備中',
+    createdAt: '2026-08-26T00:00:00Z',
+    updatedAt: '2026-08-26T00:00:00Z',
+  }
+  vi.mocked(getJobPostingMemos)
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([mockMemo]);
+
+  const user = userEvent.setup();
+  render(
+    <JobPostingListItem
+      jobPosting={mockContent}
+      isEditing={false}
+      isSaving={false}
+      isDeleting={false}
+      isUpdatingStatus={false}
+      onStartEdit={vi.fn()}
+      onSave={vi.fn()}
+      onCancel={vi.fn()}
+      onDelete={vi.fn()}
+      onApplicationStatusChange={vi.fn()}
+    />
+  );
+  // 초기 Get 완료 확인
+  expect(
+    await screen.findByText('등록된 메모가 없습니다.'),
+  ).toBeInTheDocument();
+
+  const textArea = screen.getByRole('textbox', {
+    name: '메모내용',
+  });
+  await user.type(textArea, '面談準備中');
+
+  const writeMemo = await screen.findByRole('button', {
+    name: '등록',
+  });
+  await user.click(writeMemo);
+
+  expect(getJobPostingMemos)
+    .toHaveBeenCalledTimes(2);
+
+  expect(getJobPostingMemos)
+    .toHaveBeenCalledWith(1);
+
+  expect(await screen.findByText('面談準備中')).toBeInTheDocument();
+});

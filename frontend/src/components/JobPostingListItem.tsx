@@ -4,11 +4,13 @@ import type {
 	UpdateJobPostingRequest,
 } from '../types/jobPosting';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 import JobPostingMemoCreateForm from './JobPostingMemoCreateForm';
 import JobPostingEditForm from './JobPostingEditForm';
 import { extractRequiredSkills } from '../api/jobPostingApi';
+import { getJobPostingMemos } from '../api/jobPostingMemoApi';
+import type { JobPostingMemo } from '../types/jobPostingMemo';
 
 interface JobPostingListItemProps {
 	jobPosting: JobPosting;
@@ -55,6 +57,11 @@ function JobPostingListItem({
 	const [skillsError, setSkillsError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [skillsVisible, setSkillsVisible] = useState(false);
+	//메모
+	const [memos, setMemos] = useState<JobPostingMemo[]>([]);
+	const [memosError, setMemosError] = useState<string | null>(null);
+	const [memosLoading, setMemosLoading] = useState(true);
+	const [memoReloadKey, setMemoReloadKey] = useState(0);
 	async function handlePostingSkill() {
 		// 데이터가 이미 들어있는 지 확인 (Early return)
 		if (skills !== null) {
@@ -82,6 +89,46 @@ function JobPostingListItem({
 			setLoading(false);
 		}
 	}
+
+	useEffect(() => {
+		let cancelled = false; //値を変更する必要があるので、constではなくletを使います
+
+		void getJobPostingMemos(jobPosting.id)
+			.then((getMemos) => {
+				if (!cancelled) {
+					setMemos(getMemos);
+					setMemosError(null);
+				}
+			})
+			.catch((error: unknown) => {
+				if (!cancelled) {
+					setMemos([]);
+
+					setMemosError(
+						error instanceof Error
+							? error.message
+							: '메모 조회에 실패하였습니다.',
+					);
+				}
+			})
+			.finally(() => {
+				if (!cancelled) {
+					setMemosLoading(false);
+				}
+			});
+
+		// useEffectのcleanup
+		return () => {
+			cancelled = true;
+		};
+	}, [jobPosting.id, memoReloadKey]);
+
+	function handleMemoCreated() {
+		setMemosLoading(true);
+		setMemosError(null);
+		setMemoReloadKey((key) => key + 1);
+	}
+
 	return (
 		<li>
 			<button
@@ -191,7 +238,24 @@ function JobPostingListItem({
 
 					<JobPostingMemoCreateForm
 						jobPostingId={jobPosting.id}
+						onCreated={handleMemoCreated}
 					/>
+
+					{memosLoading ? (
+						<p>메모 불러오는 중...</p>
+						) : memosError !== null ? (
+							<p role="alert">{memosError}</p>
+						) : memos.length > 0 ? (
+							<ul>
+								{memos.map((memo) => (
+									<li key={memo.id}>
+										{memo.content}
+									</li>
+								))}
+							</ul>
+						) : (
+							<p>등록된 메모가 없습니다.</p>
+						)}
 				</>
 			)}
 		</li>

@@ -26,3 +26,21 @@ export async function createJobPostingMemo(
 
   return (await response.json()) as JobPostingMemo;
 }
+
+export async function getJobPostingMemos(
+  jobPostingId: number,
+): Promise<JobPostingMemo[]> {
+
+
+  const response = await fetch(
+    `/api/job-postings/${jobPostingId}/notes`,
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `메모 내용 조회에 실패하였습니다. status = ${response.status}`,
+    );
+  }
+
+  return (await response.json()) as JobPostingMemo[];
+}

@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 
 import { createJobPostingMemo } from "../api/jobPostingMemoApi";
 
 interface CreateJobPostingMemoProps {
+  onCreated: () => Promise<void> | void;
   jobPostingId: number;
 }
 
 function JobPostingMemoCreateForm({
+  onCreated,
   jobPostingId,
 }: CreateJobPostingMemoProps) {
   const [content, setContent] = useState('');
@@ -33,6 +35,7 @@ function JobPostingMemoCreateForm({
       setContent(''); //메모 등록 성공 후 입력 칸 초기화
 
       setMessage('메모가 성공적으로 등록되었습니다')
+      await onCreated();
     } catch (caughtError) {
       const errorMessage = 
         caughtError instanceof Error
@@ -43,6 +46,21 @@ function JobPostingMemoCreateForm({
       setSubmitting(false);
     }
   };
+
+  // 메모 성공 message timer
+  useEffect(() => {
+    if (message === null) {
+      return;
+    }
+
+    const timerId = setTimeout(() => {
+      setMessage(null);
+    }, 3000);
+
+    return () => {
+      clearTimeout(timerId);
+    };
+  }, [message]);
 
   return (
     <section>

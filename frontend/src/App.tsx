@@ -25,7 +25,9 @@ import JobPostingListItem
 
 import ApplicationStatusSummary
   from './components/ApplicationStatusSummary';
-
+  
+// 求人情報一覧の初期取得に使用するデフォルトのソート条件
+const DEFAULT_SORTING: JobPostingSorting = 'createdAt,desc';
 
 function App() {
   const [keyword, setKeyword] = useState('');
@@ -45,7 +47,7 @@ function App() {
   const [statusSummary, setStatusSummary] = useState<ApplicationStatusSummaryResponse | null>(null);
   const [status, setStatus] = useState<StatusFilter>("");
   const [appliedStatus, setAppliedStatus] = useState<StatusFilter>("");
-  const [sorting, setSorting] = useState<JobPostingSorting>('createdAt,desc');
+  const [sorting, setSorting] = useState<JobPostingSorting>(DEFAULT_SORTING);
 
   /**
    * 검색어를 받아 백엔드 API를 호출하고,
@@ -109,7 +111,7 @@ function App() {
     const loadInitialData = async () => {
       try {
         const [page, summary] = await Promise.all([
-          fetchJobPostings('', '', 0, sorting),
+          fetchJobPostings('', '', 0, DEFAULT_SORTING),
           fetchApplicationStatusSummary(),
         ]);
 
@@ -260,12 +262,12 @@ function App() {
     setStatus("");
     setAppliedKeyword('');
     setAppliedStatus("");
-    setSorting('createdAt,desc');
+    setSorting(DEFAULT_SORTING);
 
   /*
    * 최신 공고부터 첫 페이지를 다시 조회한다.
    */
-    await loadJobPostings('', '', 0, 'createdAt,desc');
+    await loadJobPostings('', '', 0, DEFAULT_SORTING);
     await loadApplicationStatusSummary();
   };
 
@@ -352,9 +354,9 @@ function App() {
     setStatus("");
     setAppliedKeyword('');
     setAppliedStatus("");
-    setSorting('createdAt,desc');
+    setSorting(DEFAULT_SORTING);
 
-    await loadJobPostings('', '', 0, 'createdAt,desc');
+    await loadJobPostings('', '', 0, DEFAULT_SORTING);
   };
                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
   return (
