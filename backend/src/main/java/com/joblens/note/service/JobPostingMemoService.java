@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.joblens.jobposting.domain.JobPosting;
+import com.joblens.jobposting.exception.JobPostingMemoNotFoundException;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
 import com.joblens.jobposting.repository.JobPostingRepository;
 import com.joblens.note.domain.JobPostingMemo;
@@ -48,6 +49,16 @@ public class JobPostingMemoService {
     return jobPostingMemos.stream()
           .map(JobPostingMemoResponse::from)
           .toList();
+  }
+
+  @Transactional
+  public void delete(Long jobPostingId, Long memoId) {
+    jobPostingRepository.findById(jobPostingId)
+        .orElseThrow(() -> new JobPostingNotFoundException(jobPostingId));
+
+    JobPostingMemo jobPostingMemo = jobPostingMemoRepository.findByIdAndJobPosting_Id(memoId, jobPostingId)
+        .orElseThrow(() -> new JobPostingMemoNotFoundException(memoId, jobPostingId));
+    jobPostingMemoRepository.delete(jobPostingMemo);
   }
 
 }

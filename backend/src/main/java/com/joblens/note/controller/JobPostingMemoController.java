@@ -4,6 +4,7 @@ import java.net.URI;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,5 +42,15 @@ public class JobPostingMemoController {
   public ResponseEntity<List<JobPostingMemoResponse>> getMemos(@PathVariable Long jobPostingId) {
     List<JobPostingMemoResponse> response = jobPostingMemoService.getMemos(jobPostingId);
     return ResponseEntity.ok(response);
+  }
+
+  @DeleteMapping("/{memoId}")
+  public ResponseEntity<Void> delete(
+    @PathVariable Long memoId, 
+    @PathVariable Long jobPostingId
+  ) {
+    jobPostingMemoService.delete(jobPostingId, memoId);
+
+    return ResponseEntity.noContent().build();
   }
 }

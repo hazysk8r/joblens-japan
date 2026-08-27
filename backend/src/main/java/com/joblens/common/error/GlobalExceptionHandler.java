@@ -1,6 +1,7 @@
 package com.joblens.common.error;
 
 import com.joblens.jobposting.exception.InvalidSortFieldException;
+import com.joblens.jobposting.exception.JobPostingMemoNotFoundException;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -96,6 +97,24 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST)
                 .body(response);
     }
+
+    @ExceptionHandler(JobPostingMemoNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleJobPostingMemoNotFound(
+                    JobPostingMemoNotFoundException exception,
+                    HttpServletRequest request) {
+            ApiErrorResponse response = new ApiErrorResponse(
+                            Instant.now(),
+                            HttpStatus.NOT_FOUND.value(),
+                            "JOB_POSTING_MEMO_NOT_FOUND",
+                            exception.getMessage(),
+                            request.getRequestURI(),
+                            Map.of());
+
+            return ResponseEntity
+                            .status(HttpStatus.NOT_FOUND)
+                            .body(response);
+    }
+
 }
 
 /**
