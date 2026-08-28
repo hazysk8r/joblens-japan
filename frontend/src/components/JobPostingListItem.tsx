@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import JobPostingMemoCreateForm from './JobPostingMemoCreateForm';
 import JobPostingEditForm from './JobPostingEditForm';
 import { extractRequiredSkills } from '../api/jobPostingApi';
-import { getJobPostingMemos } from '../api/jobPostingMemoApi';
+import { deleteJobPostingMemo, getJobPostingMemos } from '../api/jobPostingMemoApi';
 import type { JobPostingMemo } from '../types/jobPostingMemo';
 
 interface JobPostingListItemProps {
@@ -62,6 +62,7 @@ function JobPostingListItem({
 	const [memosError, setMemosError] = useState<string | null>(null);
 	const [memosLoading, setMemosLoading] = useState(true);
 	const [memoReloadKey, setMemoReloadKey] = useState(0);
+	const [deletingMemoId, setDeletingMemoId] = useState<number | null>(null);
 	async function handlePostingSkill() {
 		// 데이터가 이미 들어있는 지 확인 (Early return)
 		if (skills !== null) {
@@ -127,6 +128,35 @@ function JobPostingListItem({
 		setMemosLoading(true);
 		setMemosError(null);
 		setMemoReloadKey((key) => key + 1);
+	}
+
+	async function handleMemoDeletion (
+		jobPostingMemo: JobPostingMemo,
+	) {
+		const confirmed = window.confirm(
+			`メモを削除しますか？`,
+		);
+
+		if (!confirmed) {
+			return;
+		}
+
+		setDeletingMemoId(jobPostingMemo.id);
+		setMemosError(null);
+
+		try {
+			await deleteJobPostingMemo(jobPosting.id, jobPostingMemo.id);
+			setMemosLoading(true);
+			setMemoReloadKey((key) => key + 1);
+		} catch (caughtError) {
+			const message = 
+				caughtError instanceof Error
+					? caughtError.message
+					: '삭제 중 알 수 없는 오류가 발생하였습니다.';
+			setMemosError(message);
+		} finally {
+			setDeletingMemoId(null);
+		}
 	}
 
 	return (
@@ -249,7 +279,19 @@ function JobPostingListItem({
 							<ul>
 								{memos.map((memo) => (
 									<li key={memo.id}>
-										{memo.content}
+										<span>{memo.content}</span>
+										<button 
+											type='button'
+											onClick={() => {
+												void handleMemoDeletion(memo);
+											}}
+											disabled={deletingMemoId === memo.id}
+										>
+											{deletingMemoId === memo.id
+												? '메모 삭제 중...'
+												: '메모 삭제'
+											}
+										</button>
 									</li>
 								))}
 							</ul>

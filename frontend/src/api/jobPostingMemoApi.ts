@@ -44,3 +44,24 @@ export async function getJobPostingMemos(
 
   return (await response.json()) as JobPostingMemo[];
 }
+
+export async function deleteJobPostingMemo(
+  jobPostingId: number,
+  memoId: number,
+): Promise<void> {
+  const response = await fetch(
+    `/api/job-postings/${jobPostingId}/notes/${memoId}`,
+    {
+      method: 'DELETE'
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+
+    throw new Error(
+      `메모 삭제에 실패하였습니다. ` + 
+        `status=${response.status}, body=${errorBody}`,
+    );
+  }
+}

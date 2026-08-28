@@ -5,7 +5,7 @@ import { afterEach, beforeEach, vi, test, expect } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 
 import { extractRequiredSkills } from '../api/jobPostingApi';
-import { getJobPostingMemos } from '../api/jobPostingMemoApi';
+import { deleteJobPostingMemo, getJobPostingMemos } from '../api/jobPostingMemoApi';
 import type { JobPosting } from '../types/jobPosting';
 import JobPostingListItem from '../components/JobPostingListItem';
 import type { JobPostingMemo } from '../types/jobPostingMemo';
@@ -474,4 +474,155 @@ test('메모를 등록한 후 재조회가 가능하다', async () => {
     .toHaveBeenCalledWith(1);
 
   expect(await screen.findByText('面談準備中')).toBeInTheDocument();
+});
+
+test('메모를 등록한 후 삭제할 수 있다.', async () => {
+  const mockContent: JobPosting = {
+    id: 1,
+    companyName: '黄猿',
+    title: 'エンジニア求人',
+    sourceUrl: 'http://example.com/kizaruengineer',
+    originalText: '営業部求人',
+    createdAt: '2026-08-14T00:00:00Z',
+    applicationStatus: 'SAVED',
+  };
+  const mockMemo: JobPostingMemo = {
+    id: 1,
+    content: '面談準備中',
+    createdAt: '2026-08-26T00:00:00Z',
+    updatedAt: '2026-08-26T00:00:00Z',
+  }
+  vi.mocked(getJobPostingMemos)
+    .mockResolvedValueOnce([mockMemo])
+    .mockResolvedValueOnce([]);
+
+  const user = userEvent.setup();
+  render(
+    <JobPostingListItem
+      jobPosting={mockContent}
+      isEditing={false}
+      isSaving={false}
+      isDeleting={false}
+      isUpdatingStatus={false}
+      onStartEdit={vi.fn()}
+      onSave={vi.fn()}
+      onCancel={vi.fn()}
+      onDelete={vi.fn()}
+      onApplicationStatusChange={vi.fn()}
+    />
+  );
+
+  const deleteMemo = await screen.findByRole('button', {
+    name: '메모 삭제',
+  });
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  await user.click(deleteMemo);
+
+  expect(deleteJobPostingMemo)
+    .toHaveBeenCalledWith(1, 1);
+  expect(getJobPostingMemos)
+    .toHaveBeenCalledTimes(2);
+
+  expect(screen.queryByText('등록된 메모가 없습니다.')).toBeInTheDocument();
+});
+
+test('메모 삭제 여부를 묻는 창에서 취소를 누르면 삭제하지 않는다.', async () => {
+  const mockContent: JobPosting = {
+    id: 1,
+    companyName: '黄猿',
+    title: 'エンジニア求人',
+    sourceUrl: 'http://example.com/kizaruengineer',
+    originalText: '営業部求人',
+    createdAt: '2026-08-14T00:00:00Z',
+    applicationStatus: 'SAVED',
+  };
+  const mockMemo: JobPostingMemo = {
+    id: 1,
+    content: '面談準備中',
+    createdAt: '2026-08-26T00:00:00Z',
+    updatedAt: '2026-08-26T00:00:00Z',
+  }
+  vi.mocked(getJobPostingMemos)
+    .mockResolvedValueOnce([mockMemo]);
+
+  const user = userEvent.setup();
+  render(
+    <JobPostingListItem
+      jobPosting={mockContent}
+      isEditing={false}
+      isSaving={false}
+      isDeleting={false}
+      isUpdatingStatus={false}
+      onStartEdit={vi.fn()}
+      onSave={vi.fn()}
+      onCancel={vi.fn()}
+      onDelete={vi.fn()}
+      onApplicationStatusChange={vi.fn()}
+    />
+  );
+
+  const deleteMemo = await screen.findByRole('button', {
+    name: '메모 삭제',
+  });
+  vi.spyOn(window, 'confirm').mockReturnValue(false);
+  await user.click(deleteMemo);
+
+  expect(deleteJobPostingMemo)
+    .not.toHaveBeenCalled();
+  expect(getJobPostingMemos)
+    .toHaveBeenCalledTimes(1);
+
+  expect(await screen.findByText('面談準備中')).toBeInTheDocument();
+});
+
+test('메모 삭제 에러가 발생하였을 때 에러 메시지 및 삭제 버튼이 재활성화된다.', async () => {
+  const mockContent: JobPosting = {
+    id: 1,
+    companyName: '黄猿',
+    title: 'エンジニア求人',
+    sourceUrl: 'http://example.com/kizaruengineer',
+    originalText: '営業部求人',
+    createdAt: '2026-08-14T00:00:00Z',
+    applicationStatus: 'SAVED',
+  };
+  const mockMemo: JobPostingMemo = {
+    id: 1,
+    content: '面談準備中',
+    createdAt: '2026-08-26T00:00:00Z',
+    updatedAt: '2026-08-26T00:00:00Z',
+  };
+  const errorMessage = '삭제 중 알 수 없는 오류가 발생하였습니다.';
+
+  vi.mocked(getJobPostingMemos)
+    .mockResolvedValueOnce([mockMemo]);
+  vi.mocked(deleteJobPostingMemo)
+    .mockRejectedValueOnce(new Error(errorMessage));
+
+  const user = userEvent.setup();
+  render(
+    <JobPostingListItem
+      jobPosting={mockContent}
+      isEditing={false}
+      isSaving={false}
+      isDeleting={false}
+      isUpdatingStatus={false}
+      onStartEdit={vi.fn()}
+      onSave={vi.fn()}
+      onCancel={vi.fn()}
+      onDelete={vi.fn()}
+      onApplicationStatusChange={vi.fn()}
+    />
+  );
+
+  const deleteMemo = await screen.findByRole('button', {
+    name: '메모 삭제',
+  });
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  await user.click(deleteMemo);
+
+  expect(deleteJobPostingMemo)
+    .toHaveBeenCalledWith(1,1);
+  expect(await screen.findByRole('alert')).toHaveTextContent(errorMessage);
+  expect(getJobPostingMemos)
+    .toHaveBeenCalledTimes(1);
 });
