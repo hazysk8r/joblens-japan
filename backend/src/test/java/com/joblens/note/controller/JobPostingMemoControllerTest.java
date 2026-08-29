@@ -6,6 +6,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.springframework.http.MediaType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +20,7 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 
@@ -232,6 +235,79 @@ public class JobPostingMemoControllerTest {
         jobPostingMemoRepository.existsById(memoId));
   }
 
+  @Test
+  void 메모를_수정하면_변경된_내용을_반환한다() throws Exception {
+    JobPosting savedJobPosting = jobPostingRepository.save(
+        new JobPosting(
+            "テスト会社",
+            "メモテスト情報",
+            "https://example.com/memotest",
+            "メモが正常に作動するかな"));
+    JobPostingMemo savedJobPostingMemo = jobPostingMemoRepository.save(new JobPostingMemo("メモテストA", savedJobPosting));
+
+    String requestBody = """
+        {
+        "content": "変更後のメモ"
+        }
+        """;
+
+    Long jobPostingId = savedJobPosting.getId();
+    Long memoId = savedJobPostingMemo.getId();
+
+    mockMvc.perform(put("/api/job-postings/{jobPostingId}/notes/{memoId}", 
+                    jobPostingId, 
+                    memoId)
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(memoId))
+                .andExpect(jsonPath("$.content").value("変更後のメモ"));
+        JobPostingMemo updatedJobPostingMemo = jobPostingMemoRepository
+                  .findByIdAndJobPosting_Id(memoId, jobPostingId)
+                  .orElseThrow();
+        assertEquals("変更後のメモ", updatedJobPostingMemo.getContent());
+    
+  }
+
+  @Test
+  void 다른_공고의_메모를_수정하려고_하면_404코드를_반환한다() throws Exception {
+    JobPosting savedJobPostingA = jobPostingRepository.save(
+        new JobPosting(
+            "テスト会社",
+            "メモテスト情報",
+            "https://example.com/memotest",
+            "メモが正常に作動するかな"));
+    JobPosting savedJobPostingB = jobPostingRepository.save(
+        new JobPosting(
+            "テスト会社",
+            "メモテスト情報",
+            "https://example.com/memotest",
+            "メモが正常に作動するかな"));
+    JobPostingMemo savedJobPostingMemoA = jobPostingMemoRepository.save(new JobPostingMemo("メモテストA", savedJobPostingA));
+    
+
+    String requestBody = """
+        {
+        "content": "変更後のメモ"
+        }
+        """;
+
+    Long jobPostingId = savedJobPostingB.getId();
+    Long memoId = savedJobPostingMemoA.getId();
+
+    mockMvc.perform(put("/api/job-postings/{jobPostingId}/notes/{memoId}",
+        jobPostingId,
+        memoId)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(requestBody))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code")
+            .value("JOB_POSTING_MEMO_NOT_FOUND"));
+    
+    JobPostingMemo unchangedMemo = jobPostingMemoRepository.findById(memoId).orElseThrow();
+    assertEquals("メモテストA", unchangedMemo.getContent());
+
+  }
 
 
 }

@@ -53,4 +53,10 @@ public class JobPostingMemo {
     this.jobPosting = jobPosting;
   }
 
+  public void update(
+    String content
+  ) {
+    this.content = content;
+  }
+
 }

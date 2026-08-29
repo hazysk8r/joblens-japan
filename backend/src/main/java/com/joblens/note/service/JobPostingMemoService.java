@@ -12,6 +12,7 @@ import com.joblens.jobposting.repository.JobPostingRepository;
 import com.joblens.note.domain.JobPostingMemo;
 import com.joblens.note.dto.CreateJobPostingMemoRequest;
 import com.joblens.note.dto.JobPostingMemoResponse;
+import com.joblens.note.dto.UpdateJobPostingMemoRequest;
 import com.joblens.note.repository.JobPostingMemoRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -59,6 +60,24 @@ public class JobPostingMemoService {
     JobPostingMemo jobPostingMemo = jobPostingMemoRepository.findByIdAndJobPosting_Id(memoId, jobPostingId)
         .orElseThrow(() -> new JobPostingMemoNotFoundException(memoId, jobPostingId));
     jobPostingMemoRepository.delete(jobPostingMemo);
+  }
+
+  @Transactional
+  public JobPostingMemoResponse update(
+    Long jobPostingId, 
+    Long memoId, 
+    UpdateJobPostingMemoRequest request) {
+      jobPostingRepository.findById(jobPostingId)
+        .orElseThrow(() -> new JobPostingNotFoundException(jobPostingId));
+
+      JobPostingMemo jobPostingMemo = jobPostingMemoRepository.findByIdAndJobPosting_Id(memoId, jobPostingId)
+        .orElseThrow(() -> new JobPostingMemoNotFoundException(memoId, jobPostingId));
+
+      jobPostingMemo.update(
+        request.content()
+      );
+
+      return JobPostingMemoResponse.from(jobPostingMemo);
   }
 
 }
