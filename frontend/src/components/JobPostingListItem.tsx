@@ -8,9 +8,10 @@ import { useState, useEffect } from 'react';
 
 import JobPostingMemoCreateForm from './JobPostingMemoCreateForm';
 import JobPostingEditForm from './JobPostingEditForm';
+import JobPostingMemoEditForm from './JobPostingMemoEditForm';
 import { extractRequiredSkills } from '../api/jobPostingApi';
-import { deleteJobPostingMemo, getJobPostingMemos } from '../api/jobPostingMemoApi';
-import type { JobPostingMemo } from '../types/jobPostingMemo';
+import { deleteJobPostingMemo, getJobPostingMemos, updateJobPostingMemo } from '../api/jobPostingMemoApi';
+import type { JobPostingMemo, UpdateJobPostingMemoRequest } from '../types/jobPostingMemo';
 
 interface JobPostingListItemProps {
 	jobPosting: JobPosting;
@@ -63,6 +64,9 @@ function JobPostingListItem({
 	const [memosLoading, setMemosLoading] = useState(true);
 	const [memoReloadKey, setMemoReloadKey] = useState(0);
 	const [deletingMemoId, setDeletingMemoId] = useState<number | null>(null);
+	const [editingMemoId, setEditingMemoId] = useState<number | null>(null);
+	const [savingMemoId, setSavingMemoId] = useState<number | null>(null);
+	const [memoUpdateError, setMemoUpdateError] = useState<string | null>(null);
 	async function handlePostingSkill() {
 		// 데이터가 이미 들어있는 지 확인 (Early return)
 		if (skills !== null) {
@@ -156,6 +160,43 @@ function JobPostingListItem({
 			setMemosError(message);
 		} finally {
 			setDeletingMemoId(null);
+		}
+	}
+
+	function handleMemoEdit(
+		jobPostingMemo: JobPostingMemo
+	) {
+		setEditingMemoId(jobPostingMemo.id);
+		setMemoUpdateError(null);
+	}
+
+	function handleCancelMemoEdit() {
+		setEditingMemoId(null);
+		setMemoUpdateError(null);
+	}
+
+	async function handleSaveMemoEdit(
+		jobPostingId: number,
+		memoId: number,
+		request: UpdateJobPostingMemoRequest
+	) {
+		setSavingMemoId(memoId);
+		setMemosError(null);
+		setMemoUpdateError(null);
+
+		try {
+			await updateJobPostingMemo(jobPostingId, memoId, request);
+			setMemosLoading(true);
+			setEditingMemoId(null); // 수정 성공했을 때만 실행
+			setMemoReloadKey((previous) => previous + 1);
+		} catch (caughtError) {
+			const message = 
+				caughtError instanceof Error
+					? caughtError.message
+					: '수정 중 알 수 없는 오류가 발생하였습니다.';
+			setMemoUpdateError(message);
+		} finally {
+			setSavingMemoId(null);
 		}
 	}
 
@@ -279,19 +320,48 @@ function JobPostingListItem({
 							<ul>
 								{memos.map((memo) => (
 									<li key={memo.id}>
-										<span>{memo.content}</span>
-										<button 
-											type='button'
-											onClick={() => {
-												void handleMemoDeletion(memo);
-											}}
-											disabled={deletingMemoId === memo.id}
-										>
-											{deletingMemoId === memo.id
-												? '메모 삭제 중...'
-												: '메모 삭제'
-											}
-										</button>
+										{editingMemoId === memo.id ? (
+											<>
+												<JobPostingMemoEditForm
+													jobPostingMemo={memo}
+													jobPosting={jobPosting}
+													saving={savingMemoId === memo.id}
+													onSave={handleSaveMemoEdit}
+													onCancel={handleCancelMemoEdit}
+												/>
+
+												{memoUpdateError !== null && (
+													<p role="alert">
+														{memoUpdateError}
+													</p>
+												)}
+											</>
+										) : (
+											<>
+												<span>{memo.content}</span>
+
+												<button
+													type="button"
+													onClick={() => handleMemoEdit(memo)}
+													disabled={deletingMemoId === memo.id}
+												>
+													수정
+												</button>
+
+												<button
+													type='button'
+													onClick={() => {
+														void handleMemoDeletion(memo);
+													}}
+													disabled={deletingMemoId === memo.id}
+												>
+													{deletingMemoId === memo.id
+														? '메모 삭제 중...'
+														: '메모 삭제'
+													}
+												</button>
+											</>
+										)}
 									</li>
 								))}
 							</ul>

@@ -9,3 +9,7 @@ export interface JobPostingMemo {
 export interface CreateJobPostingMemoRequest {
   content: string;
 }
+
+export interface UpdateJobPostingMemoRequest {
+  content: string;
+}

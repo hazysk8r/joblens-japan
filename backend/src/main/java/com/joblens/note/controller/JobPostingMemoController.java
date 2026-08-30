@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.joblens.note.domain.JobPostingMemo;
 import com.joblens.note.dto.CreateJobPostingMemoRequest;
 import com.joblens.note.dto.JobPostingMemoResponse;
 import com.joblens.note.dto.UpdateJobPostingMemoRequest;

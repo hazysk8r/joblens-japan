@@ -1,6 +1,7 @@
 import type {
   CreateJobPostingMemoRequest,
   JobPostingMemo,
+  UpdateJobPostingMemoRequest,
 } from '../types/jobPostingMemo'
 
 export async function createJobPostingMemo(
@@ -64,4 +65,32 @@ export async function deleteJobPostingMemo(
         `status=${response.status}, body=${errorBody}`,
     );
   }
+}
+
+export async function updateJobPostingMemo(
+  jobPostingId: number,
+  memoId: number,
+  request: UpdateJobPostingMemoRequest,
+): Promise<JobPostingMemo> {
+  const response = await fetch(
+    `/api/job-postings/${jobPostingId}/notes/${memoId}`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+
+    throw new Error(
+      `메모 수정에 실패하였습니다. ` + 
+        `status=${response.status}, body=${errorBody}`,
+    );
+  }
+
+  return (await response.json()) as JobPostingMemo;
 }
