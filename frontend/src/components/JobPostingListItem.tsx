@@ -5,6 +5,7 @@ import type {
 } from '../types/jobPosting';
 
 import { useState, useEffect } from 'react';
+import { formatDateTime } from '../utils/date';
 
 import JobPostingMemoCreateForm from './JobPostingMemoCreateForm';
 import JobPostingEditForm from './JobPostingEditForm';
@@ -339,6 +340,10 @@ function JobPostingListItem({
 										) : (
 											<>
 												<span>{memo.content}</span>
+
+													<p>
+														更新日時: {formatDateTime(memo.updatedAt)}
+													</p>
 
 												<button
 													type="button"

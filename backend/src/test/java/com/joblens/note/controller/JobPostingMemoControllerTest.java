@@ -309,5 +309,48 @@ public class JobPostingMemoControllerTest {
 
   }
 
+  @Test
+  void 업데이트_된_메모가_가장_최신의_메모로_정렬된다() throws Exception {
+    JobPosting savedJobPostingA = jobPostingRepository.save(
+        new JobPosting(
+            "テスト会社",
+            "メモテスト情報",
+            "https://example.com/memotest",
+            "メモが正常に作動するかな"));
+    JobPostingMemo savedJobPostingMemoA = jobPostingMemoRepository.save(new JobPostingMemo("メモテストA", savedJobPostingA));
+    JobPostingMemo savedJobPostingMemoB = jobPostingMemoRepository.save(new JobPostingMemo("メモテストB", savedJobPostingA));
+
+    String requestBody = """
+        {
+        "content": "修正後のメモ"
+        }
+        """;
+    
+
+    Long jobPostingId = savedJobPostingA.getId();
+    Long memoAId = savedJobPostingMemoA.getId();
+    Long memoBId = savedJobPostingMemoB.getId();
+
+    mockMvc.perform(put("/api/job-postings/{jobPostingId}/notes/{memoId}",
+        jobPostingId,
+        memoAId)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(memoAId))
+        .andExpect(jsonPath("$.content").value("修正後のメモ"));
+
+    mockMvc.perform(get("/api/job-postings/{jobPostingId}/notes",
+        jobPostingId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].id").value(memoAId))
+        .andExpect(jsonPath("$[0].content").value("修正後のメモ"))
+        .andExpect(jsonPath("$[1].id").value(memoBId));
+
+    JobPostingMemo updatedMemo = jobPostingMemoRepository.findById(memoAId).orElseThrow();
+    assertEquals("修正後のメモ", updatedMemo.getContent());
+
+  }
+
 
 }

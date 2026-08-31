@@ -44,7 +44,7 @@ public class JobPostingMemoService {
     jobPostingRepository.findById(jobPostingId)
         .orElseThrow(() -> new JobPostingNotFoundException(jobPostingId));
 
-    List<JobPostingMemo> jobPostingMemos = jobPostingMemoRepository.findByJobPosting_Id(jobPostingId);
+    List<JobPostingMemo> jobPostingMemos = jobPostingMemoRepository.findByJobPosting_IdOrderByUpdatedAtDescIdDesc(jobPostingId);
     
     // List 변환은 stream() 활용
     return jobPostingMemos.stream()
