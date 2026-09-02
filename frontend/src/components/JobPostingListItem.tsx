@@ -69,7 +69,7 @@ function JobPostingListItem({
 	const [savingMemoId, setSavingMemoId] = useState<number | null>(null);
 	const [memoUpdateError, setMemoUpdateError] = useState<string | null>(null);
 	const [memoVisible, setMemoVisible] = useState(false);
-	const [memosLoaded, setMemosLoaded] = useState(false);
+	const [memosLoaded, setMemosLoaded] = useState(false); // 空のMemo一覧と未取得状態を区別し、再表示時の不要なAPI呼び出しを防ぐ
 
 	async function handlePostingSkill() {
 		// 데이터가 이미 들어있는 지 확인 (Early return)
@@ -104,7 +104,7 @@ function JobPostingListItem({
 	}
 
 	useEffect(() => {
-
+		// 非表示中、または取得済みの場合はキャッシュを利用して再取得しない
 		if (!memoVisible || memosLoaded) {
 			return;
 		}
@@ -143,7 +143,7 @@ function JobPostingListItem({
 	}, [jobPosting.id, memoReloadKey, memoVisible, memosLoaded]);
 
 	function handleMemoCreated() {
-		setMemosLoaded(false);
+		setMemosLoaded(false); //// Server側のMemoが変更されたためキャッシュを無効化し、最新一覧を再取得する
 		setMemosLoading(true);
 		setMemoVisible(true);
 		setMemosError(null);
