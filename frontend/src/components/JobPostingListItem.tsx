@@ -62,12 +62,15 @@ function JobPostingListItem({
 	//메모
 	const [memos, setMemos] = useState<JobPostingMemo[]>([]);
 	const [memosError, setMemosError] = useState<string | null>(null);
-	const [memosLoading, setMemosLoading] = useState(true);
+	const [memosLoading, setMemosLoading] = useState(false);
 	const [memoReloadKey, setMemoReloadKey] = useState(0);
 	const [deletingMemoId, setDeletingMemoId] = useState<number | null>(null);
 	const [editingMemoId, setEditingMemoId] = useState<number | null>(null);
 	const [savingMemoId, setSavingMemoId] = useState<number | null>(null);
 	const [memoUpdateError, setMemoUpdateError] = useState<string | null>(null);
+	const [memoVisible, setMemoVisible] = useState(false);
+	const [memosLoaded, setMemosLoaded] = useState(false);
+
 	async function handlePostingSkill() {
 		// 데이터가 이미 들어있는 지 확인 (Early return)
 		if (skills !== null) {
@@ -90,19 +93,29 @@ function JobPostingListItem({
 			} else {
 				setSkillsError('기술 스택 조회에 실패하였습니다.');
 			}
-		// 성공/실패 관계없이 요청 종료 상태로 복원
+			// 성공/실패 관계없이 요청 종료 상태로 복원
 		} finally {
 			setLoading(false);
 		}
 	}
 
-	useEffect(() => {
-		let cancelled = false; //値を変更する必要があるので、constではなくletを使います
+	function handleToggleMemo() {
+		setMemoVisible(prev => !prev);
+	}
 
+	useEffect(() => {
+
+		if (!memoVisible || memosLoaded) {
+			return;
+		}
+
+		let cancelled = false; //値を変更する必要があるので、constではなくletを使います
+		setMemosLoading(true)
 		void getJobPostingMemos(jobPosting.id)
 			.then((getMemos) => {
 				if (!cancelled) {
 					setMemos(getMemos);
+					setMemosLoaded(true);
 					setMemosError(null);
 				}
 			})
@@ -127,15 +140,17 @@ function JobPostingListItem({
 		return () => {
 			cancelled = true;
 		};
-	}, [jobPosting.id, memoReloadKey]);
+	}, [jobPosting.id, memoReloadKey, memoVisible, memosLoaded]);
 
 	function handleMemoCreated() {
+		setMemosLoaded(false);
 		setMemosLoading(true);
+		setMemoVisible(true);
 		setMemosError(null);
 		setMemoReloadKey((key) => key + 1);
 	}
 
-	async function handleMemoDeletion (
+	async function handleMemoDeletion(
 		jobPostingMemo: JobPostingMemo,
 	) {
 		const confirmed = window.confirm(
@@ -151,10 +166,11 @@ function JobPostingListItem({
 
 		try {
 			await deleteJobPostingMemo(jobPosting.id, jobPostingMemo.id);
+			setMemosLoaded(false);
 			setMemosLoading(true);
 			setMemoReloadKey((key) => key + 1);
 		} catch (caughtError) {
-			const message = 
+			const message =
 				caughtError instanceof Error
 					? caughtError.message
 					: '삭제 중 알 수 없는 오류가 발생하였습니다.';
@@ -187,11 +203,12 @@ function JobPostingListItem({
 
 		try {
 			await updateJobPostingMemo(jobPostingId, memoId, request);
+			setMemosLoaded(false);
 			setMemosLoading(true);
 			setEditingMemoId(null); // 수정 성공했을 때만 실행
 			setMemoReloadKey((previous) => previous + 1);
 		} catch (caughtError) {
-			const message = 
+			const message =
 				caughtError instanceof Error
 					? caughtError.message
 					: '수정 중 알 수 없는 오류가 발생하였습니다.';
@@ -212,6 +229,11 @@ function JobPostingListItem({
 			>
 				{loading ? '처리중...' : '기술 스택 보기'}
 			</button>
+
+			<button type="button" onClick={handleToggleMemo}>
+				{memoVisible ? '메모 닫기' : '메모 보기'}
+			</button>
+
 			{skills !== null && skillsVisible && (
 				skills.length > 0
 					? <ul>
@@ -220,7 +242,7 @@ function JobPostingListItem({
 								{skill}
 							</li>
 						))}
-						</ul>
+					</ul>
 					: <p>추출된 기술 스택이 없습니다.</p>
 			)}
 			{skillsError !== null && (
@@ -312,67 +334,70 @@ function JobPostingListItem({
 						jobPostingId={jobPosting.id}
 						onCreated={handleMemoCreated}
 					/>
+					{memoVisible && (
+						<>
+							{memosLoading ? (
+								<p>메모 불러오는 중...</p>
+							) : memosError !== null ? (
+								<p role="alert">{memosError}</p>
+							) : memos.length > 0 ? (
+								<ul>
+									{memos.map((memo) => (
+										<li key={memo.id}>
+											{editingMemoId === memo.id ? (
+												<>
+													<JobPostingMemoEditForm
+														jobPostingMemo={memo}
+														jobPosting={jobPosting}
+														saving={savingMemoId === memo.id}
+														onSave={handleSaveMemoEdit}
+														onCancel={handleCancelMemoEdit}
+													/>
 
-					{memosLoading ? (
-						<p>메모 불러오는 중...</p>
-						) : memosError !== null ? (
-							<p role="alert">{memosError}</p>
-						) : memos.length > 0 ? (
-							<ul>
-								{memos.map((memo) => (
-									<li key={memo.id}>
-										{editingMemoId === memo.id ? (
-											<>
-												<JobPostingMemoEditForm
-													jobPostingMemo={memo}
-													jobPosting={jobPosting}
-													saving={savingMemoId === memo.id}
-													onSave={handleSaveMemoEdit}
-													onCancel={handleCancelMemoEdit}
-												/>
-
-												{memoUpdateError !== null && (
-													<p role="alert">
-														{memoUpdateError}
-													</p>
-												)}
-											</>
-										) : (
-											<>
-												<span>{memo.content}</span>
+													{memoUpdateError !== null && (
+														<p role="alert">
+															{memoUpdateError}
+														</p>
+													)}
+												</>
+											) : (
+												<>
+													<span>{memo.content}</span>
 
 													<p>
 														更新日時: {formatDateTime(memo.updatedAt)}
 													</p>
 
-												<button
-													type="button"
-													onClick={() => handleMemoEdit(memo)}
-													disabled={deletingMemoId === memo.id}
-												>
-													수정
-												</button>
+													<button
+														type="button"
+														onClick={() => handleMemoEdit(memo)}
+														disabled={deletingMemoId === memo.id}
+													>
+														수정
+													</button>
 
-												<button
-													type='button'
-													onClick={() => {
-														void handleMemoDeletion(memo);
-													}}
-													disabled={deletingMemoId === memo.id}
-												>
-													{deletingMemoId === memo.id
-														? '메모 삭제 중...'
-														: '메모 삭제'
-													}
-												</button>
-											</>
-										)}
-									</li>
-								))}
-							</ul>
-						) : (
-							<p>등록된 메모가 없습니다.</p>
-						)}
+													<button
+														type='button'
+														onClick={() => {
+															void handleMemoDeletion(memo);
+														}}
+														disabled={deletingMemoId === memo.id}
+													>
+														{deletingMemoId === memo.id
+															? '메모 삭제 중...'
+															: '메모 삭제'
+														}
+													</button>
+												</>
+											)}
+										</li>
+									))}
+								</ul>
+							) : (
+								<p>등록된 메모가 없습니다.</p>
+							)}
+						</>
+					)}
 				</>
 			)}
 		</li>

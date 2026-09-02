@@ -320,6 +320,7 @@ test('등록된 메모 목록이 정상적으로 표시된다.', async () => {
   vi.mocked(getJobPostingMemos)
     .mockResolvedValueOnce([mockMemo]);
 
+  const user = userEvent.setup();
   render(
     <JobPostingListItem
       jobPosting={mockContent}
@@ -333,6 +334,12 @@ test('등록된 메모 목록이 정상적으로 표시된다.', async () => {
       onDelete={vi.fn()}
       onApplicationStatusChange={vi.fn()}
     />
+  );
+
+  await user.click(
+    screen.getByRole('button', {
+      name: '메모 보기',
+    }),
   );
 
   expect(getJobPostingMemos)
@@ -356,6 +363,7 @@ test('메모가 없을 때 메시지로 메모가 없음을 확인할 수 있다
   vi.mocked(getJobPostingMemos)
     .mockResolvedValueOnce([]);
 
+  const user = userEvent.setup();
   render(
     <JobPostingListItem
       jobPosting={mockContent}
@@ -369,6 +377,12 @@ test('메모가 없을 때 메시지로 메모가 없음을 확인할 수 있다
       onDelete={vi.fn()}
       onApplicationStatusChange={vi.fn()}
     />
+  );
+
+  await user.click(
+    screen.getByRole('button', {
+      name: '메모 보기',
+    }),
   );
 
   expect(getJobPostingMemos)
@@ -393,6 +407,8 @@ test('존재하지 않는 공고의 경우 에러 메시지를 표기한다', as
   vi.mocked(getJobPostingMemos)
     .mockRejectedValueOnce(new Error('존재하지 않는 공고입니다.'));
 
+    
+  const user = userEvent.setup();
   render(
     <JobPostingListItem
       jobPosting={mockContent}
@@ -406,6 +422,12 @@ test('존재하지 않는 공고의 경우 에러 메시지를 표기한다', as
       onDelete={vi.fn()}
       onApplicationStatusChange={vi.fn()}
     />
+  );
+
+  await user.click(
+    screen.getByRole('button', {
+      name: '메모 보기',
+    }),
   );
 
   expect(getJobPostingMemos)
@@ -451,6 +473,9 @@ test('메모를 등록한 후 재조회가 가능하다', async () => {
       onDelete={vi.fn()}
       onApplicationStatusChange={vi.fn()}
     />
+  );
+  await user.click(
+    screen.getByRole('button', { name: '메모 보기' })
   );
   // 초기 Get 완료 확인
   expect(
@@ -512,6 +537,12 @@ test('메모를 등록한 후 삭제할 수 있다.', async () => {
     />
   );
 
+  await user.click(
+    screen.getByRole('button', {
+      name: '메모 보기',
+    }),
+  );
+
   const deleteMemo = await screen.findByRole('button', {
     name: '메모 삭제',
   });
@@ -523,7 +554,7 @@ test('메모를 등록한 후 삭제할 수 있다.', async () => {
   expect(getJobPostingMemos)
     .toHaveBeenCalledTimes(2);
 
-  expect(screen.queryByText('등록된 메모가 없습니다.')).toBeInTheDocument();
+  expect(await screen.findByText('등록된 메모가 없습니다.')).toBeInTheDocument();
 });
 
 test('메모 삭제 여부를 묻는 창에서 취소를 누르면 삭제하지 않는다.', async () => {
@@ -559,6 +590,12 @@ test('메모 삭제 여부를 묻는 창에서 취소를 누르면 삭제하지 
       onDelete={vi.fn()}
       onApplicationStatusChange={vi.fn()}
     />
+  );
+
+  await user.click(
+    screen.getByRole('button', {
+      name: '메모 보기',
+    }),
   );
 
   const deleteMemo = await screen.findByRole('button', {
@@ -612,6 +649,12 @@ test('메모 삭제 에러가 발생하였을 때 에러 메시지 및 삭제 �
       onDelete={vi.fn()}
       onApplicationStatusChange={vi.fn()}
     />
+  );
+
+  await user.click(
+    screen.getByRole('button', {
+      name: '메모 보기',
+    }),
   );
 
   const deleteMemo = await screen.findByRole('button', {
@@ -673,6 +716,12 @@ test('메모를 수정한 후 재조회하여 수정된 내용을 표시한다.'
       onDelete={vi.fn()}
       onApplicationStatusChange={vi.fn()}
     />
+  );
+
+  await user.click(
+    screen.getByRole('button', {
+      name: '메모 보기',
+    }),
   );
 
   const memoContent =
@@ -765,6 +814,12 @@ test('메모 수정 중 취소하면 수정 API를 호출하지 않는다.', asy
     />
   );
 
+  await user.click(
+    screen.getByRole('button', {
+      name: '메모 보기',
+    }),
+  );
+
   const memoContent =
     await screen.findByText('面談準備中');
 
@@ -849,6 +904,12 @@ test('메모 수정 실패 시 에러를 표시하고 편집 폼과 입력 내�
     />,
   );
 
+  await user.click(
+    screen.getByRole('button', {
+      name: '메모 보기',
+    }),
+  );
+
   const memoContent =
     await screen.findByText('面談準備中');
 
@@ -866,9 +927,10 @@ test('메모 수정 실패 시 에러를 표시하고 편집 폼과 입력 내�
 
   await user.click(editButton);
 
-  const textArea = screen.getByRole('textbox', {
-    name: '메모 수정',
-  });
+  const textArea = within(memoListItem)
+    .getByRole('textbox', {
+      name: '메모 수정',
+    });
 
   await user.clear(textArea);
   await user.type(
@@ -876,9 +938,10 @@ test('메모 수정 실패 시 에러를 표시하고 편집 폼과 입력 내�
     '面接日程を変更しました',
   );
 
-  const saveButton = screen.getByRole('button', {
-    name: '저장',
-  });
+  const saveButton = within(memoListItem)
+    .getByRole('button', {
+      name: '저장',
+    });
 
   await user.click(saveButton);
 
