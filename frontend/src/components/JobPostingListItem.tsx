@@ -110,7 +110,7 @@ function JobPostingListItem({
 		}
 
 		let cancelled = false; //値を変更する必要があるので、constではなくletを使います
-		setMemosLoading(true)
+		setMemosLoading(true);
 		void getJobPostingMemos(jobPosting.id)
 			.then((getMemos) => {
 				if (!cancelled) {
@@ -143,7 +143,7 @@ function JobPostingListItem({
 	}, [jobPosting.id, memoReloadKey, memoVisible, memosLoaded]);
 
 	function handleMemoCreated() {
-		setMemosLoaded(false); //// Server側のMemoが変更されたためキャッシュを無効化し、最新一覧を再取得する
+		setMemosLoaded(false); // Server側のMemoが変更されたためキャッシュを無効化し、最新一覧を再取得する
 		setMemosLoading(true);
 		setMemoVisible(true);
 		setMemosError(null);
@@ -230,7 +230,12 @@ function JobPostingListItem({
 				{loading ? '처리중...' : '기술 스택 보기'}
 			</button>
 
-			<button type="button" onClick={handleToggleMemo}>
+			<button
+				type="button"
+				onClick={handleToggleMemo}
+				aria-expanded={memoVisible} // 스크린리더에서 펼쳐짐/접힘 상태 알 수 있게
+				aria-controls={`job-posting-memos-${jobPosting.id}`} // 이 버튼이 어느 영역을 열고 닫는지 알려줌
+			>
 				{memoVisible ? '메모 닫기' : '메모 보기'}
 			</button>
 
@@ -334,70 +339,72 @@ function JobPostingListItem({
 						jobPostingId={jobPosting.id}
 						onCreated={handleMemoCreated}
 					/>
-					{memoVisible && (
-						<>
-							{memosLoading ? (
-								<p>메모 불러오는 중...</p>
-							) : memosError !== null ? (
-								<p role="alert">{memosError}</p>
-							) : memos.length > 0 ? (
-								<ul>
-									{memos.map((memo) => (
-										<li key={memo.id}>
-											{editingMemoId === memo.id ? (
-												<>
-													<JobPostingMemoEditForm
-														jobPostingMemo={memo}
-														jobPosting={jobPosting}
-														saving={savingMemoId === memo.id}
-														onSave={handleSaveMemoEdit}
-														onCancel={handleCancelMemoEdit}
-													/>
 
-													{memoUpdateError !== null && (
-														<p role="alert">
-															{memoUpdateError}
-														</p>
-													)}
-												</>
-											) : (
-												<>
-													<span>{memo.content}</span>
+					<div
+						id={`job-posting-memos-${jobPosting.id}`}
+						hidden={!memoVisible}
+					>
+						{memosLoading ? (
+							<p>메모 불러오는 중...</p>
+						) : memosError !== null ? (
+							<p role="alert">{memosError}</p>
+						) : memos.length > 0 ? (
+							<ul>
+								{memos.map((memo) => (
+									<li key={memo.id}>
+										{editingMemoId === memo.id ? (
+											<>
+												<JobPostingMemoEditForm
+													jobPostingMemo={memo}
+													jobPosting={jobPosting}
+													saving={savingMemoId === memo.id}
+													onSave={handleSaveMemoEdit}
+													onCancel={handleCancelMemoEdit}
+												/>
 
-													<p>
-														更新日時: {formatDateTime(memo.updatedAt)}
+												{memoUpdateError !== null && (
+													<p role="alert">
+														{memoUpdateError}
 													</p>
+												)}
+											</>
+										) : (
+											<>
+												<span>{memo.content}</span>
 
-													<button
-														type="button"
-														onClick={() => handleMemoEdit(memo)}
-														disabled={deletingMemoId === memo.id}
-													>
-														수정
-													</button>
+												<p>
+													更新日時: {formatDateTime(memo.updatedAt)}
+												</p>
 
-													<button
-														type='button'
-														onClick={() => {
-															void handleMemoDeletion(memo);
-														}}
-														disabled={deletingMemoId === memo.id}
-													>
-														{deletingMemoId === memo.id
-															? '메모 삭제 중...'
-															: '메모 삭제'
-														}
-													</button>
-												</>
-											)}
-										</li>
-									))}
-								</ul>
-							) : (
-								<p>등록된 메모가 없습니다.</p>
-							)}
-						</>
-					)}
+												<button
+													type="button"
+													onClick={() => handleMemoEdit(memo)}
+													disabled={deletingMemoId === memo.id}
+												>
+													수정
+												</button>
+
+												<button
+													type='button'
+													onClick={() => {
+														void handleMemoDeletion(memo);
+													}}
+													disabled={deletingMemoId === memo.id}
+												>
+													{deletingMemoId === memo.id
+														? '메모 삭제 중...'
+														: '메모 삭제'
+													}
+												</button>
+											</>
+										)}
+									</li>
+								))}
+							</ul>
+						) : (
+							<p>등록된 메모가 없습니다.</p>
+						)}
+					</div>
 				</>
 			)}
 		</li>
