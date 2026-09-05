@@ -53,7 +53,9 @@ public class JobPostingService {
                 request.companyName(),
                 request.title(),
                 request.sourceUrl(),
-                request.originalText()
+                request.originalText(),
+                request.salaryMin(),
+                request.salaryMax()
         );
 
         JobPosting savedJobPosting = jobPostingRepository.save(jobPosting);
@@ -80,7 +82,9 @@ public class JobPostingService {
                 request.companyName(),
                 request.title(),
                 request.sourceUrl(),
-                request.originalText()
+                request.originalText(),
+                request.salaryMin(),
+                request.salaryMax()
         );
 
         return JobPostingResponse.from(jobPosting);
@@ -117,7 +121,9 @@ public class JobPostingService {
     public PageResponse<JobPostingResponse> findAll(
             String keyword,
             Pageable pageable,
-            ApplicationStatus applicationStatus
+            ApplicationStatus applicationStatus,
+            Integer salaryMin,
+            Integer salaryMax
     ) {
         // pageable에서 sort만 꺼냄
         Sort requestedSort = pageable.getSort();
@@ -141,7 +147,11 @@ public class JobPostingService {
 
         Specification<JobPosting> spec = Specification.allOf(
             JobPostingSpecifications.hasKeyword(normalizedKeyword),
-            JobPostingSpecifications.hasStatus(applicationStatus)
+            JobPostingSpecifications.hasStatus(applicationStatus),
+            JobPostingSpecifications.salaryOverlaps(
+                salaryMin,
+                salaryMax
+            )
         );
 
         Page<JobPosting> jobPostingPage = jobPostingRepository.findAll(spec, finalPageable);

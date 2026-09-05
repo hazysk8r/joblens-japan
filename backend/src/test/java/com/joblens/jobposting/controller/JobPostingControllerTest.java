@@ -112,7 +112,9 @@ class JobPostingControllerTest {
                         "기존 회사",
                         "기존 제목",
                         "https://example.com/old",
-                        "기존 채용공고 원문"
+                        "기존 채용공고 원문",
+                        null,
+                        null
                 )
         );
 
@@ -162,7 +164,9 @@ class JobPostingControllerTest {
                         "삭제 테스트 회사",
                         "삭제 테스트 공고",
                         "https://example.com/delete",
-                        "삭제할 채용공고 원문"
+                        "삭제할 채용공고 원문",
+                        null,
+                        null
                 )
         );
 
@@ -193,7 +197,9 @@ class JobPostingControllerTest {
                         "北海道クラウド株式会社",
                         "AWSクラウドエンジニア",
                         "https://example.com/aws",
-                        "AWS環境の設計と構築を担当します。"
+                        "AWS環境の設計と構築を担当します。",
+                        null,
+                        null
                 )
         );
 
@@ -202,7 +208,9 @@ class JobPostingControllerTest {
                         "札幌Java株式会社",
                         "Javaバックエンドエンジニア",
                         "https://example.com/java",
-                        "Spring Bootを利用した開発を担当します。"
+                        "Spring Bootを利用した開発を担当します。",
+                        null,
+                        null
                 )
         );
 
@@ -221,13 +229,13 @@ class JobPostingControllerTest {
     @Test
     void 채용공고를_페이지_단위로_조회할_수_있다() throws Exception {
         jobPostingRepository.save(
-                new JobPosting("회사 1", "공고 1", null, "원문 1")
+                new JobPosting("회사 1", "공고 1", null, "원문 1",null, null)
         );
         jobPostingRepository.save(
-                new JobPosting("회사 2", "공고 2", null, "원문 2")
+                new JobPosting("회사 2", "공고 2", null, "원문 2", null, null)
         );
         jobPostingRepository.save(
-                new JobPosting("회사 3", "공고 3", null, "원문 3")
+                new JobPosting("회사 3", "공고 3", null, "원문 3", null, null)
         );
 
         mockMvc.perform(get("/api/job-postings")
@@ -247,7 +255,7 @@ class JobPostingControllerTest {
     void 채용공고의_지원_상태를_변경하면_응답과_DB에_반영된다() throws Exception {
         // 테스트용 공고 DB에 저장
         JobPosting savedJobPosting = jobPostingRepository.save(
-                new JobPosting("상태 변경 테스트 회사", "백엔드 엔지니어", "https://example.com/status", "지원 상태 변경 테스트용 원문")
+                new JobPosting("상태 변경 테스트 회사", "백엔드 엔지니어", "https://example.com/status", "지원 상태 변경 테스트용 원문", null, null)
         );
 
         // SAVED에서 다른 지원 상태로 변경하는 요청
@@ -310,7 +318,9 @@ class JobPostingControllerTest {
                         "검증 테스트 회사", 
                         "백엔드 엔지니어", 
                         "https://example.com/status-validation", 
-                        "지원 상태 검증 테스트용 원문"
+                        "지원 상태 검증 테스트용 원문",
+                        null,
+                        null
                 )
         );
 
@@ -386,24 +396,24 @@ class JobPostingControllerTest {
     void 지원_상태별_채용공고_개수를_조회할_수_있다() throws Exception {
         // 1. SAVED 상태 공고 2개
         jobPostingRepository.save(
-                new JobPosting("회사1", "공고1", null, "원문1")
+                new JobPosting("회사1", "공고1", null, "원문1", null, null)
         );
         jobPostingRepository.save(
-                        new JobPosting("회사2", "공고2", null, "원문2")
+                        new JobPosting("회사2", "공고2", null, "원문2", null, null)
         );
 
         // 2. APPLIED 상태 공고 1개
-        JobPosting appliedJobPosting = new JobPosting("회사3", "공고3", null, "원문3");
+        JobPosting appliedJobPosting = new JobPosting("회사3", "공고3", null, "원문3", null, null);
         appliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
         jobPostingRepository.save(appliedJobPosting);
 
         // 3. INTERVIEWING 상태 공고 1개
-        JobPosting interviewingJobPosting = new JobPosting("회사4", "공고4", null, "원문4");
+        JobPosting interviewingJobPosting = new JobPosting("회사4", "공고4", null, "원문4", null, null);
         interviewingJobPosting.changeApplicationStatus(ApplicationStatus.INTERVIEWING);
         jobPostingRepository.save(interviewingJobPosting);
 
         // 4. OFFERED 상태 공고 1개
-        JobPosting offeredJobPosting = new JobPosting("회사5", "공고5", null, "원문5");
+        JobPosting offeredJobPosting = new JobPosting("회사5", "공고5", null, "원문5", null, null);
         offeredJobPosting.changeApplicationStatus(ApplicationStatus.OFFERED);
         jobPostingRepository.save(offeredJobPosting);
 
@@ -421,10 +431,10 @@ class JobPostingControllerTest {
     void 지원_상태_및_키워드를_통해서_필터링_할_수_있다() throws Exception {
 
         jobPostingRepository.save(
-                new JobPosting("회사1", "공고1", null, "원문1")
+                new JobPosting("회사1", "공고1", null, "원문1", null, null)
         );
 
-        JobPosting appliedJobPosting = new JobPosting("회사2", "공고2", null, "원문2");
+        JobPosting appliedJobPosting = new JobPosting("회사2", "공고2", null, "원문2", null, null);
         appliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
         jobPostingRepository.save(appliedJobPosting);
 
@@ -442,13 +452,13 @@ class JobPostingControllerTest {
     void 지원_상태로_필터링_할_수_있다() throws Exception {
 
         jobPostingRepository.save(
-                new JobPosting("회사1", "공고1", null, "원문1"));
+                new JobPosting("회사1", "공고1", null, "원문1", null, null));
 
-        JobPosting appliedJobPosting = new JobPosting("회사2", "공고2", null, "원문2");
+        JobPosting appliedJobPosting = new JobPosting("회사2", "공고2", null, "원문2", null, null);
         appliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
         jobPostingRepository.save(appliedJobPosting);
 
-        JobPosting secondAppliedJobPosting = new JobPosting("회사2", "공고2", null, "원문2");
+        JobPosting secondAppliedJobPosting = new JobPosting("회사2", "공고2", null, "원문2", null, null);
         secondAppliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
         jobPostingRepository.save(secondAppliedJobPosting);
 
@@ -464,7 +474,7 @@ class JobPostingControllerTest {
     void 대소문자_상관_없이_필터링_할_수_있다() throws Exception {
 
             jobPostingRepository.save(
-                            new JobPosting("회사1", "Spring Backend Engineer", null, "원문1"));
+                            new JobPosting("회사1", "Spring Backend Engineer", null, "원문1", null, null));
 
             mockMvc.perform(get("/api/job-postings")
                             .param("keyword", "spring"))
@@ -477,9 +487,9 @@ class JobPostingControllerTest {
     void 와일드카드_이스케이프_할_수_있다() throws Exception {
 
             jobPostingRepository.save(
-                            new JobPosting("회사1", "100% Remote Engineer", null, "원문1"));
+                            new JobPosting("회사1", "100% Remote Engineer", null, "원문1", null, null));
             jobPostingRepository.save(
-                            new JobPosting("회사2", "Java Developer", null, "원문2"));
+                            new JobPosting("회사2", "Java Developer", null, "원문2", null, null));
 
             mockMvc.perform(get("/api/job-postings")
                             .param("keyword", "%"))
@@ -497,22 +507,22 @@ class JobPostingControllerTest {
 
     @Test
     void 상태와_페이지네이션을_활용해_필터링_할_수_있다() throws Exception {
-            JobPosting appliedJobPosting = new JobPosting("회사1", "공고1", null, "원문1");
+            JobPosting appliedJobPosting = new JobPosting("회사1", "공고1", null, "원문1", null, null);
             appliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
             jobPostingRepository.save(appliedJobPosting);
 
-            JobPosting secondAppliedJobPosting = new JobPosting("회사2", "공고2", null, "원문2");
+            JobPosting secondAppliedJobPosting = new JobPosting("회사2", "공고2", null, "원문2", null, null);
             secondAppliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
             jobPostingRepository.save(secondAppliedJobPosting);
 
-            JobPosting thirdAppliedJobPosting = new JobPosting("회사3", "공고3", null, "원문3");
+            JobPosting thirdAppliedJobPosting = new JobPosting("회사3", "공고3", null, "원문3", null, null);
             thirdAppliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
             jobPostingRepository.save(thirdAppliedJobPosting);
 
             jobPostingRepository.save(
-                            new JobPosting("회사4", "100% Remote Engineer", null, "원문4"));
+                            new JobPosting("회사4", "100% Remote Engineer", null, "원문4", null, null));
             jobPostingRepository.save(
-                            new JobPosting("회사5", "Java Developer", null, "원문5"));
+                            new JobPosting("회사5", "Java Developer", null, "원문5", null, null));
                         
             mockMvc.perform(get("/api/job-postings")
                         .param("status", "APPLIED")
@@ -538,11 +548,11 @@ class JobPostingControllerTest {
     @Test
     void 회사명_으로_정렬기능이_동작하는지_확인한다() throws Exception {
             jobPostingRepository.save(
-                            new JobPosting("B", "Java Developer", null, "원문1"));
+                            new JobPosting("B", "Java Developer", null, "원문1", null, null));
             jobPostingRepository.save(
-                            new JobPosting("A", "Python Developer", null, "원문2"));
+                            new JobPosting("A", "Python Developer", null, "원문2", null, null));
             jobPostingRepository.save(
-                            new JobPosting("C", "C++ Developer", null, "원문3"));
+                            new JobPosting("C", "C++ Developer", null, "원문3", null, null));
         
             mockMvc.perform(get("/api/job-postings").param("sort", "companyName,asc"))
                             .andExpect(status().isOk())
@@ -554,13 +564,17 @@ class JobPostingControllerTest {
     @Test
     void 키워드와_지원상태로_필터링하고_회사명순으로_정렬할_수_있다() throws Exception {
             JobPosting charlie = jobPostingRepository.save(
-                            new JobPosting("Charlie Company","AWS Engineer","https://example.com/charlie","Cloud"));
+                            new JobPosting("Charlie Company","AWS Engineer","https://example.com/charlie","Cloud", 
+                                            null, null));
             JobPosting alpha = jobPostingRepository.save(
-                            new JobPosting("Alpha Company", "AWS Engineer", "https://example.com/alpha", "Cloud"));
+                            new JobPosting("Alpha Company", "AWS Engineer", "https://example.com/alpha", "Cloud", null,
+                                            null));
             JobPosting wrongKeyword = jobPostingRepository.save(
-                            new JobPosting("Beta Company", "JAVA Engineer", "https://example.com/beta", "Spring"));
+                            new JobPosting("Beta Company", "JAVA Engineer", "https://example.com/beta", "Spring", null,
+                                            null));
             JobPosting wrongStatus = jobPostingRepository.save(
-                            new JobPosting("Delta Company", "AWS Engineer", "https://example.com/delta", "Cloud"));
+                            new JobPosting("Delta Company", "AWS Engineer", "https://example.com/delta", "Cloud", null,
+                                            null));
             
             charlie.changeApplicationStatus(ApplicationStatus.APPLIED);
             alpha.changeApplicationStatus(ApplicationStatus.APPLIED);
@@ -583,9 +597,11 @@ class JobPostingControllerTest {
     @Test
     void 기술이_포함된_공고에서__해당_포스트의_기술_스택을_확인할_수_있다() throws Exception {
             JobPosting charlie = jobPostingRepository.save(
-                            new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie", "JavaとSpring Bootを使ったバックエンド開発です"));
+                            new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie", "JavaとSpring Bootを使ったバックエンド開発です", 
+                                            null, null));
             JobPosting alpha = jobPostingRepository.save(
-                            new JobPosting("Alpha Company", "AWS Engineer", "https://example.com/alpha", "AWSとDockerを利用します。"));
+                            new JobPosting("Alpha Company", "AWS Engineer", "https://example.com/alpha", "AWSとDockerを利用します。", 
+                                            null, null));
 
             mockMvc.perform(get("/api/job-postings/{id}/skills", charlie.getId()))
                             .andExpect(status().isOk())
@@ -602,7 +618,7 @@ class JobPostingControllerTest {
     void 기술이_기입되어_있지_않는_포스트의_경우_공백을_보여준다() throws Exception {
             JobPosting charlie = jobPostingRepository.save(
                             new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
-                                            "営業部求人中"));
+                                            "営業部求人中", null, null));
             mockMvc.perform(get("/api/job-postings/{id}/skills", charlie.getId()))
                             .andExpect(status().isOk())
                             .andExpect(jsonPath("$").isEmpty());
@@ -618,7 +634,7 @@ class JobPostingControllerTest {
     void JavaScript가_포함된_내용을_조회하면_Java를_추출하지_않는다() throws Exception {
             JobPosting charlie = jobPostingRepository.save(
                             new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
-                                            "JavaScript開発者求人中"));
+                                            "JavaScript開発者求人中", null, null));
             mockMvc.perform(get("/api/job-postings/{id}/skills", charlie.getId()))
                             .andExpect(status().isOk())
                             .andExpect(jsonPath("$").isEmpty());
@@ -628,7 +644,7 @@ class JobPostingControllerTest {
     void 내용에_Cpp과_C가_모두_있을_때_Cpp과_C를_구분하여_추출한다() throws Exception {
             JobPosting charlie = jobPostingRepository.save(
                             new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
-                                            "CとC++を全部開発できる人は大歓迎"));
+                                            "CとC++を全部開発できる人は大歓迎", null, null));
             mockMvc.perform(get("/api/job-postings/{id}/skills", charlie.getId()))
                             .andExpect(status().isOk())
                             .andExpect(jsonPath("$", hasSize(2)))
@@ -640,7 +656,7 @@ class JobPostingControllerTest {
     void 내용에_Cpp만_있을_때_C를_추출하지_않는다() throws Exception {
             JobPosting charlie = jobPostingRepository.save(
                             new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
-                                            "C++を開発できる人は大歓迎"));
+                                            "C++を開発できる人は大歓迎", null, null));
             mockMvc.perform(get("/api/job-postings/{id}/skills", charlie.getId()))
                             .andExpect(status().isOk())
                             .andExpect(jsonPath("$", hasSize(1)))

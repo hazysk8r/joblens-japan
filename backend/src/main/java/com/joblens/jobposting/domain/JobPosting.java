@@ -43,16 +43,26 @@ public class JobPosting {
     @Column(name = "application_status", nullable = false, length = 20)
     private ApplicationStatus applicationStatus = ApplicationStatus.SAVED;
 
+    @Column(name = "salary_min")
+    private Integer salaryMin;
+
+    @Column(name = "salary_max")
+    private Integer salaryMax;
+
     public JobPosting(
             String companyName,
             String title,
             String sourceUrl,
-            String originalText
+            String originalText,
+            Integer salaryMin,
+            Integer salaryMax
     ) {
         this.companyName = companyName;
         this.title = title;
         this.sourceUrl = sourceUrl;
         this.originalText = originalText;
+        this.salaryMin = salaryMin;
+        this.salaryMax = salaryMax;
         this.createdAt = Instant.now();
     }
 
@@ -67,12 +77,16 @@ public class JobPosting {
             String companyName,
             String title,
             String sourceUrl,
-            String originalText
+            String originalText,
+            Integer salaryMin,
+            Integer salaryMax
     ) {
         this.companyName = companyName;
         this.title = title;
         this.sourceUrl = sourceUrl;
         this.originalText = originalText;
+        this.salaryMin = salaryMin;
+        this.salaryMax = salaryMax;
     }   
 
     public void changeApplicationStatus(

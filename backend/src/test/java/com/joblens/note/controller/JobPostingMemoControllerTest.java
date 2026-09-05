@@ -61,7 +61,10 @@ public class JobPostingMemoControllerTest {
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
-            "メモが正常に作動するかな"));
+            "メモが正常に作動するかな", 
+            null, 
+            null
+        ));
 
     Long jobPostingId = savedJobPosting.getId();
 
@@ -98,7 +101,10 @@ public class JobPostingMemoControllerTest {
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
-            "メモが正常に作動するかな"));
+            "メモが正常に作動するかな", 
+            null, 
+            null
+        ));
 
     Long jobPostingId = savedJobPosting.getId();
 
@@ -120,7 +126,10 @@ public class JobPostingMemoControllerTest {
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
-            "メモが正常に作動するかな"));
+            "メモが正常に作動するかな", 
+            null, 
+            null
+        ));
 
     Long jobPostingId = savedJobPosting.getId();
 
@@ -143,7 +152,10 @@ public class JobPostingMemoControllerTest {
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
-            "メモが正常に作動するかな"));
+            "メモが正常に作動するかな", 
+            null, 
+            null
+        ));
     
     jobPostingMemoRepository.save(new JobPostingMemo("メモテストA", savedJobPosting));
     jobPostingMemoRepository.save(new JobPostingMemo("メモテストB", savedJobPosting));
@@ -170,7 +182,10 @@ public class JobPostingMemoControllerTest {
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
-            "メモが正常に作動するかな"));
+            "メモが正常に作動するかな", 
+            null, 
+            null
+        ));
 
     JobPostingMemo savedJobPostingMemo = jobPostingMemoRepository.save(
       new JobPostingMemo("メモテストA", savedJobPosting));
@@ -198,7 +213,10 @@ public class JobPostingMemoControllerTest {
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
-            "メモが正常に作動するかな"));
+            "メモが正常に作動するかな", 
+            null, 
+            null
+        ));
 
     Long jobPostingId = savedJobPostingA.getId();
 
@@ -214,13 +232,19 @@ public class JobPostingMemoControllerTest {
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
-            "メモが正常に作動するかな"));
+            "メモが正常に作動するかな", 
+            null, 
+            null
+        ));
     JobPosting savedJobPostingB = jobPostingRepository.save(
         new JobPosting(
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
-            "メモが正常に作動するかな"));
+            "メモが正常に作動するかな", 
+            null, 
+            null
+        ));
 
     JobPostingMemo savedJobPostingMemo = jobPostingMemoRepository.save(new JobPostingMemo("メモテストA", savedJobPostingA));
 
@@ -242,7 +266,10 @@ public class JobPostingMemoControllerTest {
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
-            "メモが正常に作動するかな"));
+            "メモが正常に作動するかな", 
+            null, 
+            null
+        ));
     JobPostingMemo savedJobPostingMemo = jobPostingMemoRepository.save(new JobPostingMemo("メモテストA", savedJobPosting));
 
     String requestBody = """
@@ -276,13 +303,19 @@ public class JobPostingMemoControllerTest {
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
-            "メモが正常に作動するかな"));
+            "メモが正常に作動するかな", 
+            null, 
+            null
+        ));
     JobPosting savedJobPostingB = jobPostingRepository.save(
         new JobPosting(
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
-            "メモが正常に作動するかな"));
+            "メモが正常に作動するかな", 
+            null, 
+            null
+        ));
     JobPostingMemo savedJobPostingMemoA = jobPostingMemoRepository.save(new JobPostingMemo("メモテストA", savedJobPostingA));
     
 
@@ -316,7 +349,10 @@ public class JobPostingMemoControllerTest {
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
-            "メモが正常に作動するかな"));
+            "メモが正常に作動するかな", 
+            null, 
+            null
+        ));
     JobPostingMemo savedJobPostingMemoA = jobPostingMemoRepository.save(new JobPostingMemo("メモテストA", savedJobPostingA));
     JobPostingMemo savedJobPostingMemoB = jobPostingMemoRepository.save(new JobPostingMemo("メモテストB", savedJobPostingA));
 

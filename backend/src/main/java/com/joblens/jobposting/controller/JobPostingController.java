@@ -93,9 +93,16 @@ public class JobPostingController {
                     direction = Sort.Direction.DESC
             )
             Pageable pageable,
-            @RequestParam(name = "status", required = false) ApplicationStatus applicationStatus
+
+            @RequestParam(name = "status", required = false) ApplicationStatus applicationStatus,
+
+            @RequestParam(required = false)
+            Integer salaryMin,
+
+            @RequestParam(required = false)
+            Integer salaryMax
     ) {
-        return jobPostingService.findAll(keyword, pageable, applicationStatus);
+        return jobPostingService.findAll(keyword, pageable, applicationStatus, salaryMin, salaryMax);
     }
 
     @GetMapping("/{id}")
