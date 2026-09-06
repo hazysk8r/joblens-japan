@@ -206,6 +206,8 @@ test('특정 정렬 상태에서 삭제 행위가 이뤄져도 사용자가 선�
     originalText: 'AWSエンジニア求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
 
   const pageWithContent = {
@@ -243,6 +245,8 @@ test('특정 정렬 상태에서 삭제 행위가 이뤄져도 사용자가 선�
         '',
         0,
         'companyName,asc',
+        null,
+        null,
       );
   });
 
@@ -257,6 +261,8 @@ test('특정 정렬 상태에서 수정 행위가 이뤄져도 사용자가 선�
     originalText: 'AWSエンジニア求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
 
   const pageWithContent = {
@@ -307,6 +313,8 @@ test('특정 정렬 상태에서 수정 행위가 이뤄져도 사용자가 선�
           title: 'クラウドエンジニア求人',
           sourceUrl: 'http://example.com/kizaruengineer',
           originalText: 'AWSエンジニア求人',
+          salaryMin: null,
+          salaryMax: null,
         },
       );
   });
@@ -330,6 +338,8 @@ test('검색어나 필터가 적용된 상태에서 JobLens Japan 을 누르면,
     originalText: 'AWSエンジニア求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
 
   const pageWithContent= {

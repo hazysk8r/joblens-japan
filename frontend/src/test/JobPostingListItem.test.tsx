@@ -33,6 +33,8 @@ test('기술이 있는 공고의 기술 스택 보기 버튼을 누르면 기술
     originalText: 'AWSエンジニア求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
   vi.mocked(extractRequiredSkills)
     .mockResolvedValueOnce(["AWS"]);
@@ -76,6 +78,8 @@ test('기술이 없는 공고의 경우 기술 스택 보기를 누르면 기술
     originalText: '営業部求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
   vi.mocked(extractRequiredSkills)
     .mockResolvedValueOnce([]);
@@ -119,6 +123,8 @@ test('존재하지 않는 공고의 경우 기술 스택 보기를 누르면 오
     originalText: '営業部求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
   vi.mocked(extractRequiredSkills)
     .mockRejectedValueOnce(new Error('존재하지 않는 공고입니다.'));
@@ -162,6 +168,8 @@ test('시스템이 기술 스택 보기 요청을 처리 중일 때는 버튼을
     originalText: 'AWS',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
   // 비동기 처리를 위해 resolve 함수를 외부로 추출
   let resolveSkills: (value:string[]) => void = () => {};
@@ -217,6 +225,8 @@ test('첫번째 시도에서 실패하더라도 두번째에서 재시도할 수
     originalText: '営業部求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
   
   vi.mocked(extractRequiredSkills)
@@ -263,6 +273,8 @@ test('기술 스택 보기를 누르면 기술이 데이터에 남아있고 추�
     originalText: 'エンジニア求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
 
   vi.mocked(extractRequiredSkills)
@@ -310,6 +322,8 @@ test('등록된 메모 목록이 정상적으로 표시된다.', async () => {
     originalText: 'AWSエンジニア求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
   const mockMemo: JobPostingMemo = {
     id: 1,
@@ -359,6 +373,8 @@ test('메모가 없을 때 메시지로 메모가 없음을 확인할 수 있다
     originalText: 'AWSエンジニア求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
   vi.mocked(getJobPostingMemos)
     .mockResolvedValueOnce([]);
@@ -402,6 +418,8 @@ test('존재하지 않는 공고의 경우 에러 메시지를 표기한다', as
     originalText: '営業部求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
 
   vi.mocked(getJobPostingMemos)
@@ -448,6 +466,8 @@ test('메모를 등록한 후 재조회가 가능하다', async () => {
     originalText: '営業部求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
   const mockMemo: JobPostingMemo = {
     id: 1,
@@ -510,6 +530,8 @@ test('메모를 등록한 후 삭제할 수 있다.', async () => {
     originalText: '営業部求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
   const mockMemo: JobPostingMemo = {
     id: 1,
@@ -566,6 +588,8 @@ test('메모 삭제 여부를 묻는 창에서 취소를 누르면 삭제하지 
     originalText: '営業部求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
   const mockMemo: JobPostingMemo = {
     id: 1,
@@ -621,6 +645,8 @@ test('메모 삭제 에러가 발생하였을 때 에러 메시지 및 삭제 �
     originalText: '営業部求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
   const mockMemo: JobPostingMemo = {
     id: 1,
@@ -679,6 +705,8 @@ test('메모를 수정한 후 재조회하여 수정된 내용을 표시한다.'
     originalText: '営業部求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
 
   const mockMemo: JobPostingMemo = {
@@ -785,6 +813,8 @@ test('메모 수정 중 취소하면 수정 API를 호출하지 않는다.', asy
     originalText: '営業部求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
 
   const mockMemo: JobPostingMemo = {
@@ -870,6 +900,8 @@ test('메모 수정 실패 시 에러를 표시하고 편집 폼과 입력 내�
     originalText: '営業部求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
 
   const mockMemo: JobPostingMemo = {
@@ -981,6 +1013,8 @@ test('처음 화면에 구인공고가 표시될 때는 메모API를 호출하�
     originalText: '営業部求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
   const mockMemo: JobPostingMemo = {
     id: 1,
@@ -1024,6 +1058,8 @@ test('메모 보기 버튼을 눌렀다가, 닫고 다시 눌러도 GET 호출�
     originalText: '営業部求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
   const mockMemo: JobPostingMemo = {
     id: 1,
@@ -1080,6 +1116,8 @@ test('메모 보기 버튼을 눌렀을 때, 첫번째 시도에서 실패하더
     originalText: '営業部求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
   const mockMemo: JobPostingMemo = {
     id: 1,
@@ -1141,6 +1179,8 @@ test('메모 토글 시 aria-expanded 상태가 변경된다', async () => {
     originalText: '営業部求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
   const mockMemo: JobPostingMemo = {
     id: 1,
@@ -1197,6 +1237,8 @@ test('메모 토글 버튼의 aria-controls가 메모 영역을 가리킨다', a
     originalText: '営業部求人',
     createdAt: '2026-08-14T00:00:00Z',
     applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
   };
   const mockMemo: JobPostingMemo = {
     id: 1,

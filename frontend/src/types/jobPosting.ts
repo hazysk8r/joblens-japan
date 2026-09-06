@@ -25,6 +25,8 @@ export interface ApplicationStatusSummaryResponse {
   rejected: number;
 }
 
+// SalaryFilter 추가
+export type SalaryFilter = number | null;
 
 //백엔드의 JSON 응답 구조를 typescript로 표현한 것
 export interface JobPosting {
@@ -35,6 +37,8 @@ export interface JobPosting {
   originalText: string;
   createdAt: string;
   applicationStatus: ApplicationStatus;
+  salaryMin: number | null;
+  salaryMax: number | null;
 }
 
 export interface PageResponse<T> {

@@ -6,6 +6,7 @@ import type {
   UpdateApplicationStatusRequest,
   ApplicationStatusSummaryResponse,
   StatusFilter,
+  SalaryFilter,
   JobPostingSorting,
 } from '../types/jobPosting';
 
@@ -20,6 +21,8 @@ export async function fetchJobPostings(
   status: StatusFilter,
   page: number,
   sort: JobPostingSorting,
+  salaryMin: SalaryFilter,
+  salaryMax: SalaryFilter,
 ): Promise<PageResponse<JobPosting>> {
   const params = new URLSearchParams({
     /*
@@ -40,6 +43,14 @@ export async function fetchJobPostings(
 
   if (status !== '') {
     params.set('status', status);
+  }
+
+  if (salaryMin !== null) {
+    params.set("salaryMin", String(salaryMin));
+  }
+
+  if (salaryMax !== null) {
+    params.set("salaryMax", String(salaryMax));
   }
 
   const response = await fetch(

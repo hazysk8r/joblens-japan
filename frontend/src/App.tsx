@@ -14,6 +14,7 @@ import {
   type UpdateJobPostingRequest,
   type ApplicationStatusSummaryResponse,
   type StatusFilter,
+  type SalaryFilter,
   type JobPostingSorting,
 } from './types/jobPosting';
 
@@ -28,6 +29,24 @@ import ApplicationStatusSummary
   
 // 求人情報一覧の初期取得に使用するデフォルトのソート条件
 const DEFAULT_SORTING: JobPostingSorting = 'createdAt,desc';
+// 給料候補一覧
+const SALARY_OPTIONS = [
+  200000,
+  220000,
+  240000,
+  260000,
+  280000,
+  300000,
+  320000,
+  350000,
+  400000,
+  450000,
+  500000,
+  600000,
+  700000,
+  800000,
+  1000000,
+];
 
 function App() {
   const [keyword, setKeyword] = useState('');
@@ -47,6 +66,10 @@ function App() {
   const [statusSummary, setStatusSummary] = useState<ApplicationStatusSummaryResponse | null>(null);
   const [status, setStatus] = useState<StatusFilter>("");
   const [appliedStatus, setAppliedStatus] = useState<StatusFilter>("");
+  const [salaryMin, setSalaryMin] = useState<number | null>(null);
+  const [salaryMax, setSalaryMax] = useState<number | null>(null);
+  const [appliedSalaryMin, setAppliedSalaryMin] = useState<number | null>(null);
+  const [appliedSalaryMax, setAppliedSalaryMax] = useState<number | null>(null);
   const [sorting, setSorting] = useState<JobPostingSorting>(DEFAULT_SORTING);
 
   /**
@@ -58,6 +81,8 @@ function App() {
     searchFilter: StatusFilter,
     pageNumber: number,
     sort: JobPostingSorting,
+    salaryMin: SalaryFilter,
+    salaryMax: SalaryFilter,
   ) => {
     try {
       const page = await fetchJobPostings(
@@ -65,6 +90,8 @@ function App() {
         searchFilter,
         pageNumber,
         sort,
+        salaryMin,
+        salaryMax,
       );
       /*
       * 공고 목록뿐 아니라 백엔드가 반환한 페이지 정보도
@@ -111,7 +138,7 @@ function App() {
     const loadInitialData = async () => {
       try {
         const [page, summary] = await Promise.all([
-          fetchJobPostings('', '', 0, DEFAULT_SORTING),
+          fetchJobPostings('', '', 0, DEFAULT_SORTING, null, null),
           fetchApplicationStatusSummary(),
         ]);
 
@@ -157,9 +184,13 @@ function App() {
 
     const nextKeyword = keyword.trim();
     const nextStatus = status;
+    const nextSalaryMin = salaryMin;
+    const nextSalaryMax = salaryMax;
 
     setAppliedKeyword(nextKeyword);
     setAppliedStatus(nextStatus);
+    setAppliedSalaryMin(nextSalaryMin);
+    setAppliedSalaryMax(nextSalaryMax);
     /*
     * 새로운 검색을 시작할 때는
     * 이전 페이지 위치와 관계없이 첫 페이지부터 조회한다.
@@ -168,7 +199,7 @@ function App() {
     setLoading(true);
     setError(null);
 
-    void loadJobPostings(nextKeyword, nextStatus, 0, sorting);
+    void loadJobPostings(nextKeyword, nextStatus, 0, sorting, nextSalaryMin, nextSalaryMax);
   };
 
 
@@ -185,6 +216,8 @@ function App() {
       appliedStatus,
       currentPage - 1,
       sorting,
+      appliedSalaryMin,
+      appliedSalaryMax,
     );
   };
 
@@ -201,6 +234,8 @@ function App() {
       appliedStatus,
       currentPage + 1,
       sorting,
+      appliedSalaryMin,
+      appliedSalaryMax,
     );
   };
 
@@ -240,6 +275,8 @@ function App() {
         appliedStatus,
         pageAfterDelete,
         sorting,
+        appliedSalaryMin,
+        appliedSalaryMax,
       );
       await loadApplicationStatusSummary();
     } catch (caughtError) {
@@ -262,12 +299,16 @@ function App() {
     setStatus("");
     setAppliedKeyword('');
     setAppliedStatus("");
+    setSalaryMin(null);
+    setSalaryMax(null);
+    setAppliedSalaryMin(null);
+    setAppliedSalaryMax(null);
     setSorting(DEFAULT_SORTING);
 
   /*
    * 최신 공고부터 첫 페이지를 다시 조회한다.
    */
-    await loadJobPostings('', '', 0, DEFAULT_SORTING);
+    await loadJobPostings('', '', 0, DEFAULT_SORTING, null, null);
     await loadApplicationStatusSummary();
   };
 
@@ -306,6 +347,8 @@ function App() {
         appliedStatus,
         currentPage,
         sorting,
+        appliedSalaryMin,
+        appliedSalaryMax,
       );
     } catch (caughtError) {
       const message = 
@@ -333,6 +376,8 @@ function App() {
         appliedStatus,
         currentPage,
         sorting,
+        appliedSalaryMin,
+        appliedSalaryMax,
       );
 
       await loadApplicationStatusSummary();
@@ -354,9 +399,13 @@ function App() {
     setStatus("");
     setAppliedKeyword('');
     setAppliedStatus("");
+    setSalaryMin(null);
+    setSalaryMax(null);
+    setAppliedSalaryMin(null);
+    setAppliedSalaryMax(null);
     setSorting(DEFAULT_SORTING);
 
-    await loadJobPostings('', '', 0, DEFAULT_SORTING);
+    await loadJobPostings('', '', 0, DEFAULT_SORTING, null, null);
   };
                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
   return (
@@ -423,6 +472,62 @@ function App() {
           </option>
           
         </select>
+
+        <label htmlFor="salaryMin">최저 월급</label>
+        <select
+          id="salaryMin"
+          value={salaryMin ?? ""}
+          onChange={(event) => {
+            const value = event.target.value;
+
+            setSalaryMin(
+              value === "" ? null : Number(value)
+            );
+          }}
+        >
+          <option value="">미지정</option>
+
+          {SALARY_OPTIONS.map((salary) => (
+            <option
+              key={salary}
+              value={salary}
+              disabled={
+                salaryMax != null &&
+                salary > salaryMax
+              }
+            >
+              {salary.toLocaleString()}円
+            </option>
+          ))}
+        </select>
+
+        <label htmlFor="salaryMax">최고 월급</label>
+        <select
+          id="salaryMax"
+          value={salaryMax ?? ""}
+          onChange={(event) => {
+            const value = event.target.value;
+
+            setSalaryMax(
+              value === "" ? null : Number(value)
+            );
+          }}
+        >
+          <option value="">미지정</option>
+          {SALARY_OPTIONS.map((salary) => (
+            <option
+              key={salary}
+              value={salary}
+              disabled={
+                salaryMin !== null &&
+                salary < salaryMin
+              }
+            >
+              {salary.toLocaleString()}円
+            </option>
+          ))}
+
+        </select>
         
         <label htmlFor="sorting">정렬</label>
         <select
@@ -442,6 +547,8 @@ function App() {
             appliedStatus,
             0,
             nextSorting,
+            appliedSalaryMin,
+            appliedSalaryMax,
           );
          }} 
         >
