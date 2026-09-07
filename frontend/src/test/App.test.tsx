@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, vi, test, expect } from 'vitest';
 
 import App from '../App';
-import { fetchApplicationStatusSummary, fetchJobPostings, deleteJobPosting, updateJobPosting } from '../api/jobPostingApi';
+import { fetchApplicationStatusSummary, fetchJobPostings, deleteJobPosting, updateJobPosting, createJobPosting } from '../api/jobPostingApi';
 import type { JobPosting } from '../types/jobPosting';
 
 // 이전 Mock 호출 기록 삭제
@@ -69,6 +69,8 @@ test('회사명순 선택 시 해당 정렬값으로 다시 조회한다', async
       '',
       0,
       'companyName,asc',
+      null,
+      null,
     );
 });
 
@@ -104,6 +106,8 @@ test('검색 조건을 유지한 채 회사명 순으로 정렬한다', async ()
       'APPLIED',
       0,
       'companyName,asc',
+      null,
+      null,
     );
 });
 
@@ -134,6 +138,8 @@ test('현재 정렬 조건이 페이지를 넘겨도 유지된다', async () => 
       '',
       1,
       'companyName,asc',
+      null,
+      null,
     );
 
 })
@@ -192,7 +198,9 @@ test('사용자가 선택한 정렬 상태를 유지한 채 다음 페이지로 
       '',
       '',
       0,
-      'companyName,asc'
+      'companyName,asc',
+      null,
+      null,
     );
   
 });
@@ -325,6 +333,8 @@ test('특정 정렬 상태에서 수정 행위가 이뤄져도 사용자가 선�
         '',
         0,
         'companyName,asc',
+        null,
+        null,
       );
   });
 });
@@ -415,7 +425,152 @@ test('검색어나 필터가 적용된 상태에서 JobLens Japan 을 누르면,
         '',
         '',
         0,
-        'createdAt,desc'
+        'createdAt,desc',
+        null,
+        null,
       );
+  });
+});
+
+test('월급 범위를 선택하고 검색하면 salaryMin과 salaryMax를 전달한다', async() => {
+  const user = userEvent.setup();
+
+  render(<App />);
+
+  const salaryMinSelect = screen.getByLabelText(
+    '최저 월급',
+    {selector: '#search-salaryMin'},
+  );
+
+  const salaryMaxSelect = screen.getByLabelText(
+    '최고 월급',
+    {selector: '#search-salaryMax'},
+  );
+
+  const searchButton = await screen.findByRole(
+    'button',
+    { name: '검색' },
+  );
+
+  await user.selectOptions(
+    salaryMinSelect,
+    '300000',
+  );
+
+  await user.selectOptions(
+    salaryMaxSelect,
+    '500000',
+  );
+
+  await user.click(searchButton);
+
+  expect(fetchJobPostings)
+    .toHaveBeenLastCalledWith(
+      '',
+      '',
+      0,
+      'createdAt,desc',
+      300000,
+      500000,
+    );
+});
+
+test('최저 월급보다 낮은 최고 월급은 선택할 수 없다', async() => {
+  const user = userEvent.setup();
+
+  render(<App />);
+
+  const salaryMinSelect = screen.getByLabelText(
+    '최저 월급',
+    { selector: '#search-salaryMin'},
+  );
+
+  const salaryMaxSelect = screen.getByLabelText(
+    '최고 월급',
+    { selector: '#search-salaryMax' },
+  );
+
+  await user.selectOptions(
+    salaryMinSelect,
+    '400000',
+  );
+
+  const invalidOption = within(
+    salaryMaxSelect,
+  ).getByRole('option', {
+    name: '350,000円',
+  });
+
+  expect(
+    (invalidOption as HTMLOptionElement).disabled,
+  ).toBe(true);
+});
+
+test('월급 범위를 포함하여 채용공고를 등록할 수 있다', async () => {
+  const user = userEvent.setup();
+
+  render(<App />);
+
+  await user.type(
+    screen.getByRole('textbox', {
+      name: '공고 제목',
+    }),
+    'クラウドエンジニア',
+  );
+
+  await user.type(
+    screen.getByRole('textbox', {
+      name: '공고 원문',
+    }),
+    'AWS Java',
+  );
+
+  const salaryMinSelect = screen.getByLabelText(
+    '최저 월급',
+    { selector: '#create-salaryMin' },
+  );
+
+  const salaryMaxSelect = screen.getByLabelText(
+    '최고 월급',
+    { selector: '#create-salaryMax' },
+  );
+
+  await user.selectOptions(
+    salaryMinSelect,
+    '300000',
+  );
+
+  await user.selectOptions(
+    salaryMaxSelect,
+    '500000',
+  );
+
+  const createSection = screen
+    .getByRole('heading', {
+      name: '채용공고 등록',
+    })
+    .closest('section');
+
+  if (!createSection) {
+    throw new Error('채용공고 등록 영역을 찾을 수 없습니다.');
+  }
+
+  const createButton = within(createSection)
+    .getByRole('button', {
+      name: '등록',
+    });
+
+  await user.click(createButton);
+
+  await waitFor(() => {
+    expect(createJobPosting)
+      .toHaveBeenCalledWith({
+        companyName: null,
+        title: 'クラウドエンジニア',
+        sourceUrl: null,
+        originalText: 'AWS Java',
+        salaryMin: 300000,
+        salaryMax: 500000,
+      });
   });
 });

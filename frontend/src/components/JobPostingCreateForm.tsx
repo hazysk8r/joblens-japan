@@ -2,6 +2,8 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 
 import { createJobPosting } from '../api/jobPostingApi';
+import type { SalaryFilter } from '../types/jobPosting';
+import { SALARY_OPTIONS } from '../constants/salaryOptions';
 
 interface JobPostingCreateFormProps {
   /**
@@ -18,6 +20,8 @@ function JobPostingCreateForm({
   const [title, setTitle] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
   const [originalText, setOriginalText] = useState('');
+  const [salaryMin, setSalaryMin] = useState<SalaryFilter>(null);
+  const [salaryMax, setSalaryMax] = useState<SalaryFilter>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -41,6 +45,8 @@ function JobPostingCreateForm({
         title: title.trim(),
         sourceUrl: sourceUrl.trim() || null,
         originalText: originalText.trim(),
+        salaryMin: salaryMin || null,
+        salaryMax: salaryMax || null,
       });
 
       /*
@@ -50,6 +56,8 @@ function JobPostingCreateForm({
       setTitle('');
       setSourceUrl('');
       setOriginalText('');
+      setSalaryMin(null);
+      setSalaryMax(null);
 
       setMessage('채용공고가 등록되었습니다.');
 
@@ -122,6 +130,66 @@ function JobPostingCreateForm({
             }
             required
           />
+        </div>
+
+        <div>
+          <label htmlFor="create-salaryMin">최저 월급</label>
+          <select
+            id="create-salaryMin"
+            value={salaryMin ?? ""}
+            onChange={(event) => {
+              const value = event.target.value;
+
+              setSalaryMin(
+                value === "" ? null : Number(value)
+              );
+            }}
+          >
+            <option value="">미지정</option>
+
+            {SALARY_OPTIONS.map((salary) => (
+              <option 
+                key={salary}
+                value={salary}
+                disabled={
+                  salaryMax != null &&
+                  salary > salaryMax
+                }
+              >
+                {salary.toLocaleString()}円
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="create-salaryMax">최고 월급</label>
+          <select
+            id="create-salaryMax"
+            value={salaryMax ?? ""}
+            onChange={(event) => {
+              const value = event.target.value;
+
+              setSalaryMax(
+                value === "" ? null : Number(value)
+              );
+            }}
+          >
+            <option value="">미지정</option>
+
+            {SALARY_OPTIONS.map((salary) => (
+              <option
+                key={salary}
+                value={salary}
+                disabled={
+                  salaryMin != null &&
+                  salary < salaryMin
+                }
+              >
+                {salary.toLocaleString()}円
+              </option>
+            ))}
+          </select>
         </div>
 
         <button type="submit" disabled={submitting}>

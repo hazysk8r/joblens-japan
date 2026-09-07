@@ -3,8 +3,11 @@ import type { FormEvent } from 'react';
 
 import type {
   JobPosting,
+  SalaryFilter,
   UpdateJobPostingRequest,
 } from '../types/jobPosting';
+
+import { SALARY_OPTIONS } from '../constants/salaryOptions';
 
 interface JobPostingEditFormProps {
   jobPosting: JobPosting;
@@ -23,6 +26,8 @@ interface EditFormState {
   title: string;
   sourceUrl: string;
   originalText: string;
+  salaryMin: SalaryFilter;
+  salaryMax: SalaryFilter;
 }
 
 function JobPostingEditForm({
@@ -44,6 +49,10 @@ function JobPostingEditForm({
         jobPosting.sourceUrl ?? '',
       originalText:
         jobPosting.originalText,
+      salaryMin:
+        jobPosting.salaryMin ?? null,
+      salaryMax:
+        jobPosting.salaryMax ?? null,
     });
 
   const [
@@ -80,6 +89,10 @@ function JobPostingEditForm({
       sourceUrl:
         editForm.sourceUrl.trim() || null,
       originalText,
+      salaryMin:
+        editForm.salaryMin ?? null,
+      salaryMax:
+        editForm.salaryMax ?? null,
     };
 
     /*
@@ -177,6 +190,72 @@ function JobPostingEditForm({
             }));
           }}
         />
+      </div>
+
+      <div>
+        <label htmlFor={`edit-salaryMin-${jobPosting.id}`}>최저 월급</label>
+        <select
+          id={`edit-salaryMin-${jobPosting.id}`}
+          value={editForm.salaryMin ?? ""}
+          onChange={(event) => {
+            const value = event.target.value;
+
+            setEditForm((previous) => ({
+              ...previous,
+              salaryMin:
+                value === "" ? null : Number(value),
+            }));
+          }}
+          disabled={saving}
+        >
+          <option value="">미지정</option>
+
+          {SALARY_OPTIONS.map((salary) => (
+            <option
+              key={salary}
+              value={salary}
+              disabled={
+                editForm.salaryMax != null &&
+                salary > editForm.salaryMax
+              }
+            >
+              {salary.toLocaleString()}円
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label htmlFor={`edit-salaryMax-${jobPosting.id}`}>최고 월급</label>
+        <select
+          id={`edit-salaryMax-${jobPosting.id}`}
+          value={editForm.salaryMax ?? ""}
+          onChange={(event) => {
+            const value = event.target.value;
+
+            setEditForm((previous) => ({
+              ...previous,
+              salaryMax:
+                value === "" ? null : Number(value),
+            }));
+          }}
+          disabled={saving}
+        >
+          <option value="">미지정</option>
+
+          {SALARY_OPTIONS.map((salary) => (
+            <option
+              key={salary}
+              value={salary}
+              disabled={
+                editForm.salaryMin != null &&
+                salary < editForm.salaryMin
+              }
+            >
+              {salary.toLocaleString()}円
+            </option>
+          ))}
+        </select>
       </div>
 
       {validationError && (

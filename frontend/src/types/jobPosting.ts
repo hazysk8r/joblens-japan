@@ -59,6 +59,8 @@ export interface CreateJobPostingRequest {
   title: string;
   sourceUrl: string | null;
   originalText: string;
+  salaryMin: number | null;
+  salaryMax: number | null;
 }
 
 export interface UpdateJobPostingRequest {
@@ -66,6 +68,8 @@ export interface UpdateJobPostingRequest {
   title: string;
   sourceUrl: string | null;
   originalText: string;
+  salaryMin: number | null;
+  salaryMax: number | null;
 }
 
 export interface UpdateApplicationStatusRequest {

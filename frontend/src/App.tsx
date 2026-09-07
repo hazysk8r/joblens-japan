@@ -26,27 +26,12 @@ import JobPostingListItem
 
 import ApplicationStatusSummary
   from './components/ApplicationStatusSummary';
+
+import { SALARY_OPTIONS } from './constants/salaryOptions';
   
 // 求人情報一覧の初期取得に使用するデフォルトのソート条件
 const DEFAULT_SORTING: JobPostingSorting = 'createdAt,desc';
 // 給料候補一覧
-const SALARY_OPTIONS = [
-  200000,
-  220000,
-  240000,
-  260000,
-  280000,
-  300000,
-  320000,
-  350000,
-  400000,
-  450000,
-  500000,
-  600000,
-  700000,
-  800000,
-  1000000,
-];
 
 function App() {
   const [keyword, setKeyword] = useState('');
@@ -473,9 +458,9 @@ function App() {
           
         </select>
 
-        <label htmlFor="salaryMin">최저 월급</label>
+        <label htmlFor="search-salaryMin">최저 월급</label>
         <select
-          id="salaryMin"
+          id="search-salaryMin"
           value={salaryMin ?? ""}
           onChange={(event) => {
             const value = event.target.value;
@@ -501,9 +486,9 @@ function App() {
           ))}
         </select>
 
-        <label htmlFor="salaryMax">최고 월급</label>
+        <label htmlFor="search-salaryMax">최고 월급</label>
         <select
-          id="salaryMax"
+          id="search-salaryMax"
           value={salaryMax ?? ""}
           onChange={(event) => {
             const value = event.target.value;
