@@ -662,4 +662,35 @@ class JobPostingControllerTest {
                             .andExpect(jsonPath("$", hasSize(1)))
                             .andExpect(jsonPath("$[0]").value("C++"));
     }
+
+    @Test
+    void SalaryRange가_유효하면_정상적으로_출력된다() throws Exception {
+            jobPostingRepository.save(
+                            new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
+                                            "AWSを開発できる人は大歓迎", 300000, 500000));
+            mockMvc.perform(get("/api/job-postings")
+                                .param("salaryMin", "300000")
+                                .param("salaryMax", "500000"))
+                        .andExpect(status().isOk());
+    }
+
+    @Test
+    void 최소월급의_조건을_최고월급의_조건보다_크게_설정하면_400코드를_반환한다() throws Exception {
+            mockMvc.perform(get("/api/job-postings")
+                            .param("salaryMin", "500000")
+                            .param("salaryMax", "300000"))
+                            .andExpect(status().isBadRequest())
+                            .andExpect(jsonPath("$.status").value(400))
+                            .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void 최소월급의_조건이_음수로_설정되면_400코드를_반환한다() throws Exception {
+            mockMvc.perform(get("/api/job-postings")
+                            .param("salaryMin", "-10"))
+                            .andExpect(status().isBadRequest())
+                            .andExpect(jsonPath("$.status").value(400))
+                            .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+    
 }

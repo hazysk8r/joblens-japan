@@ -4,6 +4,7 @@ import com.joblens.common.response.PageResponse;
 import com.joblens.jobposting.dto.ApplicationStatusSummaryResponse;
 import com.joblens.jobposting.dto.CreateJobPostingRequest;
 import com.joblens.jobposting.dto.JobPostingResponse;
+import com.joblens.jobposting.dto.JobPostingSalaryFilterRequest;
 import com.joblens.jobposting.service.JobPostingService;
 import com.joblens.jobposting.dto.UpdateApplicationStatusRequest;
 import com.joblens.jobposting.dto.UpdateJobPostingRequest;
@@ -16,6 +17,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -85,7 +87,7 @@ public class JobPostingController {
 
             /*
             * page나 size를 생략했을 때 사용할 기본값이다.
-            * 기본적으로 한 페이지에 10개씩 최신 공고부터 반환한다.
+            * 기본적으로 한 페이지에 10개씩 최신 공고부터 반환
             */
             @PageableDefault(
                     size = 10,
@@ -96,13 +98,15 @@ public class JobPostingController {
 
             @RequestParam(name = "status", required = false) ApplicationStatus applicationStatus,
 
-            @RequestParam(required = false)
-            Integer salaryMin,
-
-            @RequestParam(required = false)
-            Integer salaryMax
+            /*
+             * salaryMin / salaryMax를 검색용 DTO로 바인딩하고,
+             * 
+             * @Valid를 통해 음수 및 역범위(salaryMin > salaryMax)를 검증
+             */
+            @Valid @ModelAttribute JobPostingSalaryFilterRequest salaryFilter
     ) {
-        return jobPostingService.findAll(keyword, pageable, applicationStatus, salaryMin, salaryMax);
+        return jobPostingService.findAll(keyword, pageable, applicationStatus, salaryFilter.salaryMin(), 
+                salaryFilter.salaryMax());
     }
 
     @GetMapping("/{id}")
