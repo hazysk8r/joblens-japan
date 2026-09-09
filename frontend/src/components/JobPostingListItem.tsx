@@ -5,6 +5,7 @@ import type {
 } from '../types/jobPosting';
 
 import { useState } from 'react';
+import './JobPostingListItem.css';
 import { formatDateTime } from '../utils/date';
 
 import JobPostingMemoCreateForm from './JobPostingMemoCreateForm';
@@ -145,139 +146,288 @@ function JobPostingListItem({
 		await deleteMemo(memoId);
 	}
 
+	const { salaryMin, salaryMax } = jobPosting;
+	const salaryText = salaryMin !== null && salaryMax !== null
+		? `${salaryMin.toLocaleString('ja-JP')}円 ～ ${salaryMax.toLocaleString('ja-JP')}円`
+		: salaryMin !== null
+			? `${salaryMin.toLocaleString('ja-JP')}円以上`
+			: salaryMax !== null
+				? `${salaryMax.toLocaleString('ja-JP')}円以下`
+				: '給与未登録';
+
 	return (
-		<li>
-			<button
-				type="button"
-				disabled={loading}
-				onClick={() => {
-					void handlePostingSkill();
-				}}
-			>
-				{loading
-					? '처리중...'
-					: '기술 스택 보기'}
-			</button>
-
-			<button
-				type="button"
-				onClick={handleToggleMemo}
-				aria-expanded={memoVisible}
-				aria-controls={
-					`job-posting-memos-${jobPosting.id}`
-				}
-			>
-				{memoVisible
-					? '메모 닫기'
-					: '메모 보기'}
-			</button>
-
-			{skills !== null &&
-				skillsVisible && (
-					skills.length > 0 ? (
-						<ul>
-							{skills.map(
-								(skill) => (
-									<li key={skill}>
-										{skill}
-									</li>
-								),
-							)}
-						</ul>
-					) : (
-						<p>
-							추출된 기술 스택이 없습니다.
-						</p>
-					)
-				)}
-
-			{skillsError !== null && (
-				<p role="alert">
-					{skillsError}
-				</p>
-			)}
-
+		<li className="job-posting-card">
 			{isEditing ? (
-				<JobPostingEditForm
-					jobPosting={jobPosting}
-					saving={isSaving}
-					onSave={onSave}
-					onCancel={onCancel}
-				/>
+				<div className="job-posting-card__edit">
+					<JobPostingEditForm
+						jobPosting={jobPosting}
+						saving={isSaving}
+						onSave={onSave}
+						onCancel={onCancel}
+					/>
+				</div>
 			) : (
 				<>
-					<h2>{jobPosting.title}</h2>
+					<div className="job-posting-card__header">
+						<div className="job-posting-card__heading">
+							<h2 className="job-posting-card__title">
+								{jobPosting.title}
+							</h2>
+							<p className="job-posting-card__company">
+								{jobPosting.companyName ??
+									'회사명 미등록'}
+							</p>
+							<p className="job-posting-card__salary">{salaryText}</p>
+						</div>
+						<div className="job-posting-card__status">
+							<label>
+								지원 상태:
+								<select
+									value={
+										jobPosting.applicationStatus
+									}
+									disabled={
+										isUpdatingStatus
+									}
+									onChange={(event) => {
+										void onApplicationStatusChange(
+											jobPosting.id,
+											event.target
+												.value as ApplicationStatus,
+										);
+									}}
+								>
+									<option value="SAVED">
+										저장
+									</option>
 
-					<p>
-						{jobPosting.companyName ??
-							'회사명 미등록'}
-					</p>
+									<option value="APPLIED">
+										지원완료
+									</option>
 
-					{jobPosting.sourceUrl && (
-						<p>
-							<a
-								href={
-									jobPosting.sourceUrl
-								}
-								target="_blank"
-								rel="noreferrer"
-							>
-								원문 보기
-							</a>
+									<option value="INTERVIEWING">
+										면접 진행 중
+									</option>
+
+									<option value="OFFERED">
+										오퍼수령
+									</option>
+
+									<option value="REJECTED">
+										거절됨
+									</option>
+								</select>
+							</label>
+
+							{isUpdatingStatus && (
+								<span>
+									상태 변경 중...
+								</span>
+							)}
+						</div>
+					</div>
+
+					<div className="job-posting-card__body">
+						<p className="job-posting-card__original-text">
+							{jobPosting.originalText}
 						</p>
+						{jobPosting.sourceUrl && (
+							<p className="job-posting-card__source">
+								<a
+									href={
+										jobPosting.sourceUrl
+									}
+									target="_blank"
+									rel="noreferrer"
+								>
+									원문 보기
+								</a>
+							</p>
+						)}
+					</div>
+				</>
+			)}
+
+			<div className="job-posting-card__actions">
+				<button
+					type="button"
+					disabled={loading}
+					onClick={() => {
+						void handlePostingSkill();
+					}}
+				>
+					{loading
+						? '처리중...'
+						: '기술 스택 보기'}
+				</button>
+
+				<button
+					type="button"
+					onClick={handleToggleMemo}
+					aria-expanded={memoVisible}
+					aria-controls={
+						`job-posting-memos-${jobPosting.id}`
+					}
+				>
+					{memoVisible
+						? '메모 닫기'
+						: '메모 보기'}
+				</button>
+			</div>
+
+			<div className="job-posting-card__details">
+				{skills !== null &&
+					skillsVisible && (
+						skills.length > 0 ? (
+							<ul className="job-posting-card__skills">
+								{skills.map(
+									(skill) => (
+										<li key={skill}>
+											{skill}
+										</li>
+									),
+								)}
+							</ul>
+						) : (
+							<p>
+								추출된 기술 스택이 없습니다.
+							</p>
+						)
 					)}
 
-					<p>
-						{jobPosting.originalText}
+				{skillsError !== null && (
+					<p role="alert">
+						{skillsError}
 					</p>
+				)}
 
-					<p>
-						<label>
-							지원 상태:
-							<select
-								value={
-									jobPosting.applicationStatus
-								}
-								disabled={
-									isUpdatingStatus
-								}
-								onChange={(event) => {
-									void onApplicationStatusChange(
-										jobPosting.id,
-										event.target
-											.value as ApplicationStatus,
-									);
-								}}
-							>
-								<option value="SAVED">
-									저장
-								</option>
+				{!isEditing && (
+					<div className="job-posting-card__memo-area">
+						<JobPostingMemoCreateForm
+							jobPostingId={
+								jobPosting.id
+							}
+							onCreated={handleCreated}
+						/>
 
-								<option value="APPLIED">
-									지원완료
-								</option>
+						<div
+							className="job-posting-card__memos"
+							id={
+								`job-posting-memos-${jobPosting.id}`
+							}
+							hidden={!memoVisible}
+						>
+							{memosLoading ? (
+								<p>
+									메모 불러오는 중...
+								</p>
+							) : memosError !== null ? (
+								<p role="alert">
+									{memosError}
+								</p>
+							) : memos.length > 0 ? (
+								<ul className="job-posting-card__memo-list">
+									{memos.map(
+										(memo) => (
+											<li key={memo.id}>
+												{editingMemoId ===
+													memo.id ? (
+													<>
+														<JobPostingMemoEditForm
+															jobPostingMemo={
+																memo
+															}
+															saving={
+																savingMemoId ===
+																memo.id
+															}
+															onSave={(
+																request,
+															) =>
+																saveMemoEdit(
+																	memo.id,
+																	request,
+																)
+															}
+															onCancel={
+																cancelMemoEdit
+															}
+														/>
 
-								<option value="INTERVIEWING">
-									면접 진행 중
-								</option>
+														{memoUpdateError !==
+															null && (
+																<p role="alert">
+																	{
+																		memoUpdateError
+																	}
+																</p>
+															)}
+													</>
+												) : (
+													<>
+														<span>
+															{
+																memo.content
+															}
+														</span>
 
-								<option value="OFFERED">
-									오퍼수령
-								</option>
+														<p>
+															更新日時:{' '}
+															{formatDateTime(
+																memo.updatedAt,
+															)}
+														</p>
 
-								<option value="REJECTED">
-									거절됨
-								</option>
-							</select>
-						</label>
+														<button
+															type="button"
+															onClick={() =>
+																startMemoEdit(
+																	memo.id,
+																)
+															}
+															disabled={
+																deletingMemoId ===
+																memo.id
+															}
+														>
+															수정
+														</button>
 
-						{isUpdatingStatus && (
-							<span>
-								상태 변경 중...
-							</span>
-						)}
-					</p>
+														<button
+															type="button"
+															onClick={() => {
+																void handleMemoDeletion(
+																	memo.id,
+																);
+															}}
+															disabled={
+																deletingMemoId ===
+																memo.id
+															}
+														>
+															{deletingMemoId ===
+																memo.id
+																? '메모 삭제 중...'
+																: '메모 삭제'}
+														</button>
+													</>
+												)}
+											</li>
+										),
+									)}
+								</ul>
+							) : (
+								<p>
+									등록된 메모가 없습니다.
+								</p>
+							)}
+						</div>
+					</div>
+				)}
+			</div>
 
+			{!isEditing && (
+				<div className="job-posting-card__footer">
 					<button
 						type="button"
 						onClick={() =>
@@ -292,6 +442,7 @@ function JobPostingListItem({
 
 					<button
 						type="button"
+						className="job-posting-card__delete"
 						onClick={() => {
 							void onDelete(
 								jobPosting,
@@ -303,126 +454,7 @@ function JobPostingListItem({
 							? '삭제 중...'
 							: '삭제'}
 					</button>
-
-					<JobPostingMemoCreateForm
-						jobPostingId={
-							jobPosting.id
-						}
-						onCreated={handleCreated}
-					/>
-
-					<div
-						id={
-							`job-posting-memos-${jobPosting.id}`
-						}
-						hidden={!memoVisible}
-					>
-						{memosLoading ? (
-							<p>
-								메모 불러오는 중...
-							</p>
-						) : memosError !== null ? (
-							<p role="alert">
-								{memosError}
-							</p>
-						) : memos.length > 0 ? (
-							<ul>
-								{memos.map(
-									(memo) => (
-										<li key={memo.id}>
-											{editingMemoId ===
-												memo.id ? (
-												<>
-													<JobPostingMemoEditForm
-														jobPostingMemo={
-															memo
-														}
-														saving={
-															savingMemoId ===
-															memo.id
-														}
-														onSave={(
-															request,
-														) =>
-															saveMemoEdit(
-																memo.id,
-																request,
-															)
-														}
-														onCancel={
-															cancelMemoEdit
-														}
-													/>
-
-													{memoUpdateError !==
-														null && (
-															<p role="alert">
-																{
-																	memoUpdateError
-																}
-															</p>
-														)}
-												</>
-											) : (
-												<>
-													<span>
-														{
-															memo.content
-														}
-													</span>
-
-													<p>
-														更新日時:{' '}
-														{formatDateTime(
-															memo.updatedAt,
-														)}
-													</p>
-
-													<button
-														type="button"
-														onClick={() =>
-															startMemoEdit(
-																memo.id,
-															)
-														}
-														disabled={
-															deletingMemoId ===
-															memo.id
-														}
-													>
-														수정
-													</button>
-
-													<button
-														type="button"
-														onClick={() => {
-															void handleMemoDeletion(
-																memo.id,
-															);
-														}}
-														disabled={
-															deletingMemoId ===
-															memo.id
-														}
-													>
-														{deletingMemoId ===
-															memo.id
-															? '메모 삭제 중...'
-															: '메모 삭제'}
-													</button>
-												</>
-											)}
-										</li>
-									),
-								)}
-							</ul>
-						) : (
-							<p>
-								등록된 메모가 없습니다.
-							</p>
-						)}
-					</div>
-				</>
+				</div>
 			)}
 		</li>
 	);

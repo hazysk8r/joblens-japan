@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
+import './JobPostingList.css';
 
 import { 
   deleteJobPosting,
@@ -566,7 +567,7 @@ function App() {
       ) : jobPostings.length === 0 ? (
         <p>검색 결과가 없습니다.</p>
       ) : (
-        <ul>
+        <ul className="job-posting-list" role="list">
           {jobPostings.map((jobPosting) => (
             <JobPostingListItem
               key={jobPosting.id}
