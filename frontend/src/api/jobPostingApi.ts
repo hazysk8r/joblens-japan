@@ -72,7 +72,7 @@ export async function fetchJobPostings(
 export async function createJobPosting(
   request:CreateJobPostingRequest,
 ): Promise<JobPosting> {
-  const response = await fetch('api/job-postings', {
+  const response = await fetch('/api/job-postings', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

@@ -1,5 +1,6 @@
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, vi, test, expect } from 'vitest';
 
 import App from '../App';
@@ -16,6 +17,14 @@ afterEach(() => {
 });
 
 vi.mock('../api/jobPostingApi');
+
+const renderApp = (initialEntry = '/') => {
+  return render(
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <App />
+    </MemoryRouter>
+  );
+};
 
 const mockPage = {
   content: [],
@@ -40,7 +49,7 @@ vi.mocked(fetchJobPostings).mockResolvedValue(mockPage);
 vi.mocked(fetchApplicationStatusSummary).mockResolvedValue(mockSummary);
 
 test('정렬 select가 보인다', () => {
-  render(<App />);
+  renderApp();
 
   const sortingSelect = screen.getByRole('combobox', {
     name: '정렬',
@@ -52,7 +61,7 @@ test('정렬 select가 보인다', () => {
 test('회사명순 선택 시 해당 정렬값으로 다시 조회한다', async () => {
   const user = userEvent.setup();
 
-  render(<App />);
+  renderApp();
 
   const sortingSelect = screen.getByRole('combobox', {
     name: '정렬',
@@ -76,7 +85,7 @@ test('회사명순 선택 시 해당 정렬값으로 다시 조회한다', async
 
 test('검색 조건을 유지한 채 회사명 순으로 정렬한다', async () => {
   const user = userEvent.setup();
-  render(<App />);
+  renderApp();
 
   const keywordInput = screen.getByRole('textbox', {
     name: '검색어',
@@ -113,7 +122,7 @@ test('검색 조건을 유지한 채 회사명 순으로 정렬한다', async ()
 
 test('현재 정렬 조건이 페이지를 넘겨도 유지된다', async () => {
   const user = userEvent.setup();
-  render(<App />);
+  renderApp();
 
   const sortingSelect = screen.getByRole('combobox', {
     name: '정렬',
@@ -166,7 +175,7 @@ test('사용자가 선택한 정렬 상태를 유지한 채 다음 페이지로 
   
   
   const user = userEvent.setup();
-  render(<App />);
+  renderApp();
 
   const sortingSelect = screen.getByRole('combobox', {
     name: '정렬',
@@ -229,7 +238,7 @@ test('특정 정렬 상태에서 삭제 행위가 이뤄져도 사용자가 선�
     .mockResolvedValueOnce(pageWithContent);
 
   const user = userEvent.setup();
-  render(<App />);
+  renderApp();
 
   const sortingSelect = screen.getByRole('combobox', {
     name: '정렬',
@@ -284,7 +293,7 @@ test('특정 정렬 상태에서 수정 행위가 이뤄져도 사용자가 선�
     .mockResolvedValueOnce(pageWithContent);
 
   const user = userEvent.setup();
-  render(<App />);
+  renderApp();
 
   const sortingSelect = screen.getByRole('combobox', {
     name: '정렬',
@@ -379,7 +388,7 @@ test('검색어나 필터가 적용된 상태에서 JobLens Japan 을 누르면,
     .mockResolvedValueOnce(secondPage); //다음 페이지
 
   const user= userEvent.setup();
-  render(<App />);
+  renderApp();
 
   const keywordInput = screen.getByRole('textbox', {
     name: '검색어',
@@ -435,7 +444,7 @@ test('검색어나 필터가 적용된 상태에서 JobLens Japan 을 누르면,
 test('월급 범위를 선택하고 검색하면 salaryMin과 salaryMax를 전달한다', async() => {
   const user = userEvent.setup();
 
-  render(<App />);
+  renderApp();
 
   const salaryMinSelect = screen.getByLabelText(
     '최저 월급',
@@ -478,7 +487,7 @@ test('월급 범위를 선택하고 검색하면 salaryMin과 salaryMax를 전�
 test('최저 월급보다 낮은 최고 월급은 선택할 수 없다', async() => {
   const user = userEvent.setup();
 
-  render(<App />);
+  renderApp();
 
   const salaryMinSelect = screen.getByLabelText(
     '최저 월급',
@@ -509,7 +518,7 @@ test('최저 월급보다 낮은 최고 월급은 선택할 수 없다', async()
 test('월급 범위를 포함하여 채용공고를 등록할 수 있다', async () => {
   const user = userEvent.setup();
 
-  render(<App />);
+  renderApp('/job-postings/new')
 
   await user.type(
     screen.getByRole('textbox', {
@@ -573,4 +582,31 @@ test('월급 범위를 포함하여 채용공고를 등록할 수 있다', async
         salaryMax: 500000,
       });
   });
+});
+
+test('홈에서求人を登録する 링크를 누르면 채용공고 등록 페이지로 이동한다', async () => {
+  const user = userEvent.setup();
+
+  renderApp();
+
+  const createJobPostingLink =
+    await screen.findByRole('link', {
+      name: /求人を登録する/,
+    });
+
+  await user.click(createJobPostingLink);
+
+  const createPageHeading =
+    await screen.findByRole('heading', {
+      name: '求人登録',
+    });
+
+  expect(createPageHeading).toBeDefined();
+
+  const createFormHeading =
+    screen.getByRole('heading', {
+      name: '채용공고 등록',
+    });
+
+  expect(createFormHeading).toBeDefined();
 });
