@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-
+import './JobPostingCreateForm.css';
 import { createJobPosting } from '../api/jobPostingApi';
 import type { SalaryFilter } from '../types/jobPosting';
 import { SALARY_OPTIONS } from '../constants/salaryOptions';
@@ -79,8 +79,8 @@ function JobPostingCreateForm({
   };
 
   return (
-    <section>
-      <h2>채용공고 등록</h2>
+    <section className="job-posting-create-form">
+      <h2 >채용공고 등록</h2>
 
       <form onSubmit={handleSubmit}>
         <div>

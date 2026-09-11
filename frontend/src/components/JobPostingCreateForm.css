@@ -1,0 +1,84 @@
+.job-posting-create-form {
+  --create-muted-bg: #f7f8fa;
+  --create-action: #334e68;
+
+  min-width: 0;
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 4%);
+  color: var(--text-h);
+  text-align: left;
+}
+
+.job-posting-create-form h2 {
+  margin: 0 0 1.25rem;
+  font-size: 1.4rem;
+}
+
+.job-posting-create-form form>div {
+  margin-bottom: 1rem;
+}
+
+.job-posting-create-form form label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.job-posting-create-form input,
+.job-posting-create-form select,
+.job-posting-create-form textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+}
+
+.job-posting-create-form textarea {
+  display: block;
+  min-height: 8rem;
+  resize: vertical;
+}
+
+.job-posting-create-form button {
+  min-height: 2.5rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--create-action);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.job-posting-create-form button:hover:not(:disabled) {
+  border-color: var(--create-action);
+  background: var(--create-muted-bg);
+}
+
+.job-posting-create-form:is(button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--create-action);
+  outline-offset: 3px;
+}
+
+.job-posting-create-form:is(button, input, select, textarea):disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .job-posting-create-form {
+    padding: 1rem;
+  }
+}
