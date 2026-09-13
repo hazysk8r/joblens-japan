@@ -8,11 +8,13 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType; 
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+
 
 @Entity
 @Table(name = "job_postings")
@@ -48,6 +50,9 @@ public class JobPosting {
 
     @Column(name = "salary_max")
     private Integer salaryMax;
+
+    @Version
+    private Long version;
 
     public JobPosting(
             String companyName,

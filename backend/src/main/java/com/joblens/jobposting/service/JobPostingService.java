@@ -11,6 +11,7 @@ import com.joblens.jobposting.dto.UpdateApplicationStatusRequest;
 import com.joblens.jobposting.repository.JobPostingRepository;
 import com.joblens.jobposting.specification.JobPostingSpecifications;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
+import com.joblens.jobposting.exception.JobPostingVersionConflictException;
 import com.joblens.jobposting.validation.JobPostingSortValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.regex.*;
 
 import org.springframework.data.domain.Page;
@@ -78,6 +80,14 @@ public class JobPostingService {
     ) {
         JobPosting jobPosting = findEntityById(id);
 
+        if (!Objects.equals(request.version(), jobPosting.getVersion())) {
+            throw new JobPostingVersionConflictException(
+                id, 
+                request.version(), 
+                jobPosting.getVersion()
+            );
+        }
+
         jobPosting.update(
                 request.companyName(),
                 request.title(),
@@ -86,6 +96,10 @@ public class JobPostingService {
                 request.salaryMin(),
                 request.salaryMax()
         );
+
+        // Optimistic Lockingの更新を即時にDBへ反映し、
+        // 更新後の最新versionをレスポンスに含めるためにflushする。
+        jobPostingRepository.flush();
 
         return JobPostingResponse.from(jobPosting);
     }

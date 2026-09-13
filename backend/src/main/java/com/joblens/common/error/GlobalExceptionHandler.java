@@ -3,6 +3,8 @@ package com.joblens.common.error;
 import com.joblens.jobposting.exception.InvalidSortFieldException;
 import com.joblens.jobposting.exception.JobPostingMemoNotFoundException;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
+import com.joblens.jobposting.exception.JobPostingVersionConflictException;
+
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -112,6 +114,23 @@ public class GlobalExceptionHandler {
 
             return ResponseEntity
                             .status(HttpStatus.NOT_FOUND)
+                            .body(response);
+    }
+
+    @ExceptionHandler(JobPostingVersionConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleJobPostingVersionConflict(
+                    JobPostingVersionConflictException exception,
+                    HttpServletRequest request) {
+            ApiErrorResponse response = new ApiErrorResponse(
+                            Instant.now(),
+                            HttpStatus.CONFLICT.value(),
+                            "JOB_POSTING_VERSION_CONFLICT",
+                            exception.getMessage(),
+                            request.getRequestURI(),
+                            Map.of());
+
+            return ResponseEntity
+                            .status(HttpStatus.CONFLICT)
                             .body(response);
     }
 

@@ -13,6 +13,7 @@ public record JobPostingResponse(
         String originalText,
         Integer salaryMin,
         Integer salaryMax,
+        Long version,
         Instant createdAt,
         ApplicationStatus applicationStatus
 ) {
@@ -26,6 +27,7 @@ public record JobPostingResponse(
                 jobPosting.getOriginalText(),
                 jobPosting.getSalaryMin(),
                 jobPosting.getSalaryMax(),
+                jobPosting.getVersion(),
                 jobPosting.getCreatedAt(),
                 jobPosting.getApplicationStatus()
         );

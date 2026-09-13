@@ -1,0 +1,2 @@
+ALTER TABLE job_postings
+ADD COLUMN version BIGINT NOT NULL DEFAULT 0;

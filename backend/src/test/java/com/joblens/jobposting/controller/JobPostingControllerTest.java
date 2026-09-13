@@ -103,58 +103,69 @@ class JobPostingControllerTest {
 
     @Test
     void 채용공고를_수정하면_변경된_내용과_200을_반환한다() throws Exception {
-        /*
-        * 수정하려면 기존 데이터가 먼저 존재해야 하므로
-        * Repository를 통해 테스트용 채용공고를 저장한다.
-        */
-        JobPosting savedJobPosting = jobPostingRepository.save(
-                new JobPosting(
-                        "기존 회사",
-                        "기존 제목",
-                        "https://example.com/old",
-                        "기존 채용공고 원문",
-                        null,
-                        null
-                )
-        );
+            /*
+             * 수정하려면 기존 데이터가 먼저 존재해야 하므로
+             * Repository를 통해 테스트용 채용공고를 저장한다.
+             */
+            JobPosting savedJobPosting = jobPostingRepository.saveAndFlush(
+                            new JobPosting(
+                                            "기존 회사",
+                                            "기존 제목",
+                                            "https://example.com/old",
+                                            "기존 채용공고 원문",
+                                            null,
+                                            null));
 
-        String requestBody = """
-                {
-                "companyName": "札幌クラウド株式会社",
-                "title": "Java・AWSエンジニア",
-                "sourceUrl": "https://example.com/jobs/updated",
-                "originalText": "Spring BootとAWSを利用した開発業務です。"
-                }
-                """;
+            Long savedVersion = savedJobPosting.getVersion();
 
-        mockMvc.perform(put(
-                        "/api/job-postings/{id}",
-                        savedJobPosting.getId()
-                )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id")
-                        .value(savedJobPosting.getId()))
-                .andExpect(jsonPath("$.companyName")
-                        .value("札幌クラウド株式会社"))
-                .andExpect(jsonPath("$.title")
-                        .value("Java・AWSエンジニア"))
-                .andExpect(jsonPath("$.sourceUrl")
-                        .value("https://example.com/jobs/updated"));
+            String requestBody = """
+                            {
+                              "companyName": "札幌クラウド株式会社",
+                              "title": "Java・AWSエンジニア",
+                              "sourceUrl": "https://example.com/jobs/updated",
+                              "originalText": "Spring BootとAWSを利用した開発業務です。",
+                              "salaryMin": null,
+                              "salaryMax": null,
+                              "version": %d
+                            }
+                            """.formatted(savedVersion);
 
-        JobPosting updatedJobPosting = jobPostingRepository
-                .findById(savedJobPosting.getId())
-                .orElseThrow();
+            mockMvc.perform(put(
+                            "/api/job-postings/{id}",
+                            savedJobPosting.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(requestBody))
+                            .andExpect(status().isOk())
+                            .andExpect(jsonPath("$.id")
+                                            .value(savedJobPosting.getId()))
+                            .andExpect(jsonPath("$.companyName")
+                                            .value("札幌クラウド株式会社"))
+                            .andExpect(jsonPath("$.title")
+                                            .value("Java・AWSエンジニア"))
+                            .andExpect(jsonPath("$.sourceUrl")
+                                            .value("https://example.com/jobs/updated"))
+                            .andExpect(jsonPath("$.version")
+                                            .value(savedVersion + 1));
 
-        assertEquals(
-                "Java・AWSエンジニア",
-                updatedJobPosting.getTitle()
-        );              
-        /**
-         * HTTP 응답만 수정된 척한 것이 아니라
-         * PostgreSQL 안의 실제 데이터도 바뀌었는지 검사
-        */  
+            JobPosting updatedJobPosting = jobPostingRepository
+                            .findById(savedJobPosting.getId())
+                            .orElseThrow();
+
+            assertEquals(
+                            "Java・AWSエンジニア",
+                            updatedJobPosting.getTitle());
+
+            assertEquals(
+                            savedVersion + 1,
+                            updatedJobPosting.getVersion());
+
+            /**
+             * HTTP 응답만 수정된 척한 것이 아니라
+             * PostgreSQL 안의 실제 데이터도 바뀌었는지 검사한다.
+             *
+             * 또한 Optimistic Locking이 정상적으로 동작하여
+             * version이 1 증가했는지도 확인한다.
+             */
     }
 
     @Test
@@ -691,6 +702,47 @@ class JobPostingControllerTest {
                             .andExpect(status().isBadRequest())
                             .andExpect(jsonPath("$.status").value(400))
                             .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test 
+    void 오래된_version으로_구인공고를_수정하면_409를_반환한다() throws Exception {
+            JobPosting charlie = jobPostingRepository.save(
+                            new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
+                                            "AWSを開発できる人は大歓迎", 300000, 500000));
+            Long staleVersion = charlie.getVersion();
+
+            mockMvc.perform(put("/api/job-postings/{id}", charlie.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                            {
+                                                "companyName": "Charlie Company",
+                                                "title": "Senior AWS Engineer",
+                                                "sourceUrl": "https://example.com/charlie",
+                                                "originalText": "AWSを開発できる人は大歓迎",
+                                                "salaryMin": 300000,
+                                                "salaryMax": 500000,
+                                                "version": %d
+                                            }
+                                            """.formatted(staleVersion)))
+                            .andExpect(status().isOk());
+            // 두 번째 수정                
+            mockMvc.perform(put("/api/job-postings/{id}", charlie.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                            {
+                                                "companyName": "Charlie Company",
+                                                "title": "Senior AWS Engineer",
+                                                "sourceUrl": "https://example.com/charlie",
+                                                "originalText": "AWSを開発できる人は大歓迎",
+                                                "salaryMin": 300000,
+                                                "salaryMax": 500000,
+                                                "version": %d
+                                            }
+                                            """.formatted(staleVersion)))
+                            .andExpect(status().isConflict())
+                            .andExpect(jsonPath("$.code")
+                                            .value("JOB_POSTING_VERSION_CONFLICT"));
+
     }
     
 }
