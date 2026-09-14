@@ -13,11 +13,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.context.annotation.Import;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -125,27 +127,30 @@ class JobPostingControllerTest {
                               "sourceUrl": "https://example.com/jobs/updated",
                               "originalText": "Spring BootとAWSを利用した開発業務です。",
                               "salaryMin": null,
-                              "salaryMax": null,
-                              "version": %d
+                              "salaryMax": null
                             }
-                            """.formatted(savedVersion);
+                            """;
 
             mockMvc.perform(put(
                             "/api/job-postings/{id}",
                             savedJobPosting.getId())
+                            .header(
+                                HttpHeaders.IF_MATCH,
+                                "\"" + savedVersion + "\"")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(requestBody))
                             .andExpect(status().isOk())
                             .andExpect(jsonPath("$.id")
                                             .value(savedJobPosting.getId()))
+                            .andExpect(header().string(
+                                            HttpHeaders.ETAG,
+                                            "\"" + (savedVersion + 1) + "\""))
                             .andExpect(jsonPath("$.companyName")
                                             .value("札幌クラウド株式会社"))
                             .andExpect(jsonPath("$.title")
                                             .value("Java・AWSエンジニア"))
                             .andExpect(jsonPath("$.sourceUrl")
-                                            .value("https://example.com/jobs/updated"))
-                            .andExpect(jsonPath("$.version")
-                                            .value(savedVersion + 1));
+                                            .value("https://example.com/jobs/updated"));
 
             JobPosting updatedJobPosting = jobPostingRepository
                             .findById(savedJobPosting.getId())
@@ -704,45 +709,112 @@ class JobPostingControllerTest {
                             .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
     }
 
-    @Test 
-    void 오래된_version으로_구인공고를_수정하면_409를_반환한다() throws Exception {
-            JobPosting charlie = jobPostingRepository.save(
+    @Test
+    void If_Match_헤더_없이_수정하면_428을_반환한다() throws Exception {
+            JobPosting charlie = jobPostingRepository.saveAndFlush(
                             new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
                                             "AWSを開発できる人は大歓迎", 300000, 500000));
+
+            String requestBody = """
+                            {
+                              "companyName": "Charlie Company",
+                              "title": "Junior AWS Engineer",
+                              "sourceUrl": "https://example.com/charlie",
+                              "originalText": "AWSを開発できる人は大歓迎",
+                              "salaryMin": 300000,
+                              "salaryMax": 500000
+                            }
+                            """;
+
+            mockMvc.perform(put(
+                            "/api/job-postings/{id}",
+                            charlie.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(requestBody))
+                            .andExpect(status().is(428))
+                            .andExpect(jsonPath("$.code")
+                                            .value("IF_MATCH_REQUIRED"));
+            
+    }
+
+    @Test
+    void If_Match_헤더_버전이_오래됐다면_412를_반환한다() throws Exception {
+            JobPosting charlie = jobPostingRepository.saveAndFlush(
+                            new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
+                                            "AWSを開発できる人は大歓迎", 300000, 500000));
+
             Long staleVersion = charlie.getVersion();
 
-            mockMvc.perform(put("/api/job-postings/{id}", charlie.getId())
+            String requestBody = """
+                            {
+                              "companyName": "Charlie Company",
+                              "title": "Junior AWS Engineer",
+                              "sourceUrl": "https://example.com/charlie",
+                              "originalText": "AWSを開発できる人は大歓迎",
+                              "salaryMin": 300000,
+                              "salaryMax": 500000
+                            }
+                            """;
+            mockMvc.perform(put(
+                "/api/job-postings/{id}",
+                charlie.getId())
+                .header(
+                        HttpHeaders.IF_MATCH,
+                        "\"" + staleVersion +"\""
+                )
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                .andExpect(status().isOk());
+
+            mockMvc.perform(put(
+                            "/api/job-postings/{id}",
+                            charlie.getId())
+                            .header(
+                                HttpHeaders.IF_MATCH,
+                                "\""+ staleVersion + "\""
+                            )
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                            {
-                                                "companyName": "Charlie Company",
-                                                "title": "Senior AWS Engineer",
-                                                "sourceUrl": "https://example.com/charlie",
-                                                "originalText": "AWSを開発できる人は大歓迎",
-                                                "salaryMin": 300000,
-                                                "salaryMax": 500000,
-                                                "version": %d
-                                            }
-                                            """.formatted(staleVersion)))
-                            .andExpect(status().isOk());
-            // 두 번째 수정                
-            mockMvc.perform(put("/api/job-postings/{id}", charlie.getId())
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                            {
-                                                "companyName": "Charlie Company",
-                                                "title": "Senior AWS Engineer",
-                                                "sourceUrl": "https://example.com/charlie",
-                                                "originalText": "AWSを開発できる人は大歓迎",
-                                                "salaryMin": 300000,
-                                                "salaryMax": 500000,
-                                                "version": %d
-                                            }
-                                            """.formatted(staleVersion)))
-                            .andExpect(status().isConflict())
+                            .content(requestBody))               
+                            .andExpect(status().isPreconditionFailed())
                             .andExpect(jsonPath("$.code")
                                             .value("JOB_POSTING_VERSION_CONFLICT"));
 
+    }
+
+    @Test
+    void If_Match_헤더_버전이_일치한다면_수정에_성공한다() throws Exception {
+            JobPosting charlie = jobPostingRepository.saveAndFlush(
+                            new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
+                                            "AWSを開発できる人は大歓迎", 300000, 500000));
+
+            Long currentVersion = charlie.getVersion();
+
+            String requestBody = """
+                            {
+                              "companyName": "Charlie Company",
+                              "title": "Junior AWS Engineer",
+                              "sourceUrl": "https://example.com/charlie",
+                              "originalText": "AWSを開発できる人は大歓迎",
+                              "salaryMin": 300000,
+                              "salaryMax": 500000
+                            }
+                            """;
+
+            mockMvc.perform(put(
+                            "/api/job-postings/{id}",
+                            charlie.getId())
+                            .header(
+                                HttpHeaders.IF_MATCH,
+                                "\""+ currentVersion +"\"")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(requestBody))
+                            .andExpect(status().isOk())
+                            .andExpect(header().string(
+                                HttpHeaders.ETAG,
+                                "\"" + (currentVersion + 1) + "\""
+                            ))
+                            .andExpect(jsonPath("$.title")
+                                .value("Junior AWS Engineer"));
     }
     
 }

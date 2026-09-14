@@ -1,5 +1,6 @@
 package com.joblens.common.error;
 
+import com.joblens.jobposting.exception.IfMatchRequiredException;
 import com.joblens.jobposting.exception.InvalidSortFieldException;
 import com.joblens.jobposting.exception.JobPostingMemoNotFoundException;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
@@ -123,16 +124,32 @@ public class GlobalExceptionHandler {
                     HttpServletRequest request) {
             ApiErrorResponse response = new ApiErrorResponse(
                             Instant.now(),
-                            HttpStatus.CONFLICT.value(),
+                            HttpStatus.PRECONDITION_FAILED.value(),
                             "JOB_POSTING_VERSION_CONFLICT",
                             exception.getMessage(),
                             request.getRequestURI(),
                             Map.of());
 
             return ResponseEntity
-                            .status(HttpStatus.CONFLICT)
+                            .status(HttpStatus.PRECONDITION_FAILED)
                             .body(response);
     }
+
+    @ExceptionHandler(IfMatchRequiredException.class)
+    public ResponseEntity<ApiErrorResponse> handleIfMatchRequired(
+                    IfMatchRequiredException exception,
+                    HttpServletRequest request) {
+            ApiErrorResponse response = new ApiErrorResponse(
+                            Instant.now(),
+                            HttpStatus.PRECONDITION_REQUIRED.value(),
+                            "IF_MATCH_REQUIRED",
+                            exception.getMessage(),
+                            request.getRequestURI(),
+                            Map.of());
+            return ResponseEntity
+                            .status(HttpStatus.PRECONDITION_REQUIRED)
+                            .body(response);
+                    }
 
 }
 

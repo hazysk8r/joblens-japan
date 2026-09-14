@@ -32,9 +32,7 @@ public record UpdateJobPostingRequest(
         Integer salaryMin,
 
         @PositiveOrZero 
-        Integer salaryMax,
-
-        Long version
+        Integer salaryMax
         
 ) implements SalaryRangeTarget{
 }

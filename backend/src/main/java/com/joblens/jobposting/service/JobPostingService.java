@@ -76,14 +76,15 @@ public class JobPostingService {
     @Transactional
     public JobPostingResponse update(
             Long id,
+            Long expectedVersion,
             UpdateJobPostingRequest request
     ) {
         JobPosting jobPosting = findEntityById(id);
 
-        if (!Objects.equals(request.version(), jobPosting.getVersion())) {
+        if (!Objects.equals(expectedVersion, jobPosting.getVersion())) {
             throw new JobPostingVersionConflictException(
                 id, 
-                request.version(), 
+                expectedVersion, 
                 jobPosting.getVersion()
             );
         }

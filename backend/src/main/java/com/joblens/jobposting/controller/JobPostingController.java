@@ -8,6 +8,7 @@ import com.joblens.jobposting.dto.JobPostingSalaryFilterRequest;
 import com.joblens.jobposting.service.JobPostingService;
 import com.joblens.jobposting.dto.UpdateApplicationStatusRequest;
 import com.joblens.jobposting.dto.UpdateJobPostingRequest;
+import com.joblens.jobposting.exception.IfMatchRequiredException;
 import com.joblens.jobposting.domain.ApplicationStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -55,11 +57,22 @@ public class JobPostingController {
      * 교체한다는 의미로 사용한다.
      */
     @PutMapping("/{id}")
-    public JobPostingResponse update(
+    public ResponseEntity<JobPostingResponse> update(
             @PathVariable Long id,
+            @RequestHeader(value="If-Match", required = false) String ifMatch,
             @Valid @RequestBody UpdateJobPostingRequest request
     ) {
-        return jobPostingService.update(id, request);
+        if (ifMatch == null || ifMatch.isBlank()) {
+            throw new IfMatchRequiredException();
+        }
+
+        Long expectedVersion = Long.valueOf(ifMatch.replace("\"", ""));
+        JobPostingResponse response = jobPostingService.update(id, expectedVersion, request);
+
+        return ResponseEntity
+                .ok()
+                .eTag(String.valueOf(response.version()))
+                .body(response);
     }
 
     /**
@@ -110,8 +123,13 @@ public class JobPostingController {
     }
 
     @GetMapping("/{id}")
-    public JobPostingResponse findById(@PathVariable Long id) {
-        return jobPostingService.findById(id);
+    public ResponseEntity<JobPostingResponse> findById(@PathVariable Long id) {
+        JobPostingResponse response = jobPostingService.findById(id);
+
+        return ResponseEntity
+                .ok()
+                .eTag(String.valueOf(response.version()))
+                .body(response);
     }
 
     @PatchMapping("/{id}/status")
