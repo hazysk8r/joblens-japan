@@ -62,17 +62,10 @@ public class JobPostingController {
             @RequestHeader(value="If-Match", required = false) String ifMatch,
             @Valid @RequestBody UpdateJobPostingRequest request
     ) {
-        if (ifMatch == null || ifMatch.isBlank()) {
-            throw new IfMatchRequiredException();
-        }
-
-        Long expectedVersion = Long.valueOf(ifMatch.replace("\"", ""));
+        Long expectedVersion = parseIfMatch(ifMatch);
         JobPostingResponse response = jobPostingService.update(id, expectedVersion, request);
 
-        return ResponseEntity
-                .ok()
-                .eTag(String.valueOf(response.version()))
-                .body(response);
+        return okWithETag(response);
     }
 
     /**
@@ -126,18 +119,35 @@ public class JobPostingController {
     public ResponseEntity<JobPostingResponse> findById(@PathVariable Long id) {
         JobPostingResponse response = jobPostingService.findById(id);
 
+        return okWithETag(response);
+    }
+
+    // ETagヘッダーをレスポンスに含めるため、ResponseEntityに変更した。
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<JobPostingResponse> updateApplicationResponse(
+        @PathVariable Long id,
+        @RequestHeader(value = "If-Match", required = false) String ifMatch,
+        @Valid @RequestBody UpdateApplicationStatusRequest request
+    ) {
+        Long expectedVersion = parseIfMatch(ifMatch);
+        JobPostingResponse response = jobPostingService.updateApplicationStatus(id, expectedVersion, request);
+
+        return okWithETag(response);
+    }
+
+    private Long parseIfMatch(String ifMatch) {
+        if (ifMatch == null || ifMatch.isBlank()) {
+            throw new IfMatchRequiredException();
+        }
+
+        return Long.valueOf(ifMatch.replace("\"", ""));
+    }
+
+    private ResponseEntity<JobPostingResponse> okWithETag(JobPostingResponse response) {
         return ResponseEntity
                 .ok()
                 .eTag(String.valueOf(response.version()))
                 .body(response);
-    }
-
-    @PatchMapping("/{id}/status")
-    public JobPostingResponse updateApplicationResponse(
-        @PathVariable Long id,
-        @Valid @RequestBody UpdateApplicationStatusRequest request
-    ) {
-        return jobPostingService.updateApplicationStatus(id, request);
     }
 
     @GetMapping("/status-summary")

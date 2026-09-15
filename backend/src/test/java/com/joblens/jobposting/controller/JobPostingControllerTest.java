@@ -6,6 +6,9 @@ import com.joblens.jobposting.domain.ApplicationStatus;
 import com.joblens.TestcontainersConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
@@ -270,9 +273,10 @@ class JobPostingControllerTest {
     @Test
     void 채용공고의_지원_상태를_변경하면_응답과_DB에_반영된다() throws Exception {
         // 테스트용 공고 DB에 저장
-        JobPosting savedJobPosting = jobPostingRepository.save(
+        JobPosting savedJobPosting = jobPostingRepository.saveAndFlush(
                 new JobPosting("상태 변경 테스트 회사", "백엔드 엔지니어", "https://example.com/status", "지원 상태 변경 테스트용 원문", null, null)
         );
+        Long savedVersion = savedJobPosting.getVersion();
 
         // SAVED에서 다른 지원 상태로 변경하는 요청
         String requestBody = """
@@ -286,11 +290,14 @@ class JobPostingControllerTest {
                         "/api/job-postings/{id}/status",
                         savedJobPosting.getId()
                 )
+                        .header(HttpHeaders.IF_MATCH, "\"" + savedVersion + "\"")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ETAG, "\"" + (savedVersion + 1) + "\""))
                 .andExpect(jsonPath("$.id")
                         .value(savedJobPosting.getId()))
+                .andExpect(jsonPath("$.version").value(savedVersion + 1))
                 .andExpect(jsonPath("$.applicationStatus")
                         .value("APPLIED"));
 
@@ -302,7 +309,13 @@ class JobPostingControllerTest {
                 ApplicationStatus.APPLIED, 
                 updatedJobPosting.getApplicationStatus()
         );
+        assertEquals(savedVersion + 1, updatedJobPosting.getVersion());
 
+        mockMvc.perform(get("/api/job-postings/{id}", savedJobPosting.getId()))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ETAG, "\"" + (savedVersion + 1) + "\""))
+                .andExpect(jsonPath("$.version").value(savedVersion + 1))
+                .andExpect(jsonPath("$.applicationStatus").value("APPLIED"));
     }
 
     @Test
@@ -316,6 +329,7 @@ class JobPostingControllerTest {
                         "/api/job-postings/{id}/status",
                         9999L
                 )
+                        .header(HttpHeaders.IF_MATCH, "\"0\"")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isNotFound())
@@ -351,6 +365,7 @@ class JobPostingControllerTest {
                         "/api/job-postings/{id}/status",
                         savedJobPosting.getId()      
                 )
+                        .header(HttpHeaders.IF_MATCH, "\"" + savedJobPosting.getVersion() + "\"")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isBadRequest())
@@ -370,6 +385,131 @@ class JobPostingControllerTest {
         );
 
 
+    }
+
+    // If-Matchの未指定・空文字・空白文字を同じ条件としてまとめて検証する。
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "\t"})
+    void If_Match가_없거나_비어있으면_지원_상태_변경은_428을_반환한다(String ifMatch) throws Exception {
+        JobPosting savedJobPosting = jobPostingRepository.saveAndFlush(
+                new JobPosting("상태 변경 테스트 회사", "백엔드 엔지니어", null, "상태 변경 테스트 원문", null, null)
+        );
+        Long savedVersion = savedJobPosting.getVersion();
+        String path = "/api/job-postings/" + savedJobPosting.getId() + "/status";
+        var request = patch(path)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"status": "APPLIED"}
+                        """);
+        if (ifMatch != null) {
+            request.header(HttpHeaders.IF_MATCH, ifMatch);
+        }
+
+        mockMvc.perform(request)
+                .andExpect(status().is(428))
+                .andExpect(jsonPath("$.status").value(428))
+                .andExpect(jsonPath("$.code").value("IF_MATCH_REQUIRED"))
+                .andExpect(jsonPath("$.message").value("If-Match header is required."))
+                .andExpect(jsonPath("$.path").value(path));
+
+        JobPosting unchangedJobPosting = jobPostingRepository.findById(savedJobPosting.getId()).orElseThrow();
+        assertEquals(ApplicationStatus.SAVED, unchangedJobPosting.getApplicationStatus());
+        assertEquals(savedVersion, unchangedJobPosting.getVersion());
+    }
+
+    @Test
+    void 이전_If_Match로_지원_상태를_다시_변경하면_412를_반환한다() throws Exception {
+        JobPosting savedJobPosting = jobPostingRepository.saveAndFlush(
+                new JobPosting("상태 변경 테스트 회사", "백엔드 엔지니어", null, "상태 변경 테스트 원문", null, null)
+        );
+        Long staleVersion = savedJobPosting.getVersion();
+        String path = "/api/job-postings/" + savedJobPosting.getId() + "/status";
+
+        mockMvc.perform(patch(path)
+                        .header(HttpHeaders.IF_MATCH, "\"" + staleVersion + "\"")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"status": "APPLIED"}
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(patch(path)
+                        .header(HttpHeaders.IF_MATCH, "\"" + staleVersion + "\"")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"status": "INTERVIEWING"}
+                                """))
+                .andExpect(status().isPreconditionFailed())
+                .andExpect(jsonPath("$.status").value(412))
+                .andExpect(jsonPath("$.code").value("JOB_POSTING_VERSION_CONFLICT"))
+                .andExpect(jsonPath("$.path").value(path));
+
+        JobPosting unchangedJobPosting = jobPostingRepository.findById(savedJobPosting.getId()).orElseThrow();
+        assertEquals(ApplicationStatus.APPLIED, unchangedJobPosting.getApplicationStatus());
+        assertEquals(staleVersion + 1, unchangedJobPosting.getVersion());
+    }
+
+    @Test
+    void 일반_수정_이전의_If_Match로_지원_상태를_변경하면_412를_반환한다() throws Exception {
+        JobPosting savedJobPosting = jobPostingRepository.saveAndFlush(
+                new JobPosting("상태 변경 테스트 회사", "기존 제목", null, "기존 원문", null, null)
+        );
+        Long staleVersion = savedJobPosting.getVersion();
+
+        mockMvc.perform(put("/api/job-postings/{id}", savedJobPosting.getId())
+                        .header(HttpHeaders.IF_MATCH, "\"" + staleVersion + "\"")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"companyName": "상태 변경 테스트 회사", "title": "수정된 제목", "originalText": "기존 원문"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ETAG, "\"" + (staleVersion + 1) + "\""));
+
+        mockMvc.perform(patch("/api/job-postings/{id}/status", savedJobPosting.getId())
+                        .header(HttpHeaders.IF_MATCH, "\"" + staleVersion + "\"")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"status": "APPLIED"}
+                                """))
+                .andExpect(status().isPreconditionFailed())
+                .andExpect(jsonPath("$.code").value("JOB_POSTING_VERSION_CONFLICT"));
+
+        JobPosting unchangedJobPosting = jobPostingRepository.findById(savedJobPosting.getId()).orElseThrow();
+        assertEquals("수정된 제목", unchangedJobPosting.getTitle());
+        assertEquals(ApplicationStatus.SAVED, unchangedJobPosting.getApplicationStatus());
+        assertEquals(staleVersion + 1, unchangedJobPosting.getVersion());
+    }
+
+    @Test
+    void 지원_상태_변경_이전의_If_Match로_일반_수정하면_412를_반환한다() throws Exception {
+        JobPosting savedJobPosting = jobPostingRepository.saveAndFlush(
+                new JobPosting("상태 변경 테스트 회사", "기존 제목", null, "기존 원문", null, null)
+        );
+        Long staleVersion = savedJobPosting.getVersion();
+
+        mockMvc.perform(patch("/api/job-postings/{id}/status", savedJobPosting.getId())
+                        .header(HttpHeaders.IF_MATCH, "\"" + staleVersion + "\"")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"status": "APPLIED"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ETAG, "\"" + (staleVersion + 1) + "\""));
+
+        mockMvc.perform(put("/api/job-postings/{id}", savedJobPosting.getId())
+                        .header(HttpHeaders.IF_MATCH, "\"" + staleVersion + "\"")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"companyName": "상태 변경 테스트 회사", "title": "수정된 제목", "originalText": "기존 원문"}
+                                """))
+                .andExpect(status().isPreconditionFailed())
+                .andExpect(jsonPath("$.code").value("JOB_POSTING_VERSION_CONFLICT"));
+
+        JobPosting unchangedJobPosting = jobPostingRepository.findById(savedJobPosting.getId()).orElseThrow();
+        assertEquals("기존 제목", unchangedJobPosting.getTitle());
+        assertEquals(ApplicationStatus.APPLIED, unchangedJobPosting.getApplicationStatus());
+        assertEquals(staleVersion + 1, unchangedJobPosting.getVersion());
     }
 
     @Test

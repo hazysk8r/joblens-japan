@@ -80,14 +80,7 @@ public class JobPostingService {
             UpdateJobPostingRequest request
     ) {
         JobPosting jobPosting = findEntityById(id);
-
-        if (!Objects.equals(expectedVersion, jobPosting.getVersion())) {
-            throw new JobPostingVersionConflictException(
-                id, 
-                expectedVersion, 
-                jobPosting.getVersion()
-            );
-        }
+        validateVersion(jobPosting, expectedVersion);
 
         jobPosting.update(
                 request.companyName(),
@@ -125,6 +118,16 @@ public class JobPostingService {
     private JobPosting findEntityById(Long id) {
         return jobPostingRepository.findById(id)
                 .orElseThrow(() -> new JobPostingNotFoundException(id));
+    }
+
+    private void validateVersion(JobPosting jobPosting, Long expectedVersion) {
+        if (!Objects.equals(expectedVersion, jobPosting.getVersion())) {
+            throw new JobPostingVersionConflictException(
+                jobPosting.getId(),
+                expectedVersion,
+                jobPosting.getVersion()
+            );
+        }
     }
 
     /**
@@ -195,15 +198,19 @@ public class JobPostingService {
     @Transactional
     public JobPostingResponse updateApplicationStatus(
         Long id,
+        Long expectedVersion,
         UpdateApplicationStatusRequest request
     ) {
-        // 1. 기존 공고 조회
+        // 1. 기존 공고 조회 및 공유 version 검증
         JobPosting jobPosting = findEntityById(id);
+        validateVersion(jobPosting, expectedVersion);
         // 2. 요청받은 상태로 엔티티 변경
         jobPosting.changeApplicationStatus(
             request.status()
         );
-        // 3. 변경된 엔티티를 DTO로 변환
+        // レスポンスに更新後のversionを含めるため、変更内容をDBへ反映する。
+        jobPostingRepository.flush();
+
         return JobPostingResponse.from(jobPosting);
     }
 
