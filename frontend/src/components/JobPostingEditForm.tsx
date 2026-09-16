@@ -16,6 +16,7 @@ interface JobPostingEditFormProps {
   onSave: (
     id: number,
     request: UpdateJobPostingRequest,
+    expectedVersion: number,
   ) => Promise<void>;
 
   onCancel: () => void;
@@ -99,7 +100,7 @@ function JobPostingEditForm({
      * 실제 API 호출은 부모인 App이 담당한다.
      * 자식은 정리된 입력 데이터를 부모에게 전달한다.
      */
-    await onSave(jobPosting.id, request);
+    await onSave(jobPosting.id, request, jobPosting.version);
   };
 
   return (

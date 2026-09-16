@@ -26,12 +26,14 @@ interface JobPostingListItemProps {
 	onSave: (
 		id: number,
 		request: UpdateJobPostingRequest,
+		expectedVersion: number,
 	) => Promise<void>;
 	onCancel: () => void;
 	onDelete: (jobPosting: JobPosting) => Promise<void>;
 	onApplicationStatusChange: (
 		id: number,
 		status: ApplicationStatus,
+		expectedVersion: number,
 	) => Promise<void>;
 }
 
@@ -194,6 +196,7 @@ function JobPostingListItem({
 											jobPosting.id,
 											event.target
 												.value as ApplicationStatus,
+											jobPosting.version,
 										);
 									}}
 								>

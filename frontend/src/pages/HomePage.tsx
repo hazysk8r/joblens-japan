@@ -290,12 +290,13 @@ function HomePage() {
   const handleSaveEdit = async (
     id: number,
     request: UpdateJobPostingRequest,
+    expectedVersion: number,
   ): Promise<void> => {
     setSavingId(id);
     setError(null);
 
     try {
-      await updateJobPosting(id, request);
+      await updateJobPosting(id, request, expectedVersion);
 
       /*
        * PUT 요청 성공 후 수정 모드를 종료
@@ -328,12 +329,13 @@ function HomePage() {
   const handleApplicationStatusChange = async (
     id: number,
     status: ApplicationStatus,
+    expectedVersion: number,
   ): Promise<void> => {
     setUpdatingStatusId(id);
     setError(null);
 
     try {
-      await updateApplicationStatus(id, { status });
+      await updateApplicationStatus(id, { status }, expectedVersion);
 
       await loadJobPostings(
         appliedKeyword,

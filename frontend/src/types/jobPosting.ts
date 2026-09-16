@@ -39,6 +39,7 @@ export interface JobPosting {
   applicationStatus: ApplicationStatus;
   salaryMin: number | null;
   salaryMax: number | null;
+  version: number;
 }
 
 export interface PageResponse<T> {

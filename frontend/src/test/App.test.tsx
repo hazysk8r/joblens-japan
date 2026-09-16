@@ -225,6 +225,7 @@ test('특정 정렬 상태에서 삭제 행위가 이뤄져도 사용자가 선�
     applicationStatus: 'SAVED',
     salaryMin: null,
     salaryMax: null,
+    version: 0,
   };
 
   const pageWithContent = {
@@ -280,6 +281,7 @@ test('특정 정렬 상태에서 수정 행위가 이뤄져도 사용자가 선�
     applicationStatus: 'SAVED',
     salaryMin: null,
     salaryMax: null,
+    version: 0,
   };
 
   const pageWithContent = {
@@ -333,6 +335,7 @@ test('특정 정렬 상태에서 수정 행위가 이뤄져도 사용자가 선�
           salaryMin: null,
           salaryMax: null,
         },
+        0,
       );
   });
   await waitFor(() => {
@@ -359,6 +362,7 @@ test('검색어나 필터가 적용된 상태에서 JobLens Japan 을 누르면,
     applicationStatus: 'SAVED',
     salaryMin: null,
     salaryMax: null,
+    version: 0,
   };
 
   const pageWithContent= {

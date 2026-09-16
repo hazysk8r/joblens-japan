@@ -127,6 +127,7 @@ export async function deleteJobPosting(
 export async function updateJobPosting(
   id: number,
   request: UpdateJobPostingRequest,
+  expectedVersion: number
 ): Promise<JobPosting> {
   const response = await fetch(
     `/api/job-postings/${id}`,
@@ -134,6 +135,7 @@ export async function updateJobPosting(
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'If-Match': `"${expectedVersion}"`,
       },
       body: JSON.stringify(request),
     },
@@ -154,6 +156,7 @@ export async function updateJobPosting(
 export async function updateApplicationStatus(
   id: number,
   request: UpdateApplicationStatusRequest,
+  expectedVersion: number
 ): Promise<JobPosting> {
   const response = await fetch(
     `/api/job-postings/${id}/status`,
@@ -161,6 +164,7 @@ export async function updateApplicationStatus(
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
+        'If-Match': `"${expectedVersion}"`,
       },
       body: JSON.stringify(request),
     },
