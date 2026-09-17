@@ -12,6 +12,7 @@ function JobPostingMemoCreateForm({
   onCreated,
   jobPostingId,
 }: CreateJobPostingMemoProps) {
+  const contentId = `memo-content-${jobPostingId}`;
   const [content, setContent] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
@@ -68,9 +69,9 @@ function JobPostingMemoCreateForm({
 
       <form onSubmit={handleSubmit}>
         <div>
-          <label htmlFor="content">메모내용</label>
+          <label htmlFor={contentId}>메모내용</label>
           <textarea
-            id="content"
+            id={contentId}
             value={content}
             maxLength={250}
             onChange={(event) =>

@@ -41,6 +41,9 @@ function HomePage() {
   const [loading, setLoading] = useState(true);
   // false = 현재 목록 API 요청이 진행 중이지 않음, true = 현재 목록 API 요청 진행 중
   const [error, setError] = useState<string | null>(null);
+  // 更新失敗時も一覧と編集フォームを維持し、入力内容が失われないようにするため、
+  // 一覧取得エラーとは別にMutation用のエラー状態を管理する。
+  const [mutationError, setMutationError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [first, setFirst] = useState(true);
@@ -281,10 +284,12 @@ function HomePage() {
   ) => {
     setEditingId(jobPosting.id);
     setError(null);
+    setMutationError(null);
   };
 
   const handleCancelEdit = () => {
     setEditingId(null);
+    setMutationError(null);
   };
 
   const handleSaveEdit = async (
@@ -293,7 +298,7 @@ function HomePage() {
     expectedVersion: number,
   ): Promise<void> => {
     setSavingId(id);
-    setError(null);
+    setMutationError(null);
 
     try {
       await updateJobPosting(id, request, expectedVersion);
@@ -320,7 +325,7 @@ function HomePage() {
         caughtError instanceof Error
           ? caughtError.message
           : '수정 중 알 수 없는 오류가 발생했습니다.';
-      setError(message);
+      setMutationError(message);
     } finally {
       setSavingId(null);
     }
@@ -332,7 +337,7 @@ function HomePage() {
     expectedVersion: number,
   ): Promise<void> => {
     setUpdatingStatusId(id);
-    setError(null);
+    setMutationError(null);
 
     try {
       await updateApplicationStatus(id, { status }, expectedVersion);
@@ -353,7 +358,7 @@ function HomePage() {
         caughtError instanceof Error
           ? caughtError.message
           : '상태 업데이트에 실패하였습니다.';
-      setError(message);
+      setMutationError(message);
     } finally {
       setUpdatingStatusId(null);
     }
@@ -552,33 +557,41 @@ function HomePage() {
       ) : jobPostings.length === 0 ? (
         <p>검색 결과가 없습니다.</p>
       ) : (
-        <ul className="job-posting-list" role="list">
-          {jobPostings.map((jobPosting) => (
-            <JobPostingListItem
-              key={jobPosting.id}
-              jobPosting={jobPosting}
-              isEditing={
-                editingId === jobPosting.id
-              }
-              isSaving={
-                savingId === jobPosting.id
-              }
-              isDeleting={
-                deletingId === jobPosting.id
-              }
-              onStartEdit={handleStartEdit}
-              onSave={handleSaveEdit}
-              onCancel={handleCancelEdit}
-              onDelete={handleDelete}
-              isUpdatingStatus={
-                updatingStatusId === jobPosting.id
-              }
-              onApplicationStatusChange={
-                handleApplicationStatusChange
-              }
-            />
-          ))}
-        </ul>
+        <>
+          {mutationError && (
+            <p role="alert">
+              {mutationError}
+            </p>
+          )}
+
+          <ul className="job-posting-list" role="list">
+            {jobPostings.map((jobPosting) => (
+              <JobPostingListItem
+                key={jobPosting.id}
+                jobPosting={jobPosting}
+                isEditing={
+                  editingId === jobPosting.id
+                }
+                isSaving={
+                  savingId === jobPosting.id
+                }
+                isDeleting={
+                  deletingId === jobPosting.id
+                }
+                onStartEdit={handleStartEdit}
+                onSave={handleSaveEdit}
+                onCancel={handleCancelEdit}
+                onDelete={handleDelete}
+                isUpdatingStatus={
+                  updatingStatusId === jobPosting.id
+                }
+                onApplicationStatusChange={
+                  handleApplicationStatusChange
+                }
+              />
+            ))}
+          </ul>
+        </>
       )}
 
       {!error && totalPages > 0 && (
