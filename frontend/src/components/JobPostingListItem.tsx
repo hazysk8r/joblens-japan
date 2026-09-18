@@ -53,6 +53,7 @@ function JobPostingListItem({
 	const [skillsError, setSkillsError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [skillsVisible, setSkillsVisible] = useState(false);
+	const [skillsOriginalText, setSkillsOriginalText] = useState<string | null>(null);
 
 	// Memoの表示・非表示はView側で管理する
 	const [memoVisible, setMemoVisible] = useState(false);
@@ -73,13 +74,19 @@ function JobPostingListItem({
 		deleteMemo,
 	} = useJobPostingMemos(jobPosting.id);
 
+	// 求人原文が更新された場合、以前の原文から取得したSkillsを使用しないようにする。
+	const isSkillsCacheValid =
+		skillsOriginalText === jobPosting.originalText;
+
 	async function handlePostingSkill() {
-		if (skills !== null) {
+		if (skills !== null && isSkillsCacheValid) {
 			setSkillsVisible(
 				previous => !previous,
 			);
 			return;
 		}
+
+		const requestOriginalText = jobPosting.originalText;
 
 		setLoading(true);
 
@@ -92,9 +99,11 @@ function JobPostingListItem({
 				);
 
 			setSkills(extractedSkills);
+			setSkillsOriginalText(requestOriginalText);
 			setSkillsVisible(true);
 		} catch (error) {
 			setSkills(null);
+			setSkillsOriginalText(requestOriginalText);
 			setSkillsVisible(false);
 
 			if (error instanceof Error) {
@@ -279,7 +288,7 @@ function JobPostingListItem({
 			</div>
 
 			<div className="job-posting-card__details">
-				{skills !== null &&
+				{isSkillsCacheValid && skills !== null &&
 					skillsVisible && (
 						skills.length > 0 ? (
 							<ul className="job-posting-card__skills">
@@ -298,10 +307,11 @@ function JobPostingListItem({
 						)
 					)}
 
-				{skillsError !== null && (
-					<p role="alert">
-						{skillsError}
-					</p>
+				{isSkillsCacheValid &&
+					skillsError !== null && (
+						<p role="alert">
+							{skillsError}
+						</p>
 				)}
 
 				{!isEditing && (

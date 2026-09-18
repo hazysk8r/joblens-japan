@@ -74,7 +74,7 @@ function HomePage() {
     salaryMax: SalaryFilter,
   ) => {
     try {
-      const page = await fetchJobPostings(
+      let page = await fetchJobPostings(
         searchKeyword,
         searchFilter,
         pageNumber,
@@ -82,6 +82,24 @@ function HomePage() {
         salaryMin,
         salaryMax,
       );
+
+      // 現在のページが範囲外になった場合、最後の有効ページを再取得する。
+      if (
+        page.totalPages > 0 &&
+        pageNumber >= page.totalPages
+      ) {
+        // 最後の有効ページを再取得
+        const lastValidPage = page.totalPages - 1;
+        
+        page = await fetchJobPostings(
+          searchKeyword,
+          searchFilter,
+          lastValidPage,
+          sort,
+          salaryMin,
+          salaryMax,
+        );
+      }
       /*
       * 공고 목록뿐 아니라 백엔드가 반환한 페이지 정보도
       * React 상태에 저장한다.
@@ -91,6 +109,7 @@ function HomePage() {
       setTotalPages(page.totalPages);
       setFirst(page.first);
       setLast(page.last);
+      
     } catch (caughtError) {
       const message =
         caughtError instanceof Error

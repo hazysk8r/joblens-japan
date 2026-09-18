@@ -4,8 +4,9 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, vi, test, expect } from 'vitest';
 
 import App from '../App';
-import { fetchApplicationStatusSummary, fetchJobPostings, deleteJobPosting, updateJobPosting, createJobPosting } from '../api/jobPostingApi';
+import { fetchApplicationStatusSummary, fetchJobPostings, deleteJobPosting, updateJobPosting, createJobPosting, extractRequiredSkills } from '../api/jobPostingApi';
 import type { JobPosting } from '../types/jobPosting';
+import JobPostingListItem from '../components/JobPostingListItem';
 
 // 이전 Mock 호출 기록 삭제
 beforeEach(() => {
@@ -151,7 +152,7 @@ test('현재 정렬 조건이 페이지를 넘겨도 유지된다', async () => 
       null,
     );
 
-})
+});
 
 test('사용자가 선택한 정렬 상태를 유지한 채 다음 페이지로 갔다가 이전 페이지로 돌아올 수 있다', async () => {
   const firstPage = {
@@ -166,14 +167,14 @@ test('사용자가 선택한 정렬 상태를 유지한 채 다음 페이지로 
     first: false,
     last: true,
   };
-  
+
   vi.mocked(fetchJobPostings)
     .mockResolvedValueOnce(firstPage)
     .mockResolvedValueOnce(firstPage)
     .mockResolvedValueOnce(secondPage)
     .mockResolvedValueOnce(firstPage);
-  
-  
+
+
   const user = userEvent.setup();
   renderApp();
 
@@ -211,7 +212,206 @@ test('사용자가 선택한 정렬 상태를 유지한 채 다음 페이지로 
       null,
       null,
     );
+
+});
+
+test('현재 페이지가 범위를 벗어나면 마지막 유효 페이지를 다시 조회한다', async () => {
+  const mockContent: JobPosting = {
+    id: 0,
+    companyName: '黄猿',
+    title: 'エンジニア求人',
+    sourceUrl: 'http://example.com/kizaruengineer',
+    originalText: 'AWSエンジニア求人',
+    createdAt: '2026-08-14T00:00:00Z',
+    applicationStatus: 'APPLIED',
+    salaryMin: null,
+    salaryMax: null,
+    version: 0,
+  };
+
+  const firstPage = {
+    ...mockPage,
+    page: 0,
+    totalPages: 3,
+    first: true,
+    last: false,
+  };
+
+  const secondPage = {
+    ...mockPage,
+    page: 1,
+    totalPages: 3,
+    first: false,
+    last: false,
+  };
+
+  const thirdPage = {
+    ...mockPage,
+    page: 2,
+    totalPages: 3,
+    first: false,
+    last: true,
+    content: [mockContent],
+  };
   
+  const outOfRangePage = {
+    ...mockPage,
+    page: 2,
+    totalPages: 2,
+    content: [],
+  };
+
+  const correctPage = {
+    ...mockPage,
+    page: 1,
+    totalPages: 2,
+    first: false,
+    last: true,
+    content: [mockContent],
+  };
+
+  vi.mocked(fetchJobPostings)
+    .mockResolvedValueOnce(firstPage)
+    .mockResolvedValueOnce(secondPage)
+    .mockResolvedValueOnce(thirdPage)
+    .mockResolvedValueOnce(outOfRangePage)
+    .mockResolvedValueOnce(correctPage);
+
+  const user = userEvent.setup();
+  renderApp();
+
+  const nextPageButton = await screen.findByRole('button', {
+    name: '다음',
+  });
+
+  await waitFor(() => {
+    expect(
+      (nextPageButton as HTMLButtonElement).disabled
+    ).toBe(false);
+  });
+  await user.click(nextPageButton);
+  await waitFor(() => {
+    expect(
+      (nextPageButton as HTMLButtonElement).disabled
+    ).toBe(false);
+  });
+  await user.click(nextPageButton);
+
+  expect(
+    screen.getByText('3 / 3')
+  ).toBeDefined();
+
+  const jobPostingItem = screen.getByRole('listitem');
+
+  const applicationStatusSelect =
+    within(jobPostingItem).getByRole('combobox', {
+      name: /지원 상태/,
+    });
+
+  await user.selectOptions(
+    applicationStatusSelect,
+    'SAVED',
+  );
+
+  await waitFor(() => {
+    expect(fetchJobPostings)
+      .toHaveBeenLastCalledWith(
+        '',
+        '',
+        1, // 마지막 유효 페이지
+        'createdAt,desc',
+        null,
+        null,
+      );
+  });
+
+  expect(
+    screen.getByText('2 / 2')
+  ).toBeDefined();
+  
+});
+
+test('공고 원문이 변경되면 이전 기술스택 캐시를 사용하지 않고 다시 조회한다', async () => {
+  const user = userEvent.setup();
+
+  const jobPosting: JobPosting = {
+    id: 1,
+    companyName: '黄猿',
+    title: 'エンジニア求人',
+    sourceUrl: null,
+    originalText: 'AWSエンジニア求人',
+    createdAt: '2026-08-14T00:00:00Z',
+    applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
+    version: 0,
+  };
+
+  vi.mocked(extractRequiredSkills)
+    .mockResolvedValueOnce(['AWS'])
+    .mockResolvedValueOnce(['Java']);
+
+  const props = {
+    isEditing: false,
+    isSaving: false,
+    isDeleting: false,
+    isUpdatingStatus: false,
+    onStartEdit: vi.fn(),
+    onSave: vi.fn(),
+    onCancel: vi.fn(),
+    onDelete: vi.fn(),
+    onApplicationStatusChange: vi.fn(),
+  };
+
+  const { rerender } = render(
+    <JobPostingListItem
+      jobPosting={jobPosting}
+      {...props}
+    />,
+  );
+
+  const skillsButton = screen.getByRole('button', {
+    name: '기술 스택 보기',
+  });
+
+  // 最初取得
+  await user.click(skillsButton);
+
+  expect(
+    await screen.findByText('AWS'),
+  ).toBeDefined();
+
+  expect(extractRequiredSkills)
+    .toHaveBeenCalledTimes(1);
+
+  // 原文が変更された求人情報をrerender
+  rerender(
+    <JobPostingListItem
+      jobPosting={{
+        ...jobPosting,
+        originalText: 'Javaエンジニア求人',
+        version: 1,
+      }}
+      {...props}
+    />,
+  );
+
+  expect(
+    screen.queryByText('AWS'),
+  ).toBeNull();
+
+  await user.click(
+    screen.getByRole('button', {
+      name: '기술 스택 보기',
+    }),
+  );
+
+  expect(
+    await screen.findByText('Java'),
+  ).toBeDefined();
+
+  expect(extractRequiredSkills)
+    .toHaveBeenCalledTimes(2);
 });
 
 test('특정 정렬 상태에서 삭제 행위가 이뤄져도 사용자가 선택한 정렬 상태를 유지할 수 있다', async () => {
@@ -269,6 +469,8 @@ test('특정 정렬 상태에서 삭제 행위가 이뤄져도 사용자가 선�
   });
 
 });
+
+
 
 test('특정 정렬 상태에서 수정 행위가 이뤄져도 사용자가 선택한 정렬 상태를 유지할 수 있다', async () => {
   const mockContent: JobPosting = {
