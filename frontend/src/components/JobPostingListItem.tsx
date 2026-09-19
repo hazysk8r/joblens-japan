@@ -4,7 +4,7 @@ import type {
 	UpdateJobPostingRequest,
 } from '../types/jobPosting';
 
-import { useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import './JobPostingListItem.css';
 import { formatDateTime } from '../utils/date';
 
@@ -55,6 +55,13 @@ function JobPostingListItem({
 	const [skillsVisible, setSkillsVisible] = useState(false);
 	const [skillsOriginalText, setSkillsOriginalText] = useState<string | null>(null);
 
+	const skillsAbortControllerRef = useRef<AbortController | null>(null);
+	useEffect(() => {
+		return () => {
+			skillsAbortControllerRef.current?.abort();
+		};
+	}, [jobPosting.id, jobPosting.originalText]);
+
 	// Memoの表示・非表示はView側で管理する
 	const [memoVisible, setMemoVisible] = useState(false);
 
@@ -79,6 +86,7 @@ function JobPostingListItem({
 		skillsOriginalText === jobPosting.originalText;
 
 	async function handlePostingSkill() {
+
 		if (skills !== null && isSkillsCacheValid) {
 			setSkillsVisible(
 				previous => !previous,
@@ -88,20 +96,38 @@ function JobPostingListItem({
 
 		const requestOriginalText = jobPosting.originalText;
 
+		skillsAbortControllerRef.current?.abort();
+
+		const controller = new AbortController();
+		skillsAbortControllerRef.current = controller;
+
 		setLoading(true);
+		setSkillsError(null);
 
 		try {
-			setSkillsError(null);
-
 			const extractedSkills =
 				await extractRequiredSkills(
 					jobPosting.id,
+					controller.signal,
 				);
+
+			// すでに新しいリクエストが開始されている場合は、この結果を反映しない
+			if (controller.signal.aborted) {
+				return;
+			}
 
 			setSkills(extractedSkills);
 			setSkillsOriginalText(requestOriginalText);
 			setSkillsVisible(true);
 		} catch (error) {
+			// 意図的にキャンセルされた場合は、エラー表示用のStateを変更しない
+			if (
+				error instanceof DOMException &&
+				error.name === 'AbortError'
+			) {
+				return;
+			}
+
 			setSkills(null);
 			setSkillsOriginalText(requestOriginalText);
 			setSkillsVisible(false);
@@ -114,7 +140,12 @@ function JobPostingListItem({
 				);
 			}
 		} finally {
-			setLoading(false);
+			// 現在のリクエストが最新の場合のみ、ローディング状態を終了する
+			if (
+				skillsAbortControllerRef.current === controller
+			) {
+				setLoading(false);
+			}
 		}
 	}
 

@@ -24,6 +24,19 @@ vi.mock('../api/jobPostingApi');
 vi.mock('../api/jobPostingMemoApi')
 
 describe('skills', () => {
+  // Race Conditionを
+  function deferred<T>() {
+    let resolve!: (value: T) => void;
+    let reject!: (reason?: unknown) => void;
+
+    const promise = new Promise<T>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+
+    return { promise, resolve, reject };
+  }
+
   test('기술이 있는 공고의 기술 스택 보기 버튼을 누르면 기술 스택을 볼 수 있다', async () => {
     const mockContent: JobPosting = {
       id: 1,
@@ -63,7 +76,8 @@ describe('skills', () => {
 
     expect(extractRequiredSkills)
       .toHaveBeenLastCalledWith(
-        1
+        1,
+        expect.any(AbortSignal),
       );
 
     await screen.findByText('AWS');
@@ -109,7 +123,8 @@ describe('skills', () => {
 
     expect(extractRequiredSkills)
       .toHaveBeenLastCalledWith(
-        1
+        1,
+        expect.any(AbortSignal),
       );
 
     await screen.findByText('추출된 기술 스택이 없습니다.');
@@ -155,7 +170,8 @@ describe('skills', () => {
 
     expect(extractRequiredSkills)
       .toHaveBeenLastCalledWith(
-        1
+        1,
+        expect.any(AbortSignal),
       );
 
     await screen.findByText('존재하지 않는 공고입니다.');
@@ -318,6 +334,101 @@ describe('skills', () => {
     expect(extractRequiredSkills).toHaveBeenCalledTimes(1);
 
   })
+
+  test('originalText가 변경되면 진행 중인 Skills 요청을 취소한다', async() => {
+    const awsRequest = deferred<string[]>();
+    const javaRequest = deferred<string[]>();
+
+    const jobPosting: JobPosting = {
+      id: 1,
+      companyName: '黄猿',
+      title: 'エンジニア求人',
+      sourceUrl: null,
+      originalText: 'AWSエンジニア求人',
+      createdAt: '2026-08-14T00:00:00Z',
+      applicationStatus: 'SAVED',
+      salaryMin: null,
+      salaryMax: null,
+      version: 0,
+    };
+
+    vi.mocked(extractRequiredSkills)
+      .mockReturnValueOnce(awsRequest.promise)
+      .mockReturnValueOnce(javaRequest.promise);
+
+    const props = {
+      isEditing: false,
+      isSaving: false,
+      isDeleting: false,
+      isUpdatingStatus: false,
+      onStartEdit: vi.fn(),
+      onSave: vi.fn(),
+      onCancel: vi.fn(),
+      onDelete: vi.fn(),
+      onApplicationStatusChange: vi.fn(),
+    };
+
+    const awsJobPosting = {
+      ...jobPosting,
+      originalText: 'AWSエンジニア求人'
+    };
+
+    const { rerender } = render(
+      <JobPostingListItem
+        {...props}
+        jobPosting={awsJobPosting}
+      />,
+    );
+
+    const awsSkillsButton = screen.getByRole('button', {
+      name: '기술 스택 보기',
+    });
+
+    await userEvent.click(awsSkillsButton);
+
+    const firstSignal = vi.mocked(extractRequiredSkills).mock.calls[0][1];
+
+    const javaJobPosting = {
+      ...awsJobPosting,
+      originalText: 'JAVAエンジニア求人',
+    };
+
+    rerender(
+      <JobPostingListItem
+        {...props}
+        jobPosting={javaJobPosting}
+      />,
+    );
+
+    expect(firstSignal.aborted).toBe(true);
+
+    awsRequest.reject(
+      new DOMException(
+        'The operation was aborted',
+        'AbortError',
+      ),
+    );
+
+    const javaSkillsButton = await screen.findByRole('button', {
+      name: '기술 스택 보기',
+    });
+    expect(javaSkillsButton).toBeEnabled();
+
+    await userEvent.click(javaSkillsButton);
+
+    javaRequest.resolve(['Java']);
+
+    expect(
+      await screen.findByText('Java'),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText('Java'),
+    ).toBeInTheDocument();
+
+    expect(extractRequiredSkills).toHaveBeenCalledTimes(2);
+  });
+
 })
 
 describe('memos', () => {

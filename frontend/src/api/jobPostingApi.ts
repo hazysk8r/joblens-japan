@@ -201,10 +201,14 @@ export async function fetchApplicationStatusSummary(
 }
 
 export async function extractRequiredSkills(
-  id: number
+  id: number,
+  signal: AbortSignal,
 ): Promise<string[]> {
   const response = await fetch(
     `/api/job-postings/${id}/skills`,
+    {
+      signal,
+    },
   );
 
   if (!response.ok) {
