@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import type { FormEvent } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams, useNavigationType } from 'react-router';
 import '../JobPostingList.css';
 
 import {
@@ -32,11 +32,62 @@ import { SALARY_OPTIONS } from '../constants/salaryOptions';
 
 // 求人情報一覧の初期取得に使用するデフォルトのソート条件
 const DEFAULT_SORTING: JobPostingSorting = 'createdAt,desc';
-// 給料候補一覧
+
+// URLのstatusを有効なStatusFilterに変換する。
+function parseStatusFilter(
+  value: string | null,
+): StatusFilter {
+  switch (value) {
+    case 'SAVED':
+    case 'APPLIED':
+    case 'INTERVIEWING':
+    case 'OFFERED':
+    case 'REJECTED':
+      return value;
+
+    default:
+      return '';
+  }
+}
+
+// URLのpageを0以上の整数に変換する。
+// 不正な値の場合は1ページ目（0）を使用する。
+function parsePage(
+  value: string | null,
+): number {
+  if (value === null) {
+    return 0;
+  }
+
+  const page = Number(value);
+
+  if (
+    !Number.isInteger(page) ||
+    page < 0
+  ) {
+    return 0;
+  }
+
+  return page;
+}
 
 function HomePage() {
-  const [keyword, setKeyword] = useState('');
-  const [appliedKeyword, setAppliedKeyword] = useState('');
+
+  const navigationType = useNavigationType();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const keywordFromUrl = searchParams.get('keyword') ?? '';
+  const statusFromUrl = parseStatusFilter(searchParams.get('status'));
+  const pageFromUrl = parsePage(searchParams.get('page'));
+  const currentUrlSearch = searchParams.toString();
+
+  const initialSearchRef = useRef({
+    keyword: keywordFromUrl,
+    status: statusFromUrl,
+    page: pageFromUrl,
+  });
+
+  const [keyword, setKeyword] = useState(keywordFromUrl);
+  const [appliedKeyword, setAppliedKeyword] = useState(keywordFromUrl);
   const [jobPostings, setJobPostings] = useState<JobPosting[]>([]);
   const [loading, setLoading] = useState(true);
   // false = 현재 목록 API 요청이 진행 중이지 않음, true = 현재 목록 API 요청 진행 중
@@ -44,7 +95,7 @@ function HomePage() {
   // 更新失敗時も一覧と編集フォームを維持し、入力内容が失われないようにするため、
   // 一覧取得エラーとは別にMutation用のエラー状態を管理する。
   const [mutationError, setMutationError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentPage, setCurrentPage] = useState(pageFromUrl);
   const [totalPages, setTotalPages] = useState(0);
   const [first, setFirst] = useState(true);
   const [last, setLast] = useState(true);
@@ -53,13 +104,29 @@ function HomePage() {
   const [savingId, setSavingId] = useState<number | null>(null);
   const [updatingStatusId, setUpdatingStatusId] = useState<number | null>(null);
   const [statusSummary, setStatusSummary] = useState<ApplicationStatusSummaryResponse | null>(null);
-  const [status, setStatus] = useState<StatusFilter>("");
-  const [appliedStatus, setAppliedStatus] = useState<StatusFilter>("");
+  const [status, setStatus] = useState<StatusFilter>(statusFromUrl);
+  const [appliedStatus, setAppliedStatus] = useState<StatusFilter>(statusFromUrl);
   const [salaryMin, setSalaryMin] = useState<number | null>(null);
   const [salaryMax, setSalaryMax] = useState<number | null>(null);
   const [appliedSalaryMin, setAppliedSalaryMin] = useState<number | null>(null);
   const [appliedSalaryMax, setAppliedSalaryMax] = useState<number | null>(null);
   const [sorting, setSorting] = useState<JobPostingSorting>(DEFAULT_SORTING);
+  const [previousUrlSearch, setPreviousUrlSearch] = useState(currentUrlSearch);
+
+
+  if (currentUrlSearch !== previousUrlSearch) {
+    setPreviousUrlSearch(currentUrlSearch);
+
+    if (navigationType === 'POP') {
+      setKeyword(keywordFromUrl);
+      setAppliedKeyword(keywordFromUrl);
+
+      setStatus(statusFromUrl);
+      setAppliedStatus(statusFromUrl);
+
+      setCurrentPage(pageFromUrl);
+    }
+  }
 
   /**
      * 검색어를 받아 백엔드 API를 호출하고,
@@ -123,6 +190,85 @@ function HomePage() {
     }
   }, []);
 
+  const didMountHistoryEffect = useRef(false);
+
+  useEffect(() => {
+    if (!didMountHistoryEffect.current) {
+      didMountHistoryEffect.current = true;
+      return;
+    }
+
+    if (navigationType !== 'POP') {
+      return;
+    }
+
+    let ignore = false;
+
+    const loadHistoryData = async () => {
+      try {
+        let page = await fetchJobPostings(
+          keywordFromUrl,
+          statusFromUrl,
+          pageFromUrl,
+          DEFAULT_SORTING,
+          null,
+          null,
+        );
+
+        // 現在のページが範囲外の場合は、最後の有効ページを取得する。
+        if (
+          page.totalPages > 0 &&
+          pageFromUrl >= page.totalPages
+        ) {
+          const lastValidPage =
+            page.totalPages - 1;
+
+          page = await fetchJobPostings(
+            keywordFromUrl,
+            statusFromUrl,
+            lastValidPage,
+            DEFAULT_SORTING,
+            null,
+            null,
+          );
+        }
+
+        if (ignore) {
+          return;
+        }
+
+        setJobPostings(page.content);
+        setCurrentPage(page.page);
+        setTotalPages(page.totalPages);
+        setFirst(page.first);
+        setLast(page.last);
+        setError(null);
+      } catch (caughtError) {
+        if (ignore) {
+          return;
+        }
+
+        const message =
+          caughtError instanceof Error
+            ? caughtError.message
+            : '채용공고를 불러오는 중 알 수 없는 오류가 발생했습니다.';
+
+        setError(message);
+      }
+    };
+
+    void loadHistoryData();
+
+    return () => {
+      ignore = true;
+    };
+  }, [
+    navigationType,
+    keywordFromUrl,
+    statusFromUrl,
+    pageFromUrl,
+  ]);
+
   const loadApplicationStatusSummary = useCallback(async () => {
     try {
       const summary = await fetchApplicationStatusSummary();
@@ -143,12 +289,26 @@ function HomePage() {
   useEffect(() => {
     let ignore = false;
 
+    const {
+      keyword: initialKeyword,
+      status: initialStatus,
+      page: initialPage,
+    } = initialSearchRef.current;
+
     const loadInitialData = async () => {
       try {
-        const [page, summary] = await Promise.all([
-          fetchJobPostings('', '', 0, DEFAULT_SORTING, null, null),
-          fetchApplicationStatusSummary(),
-        ]);
+        const [page, summary] =
+          await Promise.all([
+            fetchJobPostings(
+              initialKeyword,
+              initialStatus,
+              initialPage,
+              DEFAULT_SORTING,
+              null,
+              null,
+            ),
+            fetchApplicationStatusSummary(),
+          ]);
 
         if (ignore) {
           return;
@@ -195,15 +355,34 @@ function HomePage() {
     const nextSalaryMin = salaryMin;
     const nextSalaryMax = salaryMax;
 
+    const nextSearchParams = new URLSearchParams();
+
+    if (nextKeyword !== '') {
+      nextSearchParams.set(
+        'keyword',
+        nextKeyword,
+      );
+    }
+
+    if (nextStatus !== '') {
+      nextSearchParams.set(
+        'status',
+        nextStatus,
+      );
+    }
+
+    // 새로운 검색이므로 page=0은 URL에서 생략한다.
+    setSearchParams(nextSearchParams);
+
     setAppliedKeyword(nextKeyword);
     setAppliedStatus(nextStatus);
     setAppliedSalaryMin(nextSalaryMin);
     setAppliedSalaryMax(nextSalaryMax);
+
     /*
     * 새로운 검색을 시작할 때는
     * 이전 페이지 위치와 관계없이 첫 페이지부터 조회한다.
     */
-
     setLoading(true);
     setError(null);
 
@@ -215,6 +394,23 @@ function HomePage() {
     if (first || loading) {
       return;
     }
+
+    const previousPage = currentPage - 1;
+
+    // 現在の検索条件を維持したまま、前のページ番号をURLに反映する。
+    // 1ページ目はデフォルト値のため、pageパラメータをURLから削除する。
+    const nextSearchParams = new URLSearchParams(searchParams);
+
+    if (previousPage === 0) {
+      nextSearchParams.delete('page');
+    } else {
+      nextSearchParams.set(
+        'page',
+        String(previousPage),
+      );
+    }
+
+    setSearchParams(nextSearchParams);
 
     setLoading(true);
     setError(null);
@@ -233,6 +429,17 @@ function HomePage() {
     if (last || loading) {
       return;
     }
+
+    const nextPage = currentPage + 1;
+
+    const nextSearchParams = new URLSearchParams(searchParams);
+
+    nextSearchParams.set(
+      'page',
+      String(nextPage),
+    );
+
+    setSearchParams(nextSearchParams);
 
     setLoading(true);
     setError(null);

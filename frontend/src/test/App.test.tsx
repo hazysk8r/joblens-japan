@@ -1,7 +1,8 @@
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within, } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router';
-import { afterEach, beforeEach, vi, test, expect } from 'vitest';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router';
+import { afterEach, beforeEach, vi, test, expect, describe, } from 'vitest';
 
 import App from '../App';
 import { fetchApplicationStatusSummary, fetchJobPostings, deleteJobPosting, updateJobPosting, createJobPosting, extractRequiredSkills } from '../api/jobPostingApi';
@@ -815,4 +816,383 @@ test('홈에서求人を登録する 링크를 누르면 채용공고 등록 페
     });
 
   expect(createFormHeading).toBeDefined();
+});
+
+describe('URL Query State', () => {
+  function LocationDisplay() {
+    const location = useLocation();
+
+    return (
+      <div data-testid="location">
+        {location.pathname}
+        {location.search}
+      </div>
+    );
+  }
+
+  function HistoryControls() {
+    const navigate = useNavigate();
+
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+        >
+          뒤로가기
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate(1)}
+        >
+          앞으로가기
+        </button>
+      </>
+    );
+  }
+
+  const renderAppWithLocation = (
+    initialEntry = '/',
+  ) => {
+    return render(
+      <MemoryRouter initialEntries={[initialEntry]}>
+        <App />
+        <LocationDisplay />
+        <HistoryControls />
+      </MemoryRouter>,
+    );
+  };
+  
+  test(
+    'URL의 검색 조건으로 검색 상태와 목록을 복원한다',
+    async () => {
+      renderApp(
+        '/?keyword=Java&status=APPLIED&page=2',
+      );
+
+      const keywordInput = screen.getByRole(
+        'textbox',
+        {
+          name: '검색어',
+        },
+      );
+
+      const statusSelect = screen.getByRole(
+        'combobox',
+        {
+          name: '상태',
+        },
+      );
+
+      // URLのkeywordが検索入力欄に復元されるのことを確認
+      expect(keywordInput).toHaveValue('Java');
+  
+      // URLのstatusが状態選択値に復元されるのことを確認
+      expect(statusSelect).toHaveValue('APPLIED');
+
+      // 実際の一覧取得もURLに確定された検索条件を使用するべきだ。
+      await waitFor(() => {
+        expect(fetchJobPostings)
+          .toHaveBeenCalledWith(
+            'Java',
+            'APPLIED',
+            2,
+            'createdAt,desc',
+            null,
+            null,
+          );
+      });
+    },
+  );
+
+  test(
+    '검색 실행 시 검색 조건을 URL에 반영하고 page를 0으로 초기화한다',
+    async () => {
+      const user = userEvent.setup();
+
+      renderAppWithLocation(
+        '/?keyword=AWS&status=SAVED&page=2',
+      );
+
+      const keywordInput = screen.getByRole(
+        'textbox',
+        {
+          name: '검색어',
+        },
+      );
+
+      const statusSelect = screen.getByRole(
+        'combobox',
+        {
+          name: '상태',
+        },
+      );
+
+      await user.clear(keywordInput);
+      await user.type(keywordInput, 'Java');
+      await user.selectOptions(statusSelect, 'APPLIED');
+
+      const searchButton = await screen.findByRole('button', {
+        name: '검색',
+      });
+
+      await user.click(searchButton);
+
+      
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('location'),
+        ).toHaveTextContent(
+          '/?keyword=Java&status=APPLIED',
+        );
+      });
+    },
+  );
+
+  test(
+    '다음 페이지로 이동하면 page를 URL에 반영한다',
+    async () => {
+      const user = userEvent.setup();
+
+      vi.mocked(fetchJobPostings)
+        .mockResolvedValueOnce({
+          content: [],
+          page: 0,
+          size: 5,
+          totalElements: 0,
+          totalPages: 2,
+          first: true,
+          last: false,
+        });
+
+      renderAppWithLocation(
+        '/?keyword=Java&status=APPLIED',
+      );
+
+      const nextPageButton =
+        await screen.findByRole(
+          'button',
+          {
+            name: '다음',
+          },
+        );
+
+      await waitFor(() => {
+        expect(
+          (nextPageButton as HTMLButtonElement)
+            .disabled,
+        ).toBe(false);
+      });
+
+      await user.click(nextPageButton);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('location')
+            .textContent,
+        ).toBe(
+          '/?keyword=Java&status=APPLIED&page=1',
+        );
+      });
+    },
+  );
+
+  test(
+    '첫 페이지로 돌아오면 URL에서 page 파라미터를 제거한다',
+    async () => {
+      const user = userEvent.setup();
+
+      vi.mocked(fetchJobPostings)
+        .mockResolvedValueOnce({
+          content: [],
+          page: 1,
+          size: 5,
+          totalElements: 0,
+          totalPages: 3,
+          first: false,
+          last: false,
+        })
+        .mockResolvedValueOnce({
+          content: [],
+          page: 0,
+          size: 5,
+          totalElements: 0,
+          totalPages: 3,
+          first: true,
+          last: false,
+        });
+
+      renderAppWithLocation(
+        '/?keyword=Java&status=APPLIED&page=1',
+      );
+
+      const previousPageButton =
+        await screen.findByRole(
+          'button',
+          {
+            name: '이전',
+          },
+        );
+
+      await waitFor(() => {
+        expect(
+          (previousPageButton as HTMLButtonElement)
+            .disabled,
+        ).toBe(false);
+      });
+
+      await user.click(previousPageButton);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('location')
+            .textContent,
+        ).toBe(
+          '/?keyword=Java&status=APPLIED',
+        );
+      });
+    },
+  );
+
+  test(
+    '뒤로가기 시 이전 URL의 검색 조건과 목록을 복원한다',
+    async () => {
+      const user = userEvent.setup();
+
+      renderAppWithLocation(
+        '/?keyword=AWS&status=SAVED',
+      );
+
+      const keywordInput = screen.getByRole(
+        'textbox',
+        {
+          name: '검색어',
+        },
+      );
+
+      const statusSelect = screen.getByRole(
+        'combobox',
+        {
+          name: '상태',
+        },
+      );
+
+      // 最初のURL状態確認
+      expect(keywordInput).toHaveValue('AWS');
+      expect(statusSelect).toHaveValue('SAVED');
+
+      // 新しい検索条件入力
+      await user.clear(keywordInput);
+      await user.type(
+        keywordInput,
+        'Java',
+      );
+
+      await user.selectOptions(
+        statusSelect,
+        'APPLIED',
+      );
+
+      await user.click(
+        screen.getByRole(
+          'button',
+          {
+            name: '검색',
+          },
+        ),
+      );
+
+      // 新しいURLに移動したかを確認
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('location')
+            .textContent,
+        ).toBe(
+          '/?keyword=Java&status=APPLIED',
+        );
+      });
+
+      await user.click(
+        screen.getByRole(
+          'button',
+          {
+            name: '뒤로가기',
+          },
+        ),
+      );
+
+      // URLが以前検索条件に復元
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('location')
+            .textContent,
+        ).toBe(
+          '/?keyword=AWS&status=SAVED',
+        );
+      });
+
+      await waitFor(() => {
+        expect(keywordInput)
+          .toHaveValue('AWS');
+
+        expect(statusSelect)
+          .toHaveValue('SAVED');
+      });
+
+      await waitFor(() => {
+        expect(fetchJobPostings)
+          .toHaveBeenLastCalledWith(
+            'AWS',
+            'SAVED',
+            0,
+            'createdAt,desc',
+            null,
+            null,
+          );
+      });
+    },
+  );
+
+  test(
+    '잘못된 status와 page Query는 기본값으로 처리한다',
+    async () => {
+      renderAppWithLocation(
+        '/?keyword=Java&status=UNKNOWN&page=abc',
+      );
+
+      const keywordInput = screen.getByRole(
+        'textbox',
+        {
+          name: '검색어',
+        },
+      );
+
+      const statusSelect = screen.getByRole(
+        'combobox',
+        {
+          name: '상태',
+        },
+      );
+
+      // 正常なkeywordはそのままに復元する。
+      expect(keywordInput).toHaveValue('Java');
+
+      // 非正常なstatusは"全体"に処理する。
+      expect(statusSelect).toHaveValue('');
+
+      // 無効なページは初期ページ（0）として処理し、照会すること。
+      await waitFor(() => {
+        expect(fetchJobPostings)
+          .toHaveBeenCalledWith(
+            'Java',
+            '',
+            0,
+            'createdAt,desc',
+            null,
+            null,
+          );
+      });
+    },
+  );
 });
