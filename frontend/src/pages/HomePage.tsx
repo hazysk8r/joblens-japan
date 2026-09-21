@@ -80,6 +80,7 @@ function HomePage() {
   const pageFromUrl = parsePage(searchParams.get('page'));
   const currentUrlSearch = searchParams.toString();
 
+  // 初回表示時の検索条件を保持し、初期データ取得にのみ使用する。
   const initialSearchRef = useRef({
     keyword: keywordFromUrl,
     status: statusFromUrl,
@@ -111,6 +112,7 @@ function HomePage() {
   const [appliedSalaryMin, setAppliedSalaryMin] = useState<number | null>(null);
   const [appliedSalaryMax, setAppliedSalaryMax] = useState<number | null>(null);
   const [sorting, setSorting] = useState<JobPostingSorting>(DEFAULT_SORTING);
+  // 前回のURLクエリを保持し、URLの変更を判定するために使用する。
   const [previousUrlSearch, setPreviousUrlSearch] = useState(currentUrlSearch);
 
 
@@ -193,15 +195,18 @@ function HomePage() {
   const didMountHistoryEffect = useRef(false);
 
   useEffect(() => {
+    // 初回表示時は別のEffectが一覧を取得するため、History処理をスキップする。
     if (!didMountHistoryEffect.current) {
       didMountHistoryEffect.current = true;
       return;
     }
 
+    // 戻る・進む操作（POP）時に、現在のURL条件で求人一覧を再取得する。
     if (navigationType !== 'POP') {
       return;
     }
 
+    // Effectが無効になった後に返ってきた古いレスポンスをStateへ反映しないためのフラグ
     let ignore = false;
 
     const loadHistoryData = async () => {
@@ -259,6 +264,7 @@ function HomePage() {
 
     void loadHistoryData();
 
+    // cleanup後に返ってくるレスポンスを無視する。
     return () => {
       ignore = true;
     };
@@ -284,8 +290,9 @@ function HomePage() {
   }, []);
 
   /*
-   * 화면이 처음 열리면 검색어 없이 전체 공고를 조회한다.
-   */
+  * 初回表示時はURLの検索条件をもとに
+  * 求人一覧と応募状況サマリーを取得する。
+  */
   useEffect(() => {
     let ignore = false;
 

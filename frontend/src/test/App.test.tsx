@@ -819,6 +819,7 @@ test('홈에서求人を登録する 링크를 누르면 채용공고 등록 페
 });
 
 describe('URL Query State', () => {
+  // MemoryRouter内の現在のURLをテストから確認できるように表示する。
   function LocationDisplay() {
     const location = useLocation();
 
@@ -1132,6 +1133,7 @@ describe('URL Query State', () => {
         );
       });
 
+      // 戻る操作後、検索フォームも以前のURLの条件に復元されることを確認する。
       await waitFor(() => {
         expect(keywordInput)
           .toHaveValue('AWS');
