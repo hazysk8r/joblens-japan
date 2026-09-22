@@ -254,7 +254,7 @@ test('현재 페이지가 범위를 벗어나면 마지막 유효 페이지를 �
     last: true,
     content: [mockContent],
   };
-  
+
   const outOfRangePage = {
     ...mockPage,
     page: 2,
@@ -329,7 +329,7 @@ test('현재 페이지가 범위를 벗어나면 마지막 유효 페이지를 �
   expect(
     screen.getByText('2 / 2')
   ).toBeDefined();
-  
+
 });
 
 test('공고 원문이 변경되면 이전 기술스택 캐시를 사용하지 않고 다시 조회한다', async () => {
@@ -452,7 +452,7 @@ test('특정 정렬 상태에서 삭제 행위가 이뤄져도 사용자가 선�
   });
   vi.spyOn(window, 'confirm').mockReturnValue(true);
   await user.click(deleteButton);
-  
+
 
   expect(deleteJobPosting)
     .toHaveBeenLastCalledWith(0);
@@ -554,7 +554,7 @@ test('특정 정렬 상태에서 수정 행위가 이뤄져도 사용자가 선�
   });
 });
 
-test('검색어나 필터가 적용된 상태에서 JobLens Japan 을 누르면, 첫페이지 기본정렬로 돌아간다', async() => {
+test('검색어나 필터가 적용된 상태에서 JobLens Japan 을 누르면, 첫페이지 기본정렬로 돌아간다', async () => {
   const mockContent: JobPosting = {
     id: 0,
     companyName: '黄猿',
@@ -568,7 +568,7 @@ test('검색어나 필터가 적용된 상태에서 JobLens Japan 을 누르면,
     version: 0,
   };
 
-  const pageWithContent= {
+  const pageWithContent = {
     ...mockPage,
     content: [mockContent],
     totalElements: 1,
@@ -594,7 +594,7 @@ test('검색어나 필터가 적용된 상태에서 JobLens Japan 을 누르면,
     .mockResolvedValueOnce(firstPage) //정렬변경
     .mockResolvedValueOnce(secondPage); //다음 페이지
 
-  const user= userEvent.setup();
+  const user = userEvent.setup();
   renderApp();
 
   const keywordInput = screen.getByRole('textbox', {
@@ -648,19 +648,19 @@ test('검색어나 필터가 적용된 상태에서 JobLens Japan 을 누르면,
   });
 });
 
-test('월급 범위를 선택하고 검색하면 salaryMin과 salaryMax를 전달한다', async() => {
+test('월급 범위를 선택하고 검색하면 salaryMin과 salaryMax를 전달한다', async () => {
   const user = userEvent.setup();
 
   renderApp();
 
   const salaryMinSelect = screen.getByLabelText(
     '최저 월급',
-    {selector: '#search-salaryMin'},
+    { selector: '#search-salaryMin' },
   );
 
   const salaryMaxSelect = screen.getByLabelText(
     '최고 월급',
-    {selector: '#search-salaryMax'},
+    { selector: '#search-salaryMax' },
   );
 
   const searchButton = await screen.findByRole(
@@ -691,14 +691,14 @@ test('월급 범위를 선택하고 검색하면 salaryMin과 salaryMax를 전�
     );
 });
 
-test('최저 월급보다 낮은 최고 월급은 선택할 수 없다', async() => {
+test('최저 월급보다 낮은 최고 월급은 선택할 수 없다', async () => {
   const user = userEvent.setup();
 
   renderApp();
 
   const salaryMinSelect = screen.getByLabelText(
     '최저 월급',
-    { selector: '#search-salaryMin'},
+    { selector: '#search-salaryMin' },
   );
 
   const salaryMaxSelect = screen.getByLabelText(
@@ -864,7 +864,7 @@ describe('URL Query State', () => {
       </MemoryRouter>,
     );
   };
-  
+
   test(
     'URL의 검색 조건으로 검색 상태와 목록을 복원한다',
     async () => {
@@ -888,7 +888,7 @@ describe('URL Query State', () => {
 
       // URLのkeywordが検索入力欄に復元されるのことを確認
       expect(keywordInput).toHaveValue('Java');
-  
+
       // URLのstatusが状態選択値に復元されるのことを確認
       expect(statusSelect).toHaveValue('APPLIED');
 
@@ -940,7 +940,7 @@ describe('URL Query State', () => {
 
       await user.click(searchButton);
 
-      
+
       await waitFor(() => {
         expect(
           screen.getByTestId('location'),
@@ -1197,4 +1197,68 @@ describe('URL Query State', () => {
       });
     },
   );
+
+  test(
+    'Joblens로고를 눌러서 홈페이지로 돌아가면 URL Query parameter를 초기화한다',
+    async () => {
+      const user = userEvent.setup();
+
+      renderAppWithLocation(
+        '/?keyword=Java&status=APPLIED&page=2'
+      );
+
+      const goBackToHome = await screen.findByRole('button', {
+        name: 'JobLens Japan'
+      });
+
+      await user.click(goBackToHome);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('location')
+            .textContent,
+        ).toBe(
+          '/'
+        );
+      });
+    },
+  );
+
+  test(
+    '검색결과가 0건일 때 추가 fetch를 수행하지 않는다',
+    async () => {
+      vi.mocked(fetchJobPostings)
+        .mockResolvedValueOnce({
+          content: [],
+          page: 2,
+          size: 5,
+          totalElements: 0,
+          totalPages: 0,
+          first: false,
+          last: true,
+        });
+
+      renderAppWithLocation('/?page=2');
+
+      await waitFor(() => {
+        expect(fetchJobPostings)
+          .toHaveBeenCalled();
+      });
+
+      expect(fetchJobPostings)
+        .toHaveBeenCalledTimes(1);
+
+      // 最初のリクエストがpage=2で行われたことを確認する。
+      expect(fetchJobPostings)
+        .toHaveBeenCalledWith(
+          '',
+          '',
+          2,
+          'createdAt,desc',
+          null,
+          null,
+        );
+    },
+  );
+
 });

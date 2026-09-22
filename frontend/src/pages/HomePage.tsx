@@ -598,7 +598,9 @@ function HomePage() {
   };
 
   const handleGoBackToHomepage = async () => {
-
+    // URL
+    setSearchParams({});
+    // Form State
     setKeyword('');
     setStatus("");
     setAppliedKeyword('');
@@ -608,7 +610,7 @@ function HomePage() {
     setAppliedSalaryMin(null);
     setAppliedSalaryMax(null);
     setSorting(DEFAULT_SORTING);
-
+    // Server Data
     await loadJobPostings('', '', 0, DEFAULT_SORTING, null, null);
   };
 
