@@ -598,7 +598,7 @@ function HomePage() {
   };
 
   const handleGoBackToHomepage = async () => {
-    // URL
+    // Query Parameterを空にする
     setSearchParams({});
     // Form State
     setKeyword('');
