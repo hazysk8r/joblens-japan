@@ -956,5 +956,46 @@ class JobPostingControllerTest {
                             .andExpect(jsonPath("$.title")
                                 .value("Junior AWS Engineer"));
     }
+
+    // If-Matchヘッダーの形式が不正な場合に400が返されることを複数パターンで確認する
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "abc",
+        "\"abc\"",
+        "\"3",
+        "3\"",
+        "W/\"3\"",
+        "\"1\", \"2\"",
+        "*",
+        "\"999999999999999999999999999999999\""
+    })
+    void If_Match_헤더_형식에_맞지_않는다면_400을_반환한다(String ifMatch) throws Exception {
+            JobPosting charlie = jobPostingRepository.saveAndFlush(
+                            new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
+                                            "AWSを開発できる人は大歓迎", 300000, 500000));
+
+            String requestBody = """
+                            {
+                              "companyName": "Charlie Company",
+                              "title": "Junior AWS Engineer",
+                              "sourceUrl": "https://example.com/charlie",
+                              "originalText": "AWSを開発できる人は大歓迎",
+                              "salaryMin": 300000,
+                              "salaryMax": 500000
+                            }
+                            """;
+
+            mockMvc.perform(put(
+                            "/api/job-postings/{id}",
+                            charlie.getId())
+                            .header(
+                                            HttpHeaders.IF_MATCH,
+                                            ifMatch)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(requestBody))
+                            .andExpect(status().isBadRequest())
+                            .andExpect(jsonPath("$.code")
+                                            .value("MALFORMED_IF_MATCH_HEADER"));
+    }
     
 }

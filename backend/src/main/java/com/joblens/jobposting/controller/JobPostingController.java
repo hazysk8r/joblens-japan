@@ -9,6 +9,7 @@ import com.joblens.jobposting.service.JobPostingService;
 import com.joblens.jobposting.dto.UpdateApplicationStatusRequest;
 import com.joblens.jobposting.dto.UpdateJobPostingRequest;
 import com.joblens.jobposting.exception.IfMatchRequiredException;
+import com.joblens.jobposting.exception.MalformedIfMatchHeaderException;
 import com.joblens.jobposting.domain.ApplicationStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -140,7 +141,17 @@ public class JobPostingController {
             throw new IfMatchRequiredException();
         }
 
-        return Long.valueOf(ifMatch.replace("\"", ""));
+        if (!ifMatch.matches("^\"\\d+\"$")) {
+            throw new MalformedIfMatchHeaderException(ifMatch);
+        }
+
+        String version = ifMatch.substring(1, ifMatch.length() - 1);
+        // 数値形式は正しくてもLongの範囲を超える場合は不正なIf-Matchとして扱う
+        try {
+            return Long.valueOf(version);
+        } catch (NumberFormatException exception) {
+            throw new MalformedIfMatchHeaderException(ifMatch);
+        }
     }
 
     private ResponseEntity<JobPostingResponse> okWithETag(JobPostingResponse response) {

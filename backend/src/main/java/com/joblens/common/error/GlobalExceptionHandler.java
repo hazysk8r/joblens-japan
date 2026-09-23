@@ -5,6 +5,7 @@ import com.joblens.jobposting.exception.InvalidSortFieldException;
 import com.joblens.jobposting.exception.JobPostingMemoNotFoundException;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
 import com.joblens.jobposting.exception.JobPostingVersionConflictException;
+import com.joblens.jobposting.exception.MalformedIfMatchHeaderException;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -148,6 +149,22 @@ public class GlobalExceptionHandler {
                             Map.of());
             return ResponseEntity
                             .status(HttpStatus.PRECONDITION_REQUIRED)
+                            .body(response);
+                    }
+
+    @ExceptionHandler(MalformedIfMatchHeaderException.class)
+    public ResponseEntity<ApiErrorResponse> handleMalformedIfMatchHeader(
+                    MalformedIfMatchHeaderException exception,
+                    HttpServletRequest request) {
+            ApiErrorResponse response = new ApiErrorResponse(
+                            Instant.now(),
+                            HttpStatus.BAD_REQUEST.value(),
+                            "MALFORMED_IF_MATCH_HEADER",
+                            exception.getMessage(),
+                            request.getRequestURI(),
+                            Map.of());
+            return ResponseEntity
+                            .status(HttpStatus.BAD_REQUEST)
                             .body(response);
                     }
 
