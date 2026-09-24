@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 
 import java.net.URI;
 import java.util.List;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/api/job-postings")
@@ -39,6 +40,8 @@ import java.util.List;
 public class JobPostingController {
 
     private final JobPostingService jobPostingService;
+    // 数値のみを含む強いETag形式を許可する
+    private static final Pattern IF_MATCH_PATTERN = Pattern.compile("^\"\\d+\"$");
 
     @PostMapping
     public ResponseEntity<JobPostingResponse> create(
@@ -141,7 +144,7 @@ public class JobPostingController {
             throw new IfMatchRequiredException();
         }
 
-        if (!ifMatch.matches("^\"\\d+\"$")) {
+        if (!IF_MATCH_PATTERN.matcher(ifMatch).matches()) {
             throw new MalformedIfMatchHeaderException(ifMatch);
         }
 

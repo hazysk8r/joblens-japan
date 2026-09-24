@@ -2,6 +2,9 @@
 
 求人情報を保存・検索・管理するために開発中のWebアプリケーション。
 
+This project focuses not only on basic CRUD operations, but also on API consistency, 
+concurrency control, search performance, frontend state management, and regression testing.
+
 Status: In Development
 
 ## Tech Stack
@@ -46,6 +49,14 @@ DevOps
 * Monthly salary registration and editing
 * Monthly salary range filtering
 * Invalid salary range option prevention
+* Required skills stale-response prevention with AbortController
+* Optimistic locking with JPA @Version
+* ETag / If-Match conditional updates
+* PostgreSQL pg_trgm + GIN search optimization
+* Malformed If-Match header validation
+* URL query state for keyword, status, and page
+* Browser history restoration
+* Pagination boundary correction
 * Frontend/backend automated tests
 * GitHub Actions CI
 
@@ -61,18 +72,20 @@ Database schema changes are managed with Flyway.
 
 Frontend memo state management is separated into a custom hook, while UI-related state remains in the component.
 
-Search conditions such as keyword, application status, salary range and sorting are sent to the backend through query parameters.
+Search conditions are synchronized with URL query parameters through React Router.
 
 ## Current Development
 
-Monthly salary support has been implemented across the backend and frontend.
+Improving regression test coverage
 
-Salary-related frontend tests have been added.
+Hardening If-Match validation
 
-Memo management has also been refactored into an event-driven lazy-loading structure using a custom hook.
+Improving frontend state consistency
+
+Updating project documentation
 
 ## Planned
 
 * Improve frontend UI and styling
-* Continue accessibility improvements
+* Additional job management features
 * Continue AWS deployment learning and deployment verification

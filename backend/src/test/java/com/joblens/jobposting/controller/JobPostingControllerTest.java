@@ -997,5 +997,29 @@ class JobPostingControllerTest {
                             .andExpect(jsonPath("$.code")
                                             .value("MALFORMED_IF_MATCH_HEADER"));
     }
+
+    void ApplicationStatus_수정시_If_Match_형식이_잘못되면_400을_반환한다() throws Exception {
+        JobPosting charlie = jobPostingRepository.saveAndFlush(
+                new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
+                                            "AWSを開発できる人は大歓迎", 300000, 500000));
+        
+        String requestBody = """
+                        {
+                          "status": "APPLIED"
+                        }
+                        """;
+
+        mockMvc.perform(patch(
+                "/api/job-postings/{id}/status",
+                        charlie.getId())
+                        .header(
+                                        HttpHeaders.IF_MATCH,
+                                        "abc")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(jsonPath("$.code")
+                                        .value("MALFORMED_IF_MATCH_HEADER"));
+    }
     
 }
