@@ -78,6 +78,7 @@ function JobPostingMemoCreateForm({
               setContent(event.target.value)
             }
           />
+          <small>{content.length} / 250</small>
         </div>
         
         <button type="submit" disabled={submitting || content.trim() === ''}>
@@ -85,8 +86,8 @@ function JobPostingMemoCreateForm({
         </button>
       </form>
 
-      {message && <p>{message}</p>}
-      {error && <p>{error}</p>}
+      <p role="status">{message}</p>
+      {error && <p role="alert">{error}</p>}
     </section>
   )
 }
