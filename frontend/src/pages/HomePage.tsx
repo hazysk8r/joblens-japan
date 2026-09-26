@@ -80,7 +80,7 @@ function HomePage() {
   const pageFromUrl = parsePage(searchParams.get('page'));
   const currentUrlSearch = searchParams.toString();
 
-  // 初回表示時の検索条件を保持し、初期データ取得にのみ使用する。
+  // 初回表示時のURL検索条件を固定し、初期データ取得にのみ使用する。
   const initialSearchRef = useRef({
     keyword: keywordFromUrl,
     status: statusFromUrl,
@@ -112,10 +112,10 @@ function HomePage() {
   const [appliedSalaryMin, setAppliedSalaryMin] = useState<number | null>(null);
   const [appliedSalaryMax, setAppliedSalaryMax] = useState<number | null>(null);
   const [sorting, setSorting] = useState<JobPostingSorting>(DEFAULT_SORTING);
-  // 前回のURLクエリを保持し、URLの変更を判定するために使用する。
+  // 前回のURLクエリを保持し、POPによるURL変更時にフォーム状態を同期するために使用する。
   const [previousUrlSearch, setPreviousUrlSearch] = useState(currentUrlSearch);
 
-
+  // 戻る・進む操作でURLが変わった場合、検索フォームをURLの状態に同期する。
   if (currentUrlSearch !== previousUrlSearch) {
     setPreviousUrlSearch(currentUrlSearch);
 
@@ -192,6 +192,7 @@ function HomePage() {
     }
   }, []);
 
+  
   const didMountHistoryEffect = useRef(false);
 
   useEffect(() => {
@@ -201,7 +202,7 @@ function HomePage() {
       return;
     }
 
-    // 戻る・進む操作（POP）時に、現在のURL条件で求人一覧を再取得する。
+    // 通常の検索・ページ移動は各Handlerが取得するため、POPの場合だけHistory処理を行う。
     if (navigationType !== 'POP') {
       return;
     }

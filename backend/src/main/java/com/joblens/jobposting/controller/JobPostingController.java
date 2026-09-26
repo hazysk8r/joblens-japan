@@ -55,10 +55,10 @@ public class JobPostingController {
     }
 
     /**
-     * 채용공고 전체 내용을 수정한다.
+     * 求人情報全体を修正する。
      *
-     * PUT은 대상 리소스의 현재 내용을 요청 본문의 내용으로
-     * 교체한다는 의미로 사용한다.
+     * PUTは対象リソースの現在の内容を、
+     * リクエスト本文の内容で置き換えるために使用する。
      */
     @PutMapping("/{id}")
     public ResponseEntity<JobPostingResponse> update(
@@ -73,10 +73,10 @@ public class JobPostingController {
     }
 
     /**
-     * 채용공고를 삭제한다.
+     * 求人情報を削除する。
      *
-     * 삭제 성공 후 반환할 데이터가 없으므로
-     * HTTP 204 No Content를 반환한다.
+     * 削除成功時はレスポンスボティを含めず、
+     * HTTP 204 No Contentを返却する。
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
@@ -86,9 +86,9 @@ public class JobPostingController {
     }
 
     /**
-     * 채용공고를 검색하고 페이지 단위로 반환한다.
+     * 求人情報を検索し、ページングされた結果を返却する。
      *
-     * 요청 예시:
+     * リクエスト例：
      * GET /api/job-postings?keyword=AWS&page=0&size=10&sort=createdAt,desc
      */
     @GetMapping
@@ -96,9 +96,9 @@ public class JobPostingController {
             @RequestParam(required = false) String keyword,
 
             /*
-            * page나 size를 생략했을 때 사용할 기본값이다.
-            * 기본적으로 한 페이지에 10개씩 최신 공고부터 반환
-            */
+             * pageやsizeを省略した場合に使用するデフォルト値で、
+             * 1ページあたり10件ずつ、最新の求人情報から返却する。
+             */
             @PageableDefault(
                     size = 10,
                     sort = "createdAt",
@@ -109,9 +109,9 @@ public class JobPostingController {
             @RequestParam(name = "status", required = false) ApplicationStatus applicationStatus,
 
             /*
-             * salaryMin / salaryMax를 검색용 DTO로 바인딩하고,
-             * 
-             * @Valid를 통해 음수 및 역범위(salaryMin > salaryMax)를 검증
+             * salaryMin / salaryMaxを検索条件DTOにバインドし、
+             * ＠Validを用いて負の値および
+             * salaryMin > salaryMaxとなる不正な範囲を検証する。
              */
             @Valid @ModelAttribute JobPostingSalaryFilterRequest salaryFilter
     ) {
