@@ -8,7 +8,6 @@ import com.joblens.jobposting.dto.CreateJobPostingRequest;
 import com.joblens.jobposting.dto.JobPostingResponse;
 import com.joblens.jobposting.dto.UpdateJobPostingRequest;
 import com.joblens.jobposting.dto.UpdateApplicationStatusRequest;
-import com.joblens.jobposting.dto.JobPostingDeadlineFilterRequest;
 import com.joblens.jobposting.repository.JobPostingRepository;
 import com.joblens.jobposting.specification.JobPostingSpecifications;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
