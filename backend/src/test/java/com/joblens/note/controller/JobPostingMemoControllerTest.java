@@ -63,6 +63,7 @@ public class JobPostingMemoControllerTest {
             "https://example.com/memotest",
             "メモが正常に作動するかな", 
             null, 
+            null,
             null
         ));
 
@@ -103,6 +104,7 @@ public class JobPostingMemoControllerTest {
             "https://example.com/memotest",
             "メモが正常に作動するかな", 
             null, 
+            null,
             null
         ));
 
@@ -128,6 +130,7 @@ public class JobPostingMemoControllerTest {
             "https://example.com/memotest",
             "メモが正常に作動するかな", 
             null, 
+            null,
             null
         ));
 
@@ -154,6 +157,7 @@ public class JobPostingMemoControllerTest {
             "https://example.com/memotest",
             "メモが正常に作動するかな", 
             null, 
+            null,
             null
         ));
     
@@ -184,6 +188,7 @@ public class JobPostingMemoControllerTest {
             "https://example.com/memotest",
             "メモが正常に作動するかな", 
             null, 
+            null,
             null
         ));
 
@@ -215,6 +220,7 @@ public class JobPostingMemoControllerTest {
             "https://example.com/memotest",
             "メモが正常に作動するかな", 
             null, 
+            null,
             null
         ));
 
@@ -234,6 +240,7 @@ public class JobPostingMemoControllerTest {
             "https://example.com/memotest",
             "メモが正常に作動するかな", 
             null, 
+            null,
             null
         ));
     JobPosting savedJobPostingB = jobPostingRepository.save(
@@ -243,6 +250,7 @@ public class JobPostingMemoControllerTest {
             "https://example.com/memotest",
             "メモが正常に作動するかな", 
             null, 
+            null,
             null
         ));
 
@@ -268,6 +276,7 @@ public class JobPostingMemoControllerTest {
             "https://example.com/memotest",
             "メモが正常に作動するかな", 
             null, 
+            null,
             null
         ));
     JobPostingMemo savedJobPostingMemo = jobPostingMemoRepository.save(new JobPostingMemo("メモテストA", savedJobPosting));
@@ -305,6 +314,7 @@ public class JobPostingMemoControllerTest {
             "https://example.com/memotest",
             "メモが正常に作動するかな", 
             null, 
+            null,
             null
         ));
     JobPosting savedJobPostingB = jobPostingRepository.save(
@@ -314,6 +324,7 @@ public class JobPostingMemoControllerTest {
             "https://example.com/memotest",
             "メモが正常に作動するかな", 
             null, 
+            null,
             null
         ));
     JobPostingMemo savedJobPostingMemoA = jobPostingMemoRepository.save(new JobPostingMemo("メモテストA", savedJobPostingA));
@@ -351,6 +362,7 @@ public class JobPostingMemoControllerTest {
             "https://example.com/memotest",
             "メモが正常に作動するかな", 
             null, 
+            null,
             null
         ));
     JobPostingMemo savedJobPostingMemoA = jobPostingMemoRepository.save(new JobPostingMemo("メモテストA", savedJobPostingA));

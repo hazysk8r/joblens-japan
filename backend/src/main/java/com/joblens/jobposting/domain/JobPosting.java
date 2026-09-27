@@ -14,6 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 
 @Entity
@@ -51,6 +52,9 @@ public class JobPosting {
     @Column(name = "salary_max")
     private Integer salaryMax;
 
+    @Column(name = "application_deadline")
+    private LocalDate applicationDeadline;
+
     @Version
     private Long version;
 
@@ -60,7 +64,8 @@ public class JobPosting {
             String sourceUrl,
             String originalText,
             Integer salaryMin,
-            Integer salaryMax
+            Integer salaryMax,
+            LocalDate applicationDeadline
     ) {
         this.companyName = companyName;
         this.title = title;
@@ -68,6 +73,7 @@ public class JobPosting {
         this.originalText = originalText;
         this.salaryMin = salaryMin;
         this.salaryMax = salaryMax;
+        this.applicationDeadline = applicationDeadline;
         this.createdAt = Instant.now();
     }
 
@@ -84,7 +90,8 @@ public class JobPosting {
             String sourceUrl,
             String originalText,
             Integer salaryMin,
-            Integer salaryMax
+            Integer salaryMax,
+            LocalDate applicationDeadline
     ) {
         this.companyName = companyName;
         this.title = title;
@@ -92,6 +99,7 @@ public class JobPosting {
         this.originalText = originalText;
         this.salaryMin = salaryMin;
         this.salaryMax = salaryMax;
+        this.applicationDeadline = applicationDeadline;
     }   
 
     public void changeApplicationStatus(

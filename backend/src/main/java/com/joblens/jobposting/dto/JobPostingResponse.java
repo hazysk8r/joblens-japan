@@ -4,6 +4,7 @@ import com.joblens.jobposting.domain.JobPosting;
 import com.joblens.jobposting.domain.ApplicationStatus;
 
 import java.time.Instant;
+import java.time.LocalDate;
 //엔티티를 API에서 그대로 반환하지 않고 응답 DTO로 변환
 public record JobPostingResponse(
         Long id,
@@ -13,6 +14,7 @@ public record JobPostingResponse(
         String originalText,
         Integer salaryMin,
         Integer salaryMax,
+        LocalDate applicationDeadline,
         Long version,
         Instant createdAt,
         ApplicationStatus applicationStatus
@@ -27,6 +29,7 @@ public record JobPostingResponse(
                 jobPosting.getOriginalText(),
                 jobPosting.getSalaryMin(),
                 jobPosting.getSalaryMax(),
+                jobPosting.getApplicationDeadline(),
                 jobPosting.getVersion(),
                 jobPosting.getCreatedAt(),
                 jobPosting.getApplicationStatus()

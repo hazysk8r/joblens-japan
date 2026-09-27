@@ -3,6 +3,7 @@ package com.joblens.jobposting.controller;
 import com.joblens.common.response.PageResponse;
 import com.joblens.jobposting.dto.ApplicationStatusSummaryResponse;
 import com.joblens.jobposting.dto.CreateJobPostingRequest;
+import com.joblens.jobposting.dto.JobPostingDeadlineFilterRequest;
 import com.joblens.jobposting.dto.JobPostingResponse;
 import com.joblens.jobposting.dto.JobPostingSalaryFilterRequest;
 import com.joblens.jobposting.service.JobPostingService;
@@ -113,10 +114,12 @@ public class JobPostingController {
              * ＠Validを用いて負の値および
              * salaryMin > salaryMaxとなる不正な範囲を検証する。
              */
-            @Valid @ModelAttribute JobPostingSalaryFilterRequest salaryFilter
+            @Valid @ModelAttribute JobPostingSalaryFilterRequest salaryFilter,
+
+            @Valid @ModelAttribute JobPostingDeadlineFilterRequest deadlineFilter
     ) {
         return jobPostingService.findAll(keyword, pageable, applicationStatus, salaryFilter.salaryMin(), 
-                salaryFilter.salaryMax());
+                salaryFilter.salaryMax(), deadlineFilter.deadlineFrom(), deadlineFilter.deadlineTo());
     }
 
     @GetMapping("/{id}")

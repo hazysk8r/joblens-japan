@@ -8,6 +8,7 @@ import com.joblens.jobposting.dto.CreateJobPostingRequest;
 import com.joblens.jobposting.dto.JobPostingResponse;
 import com.joblens.jobposting.dto.UpdateJobPostingRequest;
 import com.joblens.jobposting.dto.UpdateApplicationStatusRequest;
+import com.joblens.jobposting.dto.JobPostingDeadlineFilterRequest;
 import com.joblens.jobposting.repository.JobPostingRepository;
 import com.joblens.jobposting.specification.JobPostingSpecifications;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
@@ -17,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -57,7 +59,8 @@ public class JobPostingService {
                 request.sourceUrl(),
                 request.originalText(),
                 request.salaryMin(),
-                request.salaryMax()
+                request.salaryMax(),
+                request.applicationDeadline()
         );
 
         JobPosting savedJobPosting = jobPostingRepository.save(jobPosting);
@@ -88,7 +91,8 @@ public class JobPostingService {
                 request.sourceUrl(),
                 request.originalText(),
                 request.salaryMin(),
-                request.salaryMax()
+                request.salaryMax(),
+                request.applicationDeadline()
         );
 
         // Optimistic Lockingの更新を即時にDBへ反映し、
@@ -141,7 +145,9 @@ public class JobPostingService {
             Pageable pageable,
             ApplicationStatus applicationStatus,
             Integer salaryMin,
-            Integer salaryMax
+            Integer salaryMax,
+            LocalDate deadlineFrom,
+            LocalDate deadlineTo
     ) {
         // pageable에서 sort만 꺼냄
         Sort requestedSort = pageable.getSort();
@@ -169,7 +175,8 @@ public class JobPostingService {
             JobPostingSpecifications.salaryOverlaps(
                 salaryMin,
                 salaryMax
-            )
+            ),
+            JobPostingSpecifications.hasDeadlineBetween(deadlineFrom, deadlineTo)
         );
 
         Page<JobPosting> jobPostingPage = jobPostingRepository.findAll(spec, finalPageable);

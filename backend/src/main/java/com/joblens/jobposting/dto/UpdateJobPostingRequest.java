@@ -1,5 +1,7 @@
 package com.joblens.jobposting.dto;
 
+import java.time.LocalDate;
+
 import com.joblens.jobposting.validation.SalaryRangeTarget;
 import com.joblens.jobposting.validation.ValidSalaryRange;
 
@@ -32,7 +34,9 @@ public record UpdateJobPostingRequest(
         Integer salaryMin,
 
         @PositiveOrZero 
-        Integer salaryMax
+        Integer salaryMax,
+
+        LocalDate applicationDeadline
         
 ) implements SalaryRangeTarget{
 }

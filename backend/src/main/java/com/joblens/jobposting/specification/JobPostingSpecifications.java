@@ -1,5 +1,6 @@
 package com.joblens.jobposting.specification;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -126,6 +127,38 @@ public class JobPostingSpecifications {
        */
       return cb.and(
           predicates.toArray(new Predicate[0]));
+    };
+  }
+
+  public static Specification<JobPosting> hasDeadlineBetween(
+    LocalDate deadlineFrom,
+    LocalDate deadlineTo
+  ) {
+    return (root, query, cb) -> {
+
+      if (deadlineFrom == null && deadlineTo == null) {
+        return cb.conjunction();
+      }
+
+      if (deadlineFrom != null && deadlineTo != null) {
+        return cb.between(
+                root.get("applicationDeadline"),
+                deadlineFrom,
+                deadlineTo
+        );
+      }
+
+      if (deadlineFrom != null) {
+        return cb.greaterThanOrEqualTo(
+                root.get("applicationDeadline"),
+                deadlineFrom
+        );
+      }
+
+      return cb.lessThanOrEqualTo(
+              root.get("applicationDeadline"),
+              deadlineTo
+      );
     };
   }
 }
