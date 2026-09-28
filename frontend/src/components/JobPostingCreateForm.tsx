@@ -22,6 +22,7 @@ function JobPostingCreateForm({
   const [originalText, setOriginalText] = useState('');
   const [salaryMin, setSalaryMin] = useState<SalaryFilter>(null);
   const [salaryMax, setSalaryMax] = useState<SalaryFilter>(null);
+  const [applicationDeadline, setApplicationDeadline] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -47,6 +48,7 @@ function JobPostingCreateForm({
         originalText: originalText.trim(),
         salaryMin: salaryMin || null,
         salaryMax: salaryMax || null,
+        applicationDeadline: applicationDeadline || null,
       });
 
       /*
@@ -190,6 +192,18 @@ function JobPostingCreateForm({
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label htmlFor="applicationDeadline">応募締切日</label>
+          <input
+            id="applicationDeadline"
+            type="date"
+            value={applicationDeadline}
+            onChange={(event) => 
+              setApplicationDeadline(event.target.value)
+            }
+          />
         </div>
 
         <button type="submit" disabled={submitting}>

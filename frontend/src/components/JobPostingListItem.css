@@ -41,9 +41,27 @@
   font-size: 0.95rem;
 }
 
-.job-posting-card__salary {
+.job-posting-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
   margin-top: 0.4rem;
+}
+
+.job-posting-card__salary {
   font-size: 0.95rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.job-posting-card__deadline {
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card-muted-bg);
+  color: var(--text);
+  font-size: 0.85rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }

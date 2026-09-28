@@ -219,7 +219,16 @@ function JobPostingListItem({
 								{jobPosting.companyName ??
 									'회사명 미등록'}
 							</p>
-							<p className="job-posting-card__salary">{salaryText}</p>
+							<div className="job-posting-card__meta">
+									<p className="job-posting-card__salary">
+										{salaryText}
+									</p>
+
+									<p className="job-posting-card__deadline">
+										横暴締切日：{' '}
+										{jobPosting.applicationDeadline ?? '미등록'}
+									</p>
+							</div>
 						</div>
 						<div className="job-posting-card__status">
 							<label>

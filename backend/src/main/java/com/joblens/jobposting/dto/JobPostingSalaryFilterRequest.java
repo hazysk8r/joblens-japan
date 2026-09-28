@@ -19,4 +19,5 @@ public record JobPostingSalaryFilterRequest(
   Integer salaryMax
 
 ) implements SalaryRangeTarget{
+  
 }

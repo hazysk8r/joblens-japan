@@ -39,6 +39,7 @@ export interface JobPosting {
   applicationStatus: ApplicationStatus;
   salaryMin: number | null;
   salaryMax: number | null;
+  applicationDeadline: string | null;
   version: number;
 }
 
@@ -62,6 +63,7 @@ export interface CreateJobPostingRequest {
   originalText: string;
   salaryMin: number | null;
   salaryMax: number | null;
+  applicationDeadline: string | null;
 }
 
 export interface UpdateJobPostingRequest {
@@ -71,6 +73,7 @@ export interface UpdateJobPostingRequest {
   originalText: string;
   salaryMin: number | null;
   salaryMax: number | null;
+  applicationDeadline: string | null;
 }
 
 export interface UpdateApplicationStatusRequest {

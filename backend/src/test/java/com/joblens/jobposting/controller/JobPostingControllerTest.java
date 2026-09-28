@@ -1119,4 +1119,14 @@ class JobPostingControllerTest {
         );
     }
 
+    @Test
+    void 시작일이_마감일보다_뒤의_날짜로_설정되면_400을_반환한다() throws Exception {
+        mockMvc.perform(get("/api/job-postings")
+                .param("deadlineFrom", "2026-11-01")
+                .param("deadlineTo", "2026-10-01"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
 }

@@ -227,6 +227,7 @@ test('현재 페이지가 범위를 벗어나면 마지막 유효 페이지를 �
     applicationStatus: 'APPLIED',
     salaryMin: null,
     salaryMax: null,
+    applicationDeadline: null,
     version: 0,
   };
 
@@ -345,6 +346,7 @@ test('공고 원문이 변경되면 이전 기술스택 캐시를 사용하지 �
     applicationStatus: 'SAVED',
     salaryMin: null,
     salaryMax: null,
+    applicationDeadline: null,
     version: 0,
   };
 
@@ -426,6 +428,7 @@ test('특정 정렬 상태에서 삭제 행위가 이뤄져도 사용자가 선�
     applicationStatus: 'SAVED',
     salaryMin: null,
     salaryMax: null,
+    applicationDeadline: null,
     version: 0,
   };
 
@@ -484,6 +487,7 @@ test('특정 정렬 상태에서 수정 행위가 이뤄져도 사용자가 선�
     applicationStatus: 'SAVED',
     salaryMin: null,
     salaryMax: null,
+    applicationDeadline: null,
     version: 0,
   };
 
@@ -537,6 +541,7 @@ test('특정 정렬 상태에서 수정 행위가 이뤄져도 사용자가 선�
           originalText: 'AWSエンジニア求人',
           salaryMin: null,
           salaryMax: null,
+          applicationDeadline: null,
         },
         0,
       );
@@ -565,6 +570,7 @@ test('검색어나 필터가 적용된 상태에서 JobLens Japan 을 누르면,
     applicationStatus: 'SAVED',
     salaryMin: null,
     salaryMax: null,
+    applicationDeadline: null,
     version: 0,
   };
 
@@ -787,6 +793,7 @@ test('월급 범위를 포함하여 채용공고를 등록할 수 있다', async
         originalText: 'AWS Java',
         salaryMin: 300000,
         salaryMax: 500000,
+        applicationDeadline: null,
       });
   });
 });

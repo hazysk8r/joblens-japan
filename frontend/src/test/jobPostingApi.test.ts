@@ -51,6 +51,7 @@ describe('jobPostingApi If-Match', () => {
         originalText: 'Java AWS',
         salaryMin: null,
         salaryMax: null,
+        applicationDeadline: null,
       },
       3,
     );

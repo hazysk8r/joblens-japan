@@ -48,6 +48,7 @@ describe('skills', () => {
       applicationStatus: 'SAVED',
       salaryMin: null,
       salaryMax: null,
+      applicationDeadline: null,
       version: 0,
     };
     vi.mocked(extractRequiredSkills)
@@ -95,6 +96,7 @@ describe('skills', () => {
       applicationStatus: 'SAVED',
       salaryMin: null,
       salaryMax: null,
+      applicationDeadline: null,
       version: 0,
     };
     vi.mocked(extractRequiredSkills)
@@ -142,6 +144,7 @@ describe('skills', () => {
       applicationStatus: 'SAVED',
       salaryMin: null,
       salaryMax: null,
+      applicationDeadline: null,
       version: 0,
     };
     vi.mocked(extractRequiredSkills)
@@ -189,6 +192,7 @@ describe('skills', () => {
       applicationStatus: 'SAVED',
       salaryMin: null,
       salaryMax: null,
+      applicationDeadline: null,
       version: 0,
     };
     // 비동기 처리를 위해 resolve 함수를 외부로 추출
@@ -247,6 +251,7 @@ describe('skills', () => {
       applicationStatus: 'SAVED',
       salaryMin: null,
       salaryMax: null,
+      applicationDeadline: null,
       version: 0,
     };
 
@@ -296,6 +301,7 @@ describe('skills', () => {
       applicationStatus: 'SAVED',
       salaryMin: null,
       salaryMax: null,
+      applicationDeadline: null,
       version: 0,
     };
 
@@ -349,6 +355,7 @@ describe('skills', () => {
       applicationStatus: 'SAVED',
       salaryMin: null,
       salaryMax: null,
+      applicationDeadline: null,
       version: 0,
     };
 
@@ -443,6 +450,7 @@ describe('memos', () => {
       applicationStatus: 'SAVED',
       salaryMin: null,
       salaryMax: null,
+      applicationDeadline: null,
       version: 0,
     };
     const mockMemo: JobPostingMemo = {
@@ -495,6 +503,7 @@ describe('memos', () => {
       applicationStatus: 'SAVED',
       salaryMin: null,
       salaryMax: null,
+      applicationDeadline: null,
       version: 0,
     };
     vi.mocked(getJobPostingMemos)
@@ -541,6 +550,7 @@ describe('memos', () => {
       applicationStatus: 'SAVED',
       salaryMin: null,
       salaryMax: null,
+      applicationDeadline: null,
       version: 0,
     };
 
@@ -590,6 +600,7 @@ describe('memos', () => {
       applicationStatus: 'SAVED',
       salaryMin: null,
       salaryMax: null,
+      applicationDeadline: null,
       version: 0,
     };
     const mockMemo: JobPostingMemo = {
@@ -655,6 +666,7 @@ describe('memos', () => {
       applicationStatus: 'SAVED',
       salaryMin: null,
       salaryMax: null,
+      applicationDeadline: null,
       version: 0,
     };
     const mockMemo: JobPostingMemo = {
@@ -714,6 +726,7 @@ describe('memos', () => {
       applicationStatus: 'SAVED',
       salaryMin: null,
       salaryMax: null,
+      applicationDeadline: null,
       version: 0,
     };
     const mockMemo: JobPostingMemo = {
@@ -772,6 +785,7 @@ describe('memos', () => {
       applicationStatus: 'SAVED',
       salaryMin: null,
       salaryMax: null,
+      applicationDeadline: null,
       version: 0,
     };
     const mockMemo: JobPostingMemo = {
@@ -833,6 +847,7 @@ describe('memos', () => {
       applicationStatus: 'SAVED',
       salaryMin: null,
       salaryMax: null,
+      applicationDeadline: null,
       version: 0,
     };
 
@@ -942,6 +957,7 @@ describe('memos', () => {
       applicationStatus: 'SAVED',
       salaryMin: null,
       salaryMax: null,
+      applicationDeadline: null,
       version: 0,
     };
 
@@ -1030,6 +1046,7 @@ describe('memos', () => {
       applicationStatus: 'SAVED',
       salaryMin: null,
       salaryMax: null,
+      applicationDeadline: null,
       version: 0,
     };
 
@@ -1144,6 +1161,7 @@ describe('memos', () => {
       applicationStatus: 'SAVED',
       salaryMin: null,
       salaryMax: null,
+      applicationDeadline: null,
       version: 0,
     };
     const mockMemo: JobPostingMemo = {
@@ -1190,6 +1208,7 @@ describe('memos', () => {
       applicationStatus: 'SAVED',
       salaryMin: null,
       salaryMax: null,
+      applicationDeadline: null,
       version: 0,
     };
     const mockMemo: JobPostingMemo = {
@@ -1249,6 +1268,7 @@ describe('memos', () => {
       applicationStatus: 'SAVED',
       salaryMin: null,
       salaryMax: null,
+      applicationDeadline: null,
       version: 0,
     };
     const mockMemo: JobPostingMemo = {
@@ -1313,6 +1333,7 @@ describe('memos', () => {
       applicationStatus: 'SAVED',
       salaryMin: null,
       salaryMax: null,
+      applicationDeadline: null,
       version: 0,
     };
     const mockMemo: JobPostingMemo = {
@@ -1372,6 +1393,7 @@ describe('memos', () => {
       applicationStatus: 'SAVED',
       salaryMin: null,
       salaryMax: null,
+      applicationDeadline: null,
       version: 0,
     };
     const mockMemo: JobPostingMemo = {

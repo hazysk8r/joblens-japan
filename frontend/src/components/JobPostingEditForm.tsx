@@ -29,6 +29,7 @@ interface EditFormState {
   originalText: string;
   salaryMin: SalaryFilter;
   salaryMax: SalaryFilter;
+  applicationDeadline: string;
 }
 
 function JobPostingEditForm({
@@ -54,6 +55,8 @@ function JobPostingEditForm({
         jobPosting.salaryMin ?? null,
       salaryMax:
         jobPosting.salaryMax ?? null,
+      applicationDeadline:
+        jobPosting.applicationDeadline ?? ''
     });
 
   const [
@@ -94,6 +97,8 @@ function JobPostingEditForm({
         editForm.salaryMin ?? null,
       salaryMax:
         editForm.salaryMax ?? null,
+      applicationDeadline:
+        editForm.applicationDeadline || null
     };
 
     /*
@@ -257,6 +262,23 @@ function JobPostingEditForm({
             </option>
           ))}
         </select>
+      </div>
+
+      <div>
+        <label htmlFor={`edit-applicationDeadline-${jobPosting.id}`}>
+          <input 
+            id={`edit-applicationDeadline-${jobPosting.id}`}
+            type="date"
+            value={editForm.applicationDeadline}
+            disabled={saving}
+            onChange={(event) => {
+              setEditForm((previous) => ({
+                ...previous,
+                applicationDeadline: event.target.value,
+              }));
+            }}
+          />
+        </label>
       </div>
 
       {validationError && (
