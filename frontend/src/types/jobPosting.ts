@@ -10,6 +10,9 @@ export type ApplicationStatus =
 export type StatusFilter =
   ApplicationStatus | "";
 
+export type DeadlineFilter =
+  string | null;
+
 export type JobPostingSorting =
   | 'createdAt,desc'
   | 'createdAt,asc'

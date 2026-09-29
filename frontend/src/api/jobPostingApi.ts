@@ -8,6 +8,7 @@ import type {
   StatusFilter,
   SalaryFilter,
   JobPostingSorting,
+  DeadlineFilter,
 } from '../types/jobPosting';
 
 /**
@@ -23,6 +24,8 @@ export async function fetchJobPostings(
   sort: JobPostingSorting,
   salaryMin: SalaryFilter,
   salaryMax: SalaryFilter,
+  deadlineFrom: DeadlineFilter,
+  deadlineTo: DeadlineFilter,
 ): Promise<PageResponse<JobPosting>> {
   const params = new URLSearchParams({
     /*
@@ -52,6 +55,15 @@ export async function fetchJobPostings(
   if (salaryMax !== null) {
     params.set("salaryMax", String(salaryMax));
   }
+
+  if (deadlineFrom) {
+    params.set("deadlineFrom", deadlineFrom);
+  }
+
+  if (deadlineTo) {
+    params.set("deadlineTo", deadlineTo);
+  }
+
 
   const response = await fetch(
     `/api/job-postings?${params.toString()}`,

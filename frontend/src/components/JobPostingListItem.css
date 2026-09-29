@@ -277,3 +277,211 @@
     --card-danger-bg: #3c2427;
   }
 }
+
+/* 検索フォームだけに適用し、求人カード内のフォームには影響させない。 */
+main > form:has(> .search-main-row) {
+  box-sizing: border-box;
+  width: calc(100% - 2rem);
+  max-width: 58rem;
+  margin: 1.25rem auto 1.75rem;
+  padding: clamp(1rem, 3vw, 2rem);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 4%);
+  color: var(--text-h);
+  text-align: left;
+}
+
+.search-main-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+  grid-template-areas:
+    'keyword-label status-label .'
+    'keyword status submit';
+  align-items: end;
+  gap: 0.5rem 1rem;
+}
+
+.search-main-row > label[for='search'] {
+  grid-area: keyword-label;
+}
+
+.search-main-row > #search {
+  grid-area: keyword;
+}
+
+.search-main-row > label[for='status'] {
+  grid-area: status-label;
+}
+
+.search-main-row > #status {
+  grid-area: status;
+}
+
+.search-main-row > button[type='submit'] {
+  grid-area: submit;
+}
+
+:is(.search-main-row, .advanced-filter) > label {
+  min-width: 0;
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+main > form:has(> .search-main-row) :is(input, select, button) {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+main > form:has(> .search-main-row) :is(input, select) {
+  width: 100%;
+  height: 2.75rem;
+}
+
+.search-main-row > input::placeholder {
+  color: var(--text);
+  opacity: 0.8;
+}
+
+main > form:has(> .search-main-row) button {
+  cursor: pointer;
+}
+
+main > form:has(> .search-main-row) :is(input, select, button):focus-visible {
+  outline: 2px solid var(--text-h);
+  outline-offset: 3px;
+}
+
+main > form:has(> .search-main-row) :is(input, select, button):disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+main > form:has(> .search-main-row) .search-main-row > button[type='submit'] {
+  min-width: 6rem;
+  border-color: var(--text-h);
+  background: var(--text-h);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+.search-main-row > button[type='submit']:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+main > form:has(> .search-main-row) > .advanced-filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1.25rem;
+  background: transparent;
+  color: var(--text);
+  font-weight: 600;
+}
+
+main > form:has(> .search-main-row) > .advanced-filter-toggle:hover:not(:disabled) {
+  border-color: var(--text);
+  background: var(--card-muted-bg, var(--code-bg));
+  color: var(--text-h);
+}
+
+.advanced-filter {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-areas:
+    'salary-min-label salary-max-label'
+    'salary-min salary-max'
+    'deadline-from-label deadline-to-label'
+    'deadline-from deadline-to'
+    'sorting-label sorting-label'
+    'sorting sorting';
+  align-items: end;
+  gap: 0.5rem 1.25rem;
+  margin-top: 1rem;
+  padding: clamp(1rem, 2.5vw, 1.5rem);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card-muted-bg, var(--code-bg));
+}
+
+.advanced-filter > label[for='search-salaryMin'] { grid-area: salary-min-label; }
+.advanced-filter > #search-salaryMin { grid-area: salary-min; }
+.advanced-filter > label[for='search-salaryMax'] { grid-area: salary-max-label; }
+.advanced-filter > #search-salaryMax { grid-area: salary-max; }
+.advanced-filter > label[for='deadlineFrom'] { grid-area: deadline-from-label; }
+.advanced-filter > #deadlineFrom { grid-area: deadline-from; }
+.advanced-filter > label[for='deadlineTo'] { grid-area: deadline-to-label; }
+.advanced-filter > #deadlineTo { grid-area: deadline-to; }
+.advanced-filter > label[for='sorting'] { grid-area: sorting-label; }
+.advanced-filter > #sorting { grid-area: sorting; }
+
+.advanced-filter > label:is([for='deadlineFrom'], [for='deadlineTo'], [for='sorting']) {
+  margin-top: 0.75rem;
+}
+
+@media (max-width: 600px) {
+  main > form:has(> .search-main-row) {
+    width: calc(100% - 1.5rem);
+  }
+
+  .search-main-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'keyword-label keyword-label'
+      'keyword keyword'
+      'status-label .'
+      'status submit';
+  }
+
+  .search-main-row > label[for='status'] {
+    margin-top: 0.5rem;
+  }
+
+  .advanced-filter {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'salary-min-label'
+      'salary-min'
+      'salary-max-label'
+      'salary-max'
+      'deadline-from-label'
+      'deadline-from'
+      'deadline-to-label'
+      'deadline-to'
+      'sorting-label'
+      'sorting';
+  }
+
+  .advanced-filter > label:not(:first-child) {
+    margin-top: 0.75rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .search-main-row {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'keyword-label'
+      'keyword'
+      'status-label'
+      'status'
+      'submit';
+  }
+
+  .search-main-row > button[type='submit'] {
+    margin-top: 0.5rem;
+  }
+}

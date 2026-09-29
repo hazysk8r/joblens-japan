@@ -18,6 +18,7 @@ import {
   type ApplicationStatusSummaryResponse,
   type StatusFilter,
   type SalaryFilter,
+  type DeadlineFilter,
   type JobPostingSorting,
 } from '../types/jobPosting';
 
@@ -111,9 +112,14 @@ function HomePage() {
   const [salaryMax, setSalaryMax] = useState<number | null>(null);
   const [appliedSalaryMin, setAppliedSalaryMin] = useState<number | null>(null);
   const [appliedSalaryMax, setAppliedSalaryMax] = useState<number | null>(null);
+  const [deadlineFrom, setDeadlineFrom] = useState<DeadlineFilter>(null);
+  const [deadlineTo, setDeadlineTo] = useState<DeadlineFilter>(null);
+  const [appliedDeadlineFrom, setAppliedDeadlineFrom] = useState<DeadlineFilter>(null);
+  const [appliedDeadlineTo, setAppliedDeadlineTo] = useState<DeadlineFilter>(null);
   const [sorting, setSorting] = useState<JobPostingSorting>(DEFAULT_SORTING);
   // 前回のURLクエリを保持し、POPによるURL変更時にフォーム状態を同期するために使用する。
   const [previousUrlSearch, setPreviousUrlSearch] = useState(currentUrlSearch);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // 戻る・進む操作でURLが変わった場合、検索フォームをURLの状態に同期する。
   if (currentUrlSearch !== previousUrlSearch) {
@@ -141,6 +147,8 @@ function HomePage() {
     sort: JobPostingSorting,
     salaryMin: SalaryFilter,
     salaryMax: SalaryFilter,
+    deadlineFrom: DeadlineFilter,
+    deadlineTo: DeadlineFilter,
   ) => {
     try {
       let page = await fetchJobPostings(
@@ -150,6 +158,8 @@ function HomePage() {
         sort,
         salaryMin,
         salaryMax,
+        deadlineFrom,
+        deadlineTo,
       );
 
       // 現在のページが範囲外になった場合、最後の有効ページを再取得する。
@@ -167,6 +177,8 @@ function HomePage() {
           sort,
           salaryMin,
           salaryMax,
+          deadlineFrom,
+          deadlineTo,
         );
       }
       /*
@@ -219,6 +231,8 @@ function HomePage() {
           DEFAULT_SORTING,
           null,
           null,
+          null,
+          null,
         );
 
         // 現在のページが範囲外の場合は、最後の有効ページを取得する。
@@ -234,6 +248,8 @@ function HomePage() {
             statusFromUrl,
             lastValidPage,
             DEFAULT_SORTING,
+            null,
+            null,
             null,
             null,
           );
@@ -314,6 +330,8 @@ function HomePage() {
               DEFAULT_SORTING,
               null,
               null,
+              null,
+              null,
             ),
             fetchApplicationStatusSummary(),
           ]);
@@ -362,6 +380,8 @@ function HomePage() {
     const nextStatus = status;
     const nextSalaryMin = salaryMin;
     const nextSalaryMax = salaryMax;
+    const nextDeadlineFrom = deadlineFrom;
+    const nextDeadlineTo = deadlineTo;
 
     const nextSearchParams = new URLSearchParams();
 
@@ -386,6 +406,8 @@ function HomePage() {
     setAppliedStatus(nextStatus);
     setAppliedSalaryMin(nextSalaryMin);
     setAppliedSalaryMax(nextSalaryMax);
+    setAppliedDeadlineFrom(nextDeadlineFrom);
+    setAppliedDeadlineTo(nextDeadlineTo);
 
     /*
     * 새로운 검색을 시작할 때는
@@ -394,7 +416,7 @@ function HomePage() {
     setLoading(true);
     setError(null);
 
-    void loadJobPostings(nextKeyword, nextStatus, 0, sorting, nextSalaryMin, nextSalaryMax);
+    void loadJobPostings(nextKeyword, nextStatus, 0, sorting, nextSalaryMin, nextSalaryMax, nextDeadlineFrom, nextDeadlineTo);
   };
 
 
@@ -430,6 +452,8 @@ function HomePage() {
       sorting,
       appliedSalaryMin,
       appliedSalaryMax,
+      appliedDeadlineFrom,
+      appliedDeadlineTo,
     );
   };
 
@@ -459,6 +483,8 @@ function HomePage() {
       sorting,
       appliedSalaryMin,
       appliedSalaryMax,
+      appliedDeadlineFrom,
+      appliedDeadlineTo,
     );
   };
 
@@ -500,6 +526,8 @@ function HomePage() {
         sorting,
         appliedSalaryMin,
         appliedSalaryMax,
+        appliedDeadlineFrom,
+        appliedDeadlineTo,
       );
       await loadApplicationStatusSummary();
     } catch (caughtError) {
@@ -553,6 +581,8 @@ function HomePage() {
         sorting,
         appliedSalaryMin,
         appliedSalaryMax,
+        appliedDeadlineFrom,
+        appliedDeadlineTo,
       );
     } catch (caughtError) {
       const message =
@@ -583,6 +613,8 @@ function HomePage() {
         sorting,
         appliedSalaryMin,
         appliedSalaryMax,
+        appliedDeadlineFrom,
+        appliedDeadlineTo,
       );
 
       await loadApplicationStatusSummary();
@@ -610,9 +642,14 @@ function HomePage() {
     setSalaryMax(null);
     setAppliedSalaryMin(null);
     setAppliedSalaryMax(null);
+    setDeadlineFrom(null);
+    setDeadlineTo(null);
+    setAppliedDeadlineFrom(null);
+    setAppliedDeadlineTo(null);
+    setShowAdvancedFilters(false);
     setSorting(DEFAULT_SORTING);
     // Server Data
-    await loadJobPostings('', '', 0, DEFAULT_SORTING, null, null);
+    await loadJobPostings('', '', 0, DEFAULT_SORTING, null, null, null, null);
   };
 
   return (
@@ -647,139 +684,185 @@ function HomePage() {
       <h2>채용공고 검색</h2>
 
       <form onSubmit={handleSubmit}>
-        <label htmlFor='search'>검색어</label>
-        <input
-          id='search'
-          type="text"
-          value={keyword}
-          onChange={(event) => setKeyword(event.target.value)}
-          placeholder="AWS, Java, 회사명 검색"
-        />
+        <div className="search-main-row">
+          <label htmlFor='search'>검색어</label>
+          <input
+            id='search'
+            type="text"
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            placeholder="AWS, Java, 회사명 검색"
+          />
 
-        <label htmlFor="status">상태</label>
-        <select
-          id="status"
-          value={status}
-          onChange={(event) =>
-            setStatus(event.target.value as StatusFilter)
+          <label htmlFor="status">상태</label>
+          <select
+            id="status"
+            value={status}
+            onChange={(event) =>
+              setStatus(event.target.value as StatusFilter)
+            }
+          >
+            <option value="">
+              전체
+            </option>
+            <option value="SAVED">
+              저장
+            </option>
+            <option value="APPLIED">
+              지원완료
+            </option>
+            <option value="INTERVIEWING">
+              면접진행중
+            </option>
+            <option value="OFFERED">
+              오퍼수령
+            </option>
+            <option value="REJECTED">
+              거절됨
+            </option>
+
+          </select>
+
+          <button
+            type="submit"
+            disabled={loading}
+          >
+            {loading ? '검색 중...' : '검색'}
+          </button>
+        </div>
+
+        <button 
+          type="button"
+          className="advanced-filter-toggle"
+          onClick={() => 
+            setShowAdvancedFilters((previous) => !previous)
           }
         >
-          <option value="">
-            전체
-          </option>
-          <option value="SAVED">
-            저장
-          </option>
-          <option value="APPLIED">
-            지원완료
-          </option>
-          <option value="INTERVIEWING">
-            면접진행중
-          </option>
-          <option value="OFFERED">
-            오퍼수령
-          </option>
-          <option value="REJECTED">
-            거절됨
-          </option>
-
-        </select>
-
-        <label htmlFor="search-salaryMin">최저 월급</label>
-        <select
-          id="search-salaryMin"
-          value={salaryMin ?? ""}
-          onChange={(event) => {
-            const value = event.target.value;
-
-            setSalaryMin(
-              value === "" ? null : Number(value)
-            );
-          }}
-        >
-          <option value="">미지정</option>
-
-          {SALARY_OPTIONS.map((salary) => (
-            <option
-              key={salary}
-              value={salary}
-              disabled={
-                salaryMax != null &&
-                salary > salaryMax
-              }
-            >
-              {salary.toLocaleString()}円
-            </option>
-          ))}
-        </select>
-
-        <label htmlFor="search-salaryMax">최고 월급</label>
-        <select
-          id="search-salaryMax"
-          value={salaryMax ?? ""}
-          onChange={(event) => {
-            const value = event.target.value;
-
-            setSalaryMax(
-              value === "" ? null : Number(value)
-            );
-          }}
-        >
-          <option value="">미지정</option>
-          {SALARY_OPTIONS.map((salary) => (
-            <option
-              key={salary}
-              value={salary}
-              disabled={
-                salaryMin !== null &&
-                salary < salaryMin
-              }
-            >
-              {salary.toLocaleString()}円
-            </option>
-          ))}
-
-        </select>
-
-        <label htmlFor="sorting">정렬</label>
-        <select
-          // 새로운 정렬값을 먼저 보관(nextSorting), UI와 이후의 렌더링을 위한 상태 저장(setSorting)
-          id="sorting"
-          value={sorting}
-          onChange={(event) => {
-            const nextSorting =
-              event.target.value as JobPostingSorting;
-            setSorting(nextSorting);
-
-            setLoading(true);
-            setError(null);
-            // 지금 당장 API 요청에 사용할 값
-            void loadJobPostings(
-              appliedKeyword,
-              appliedStatus,
-              0,
-              nextSorting,
-              appliedSalaryMin,
-              appliedSalaryMax,
-            );
-          }}
-        >
-          <option value='createdAt,desc'>
-            최신순
-          </option>
-          <option value='createdAt,asc'>
-            오래된순
-          </option>
-          <option value='companyName,asc'>
-            회사명순
-          </option>
-        </select>
-
-        <button type="submit"
-          disabled={loading}
-        >
-          {loading ? '검색 중...' : '검색'}
+          {showAdvancedFilters
+            ? '－ 詳細条件を閉じる'
+            : '＋ 詳細条件'
+          }
         </button>
+
+        {showAdvancedFilters && (
+          <div className="advanced-filter">
+            <label htmlFor="search-salaryMin">최저 월급</label>
+            <select
+              id="search-salaryMin"
+              value={salaryMin ?? ""}
+              onChange={(event) => {
+                const value = event.target.value;
+
+                setSalaryMin(
+                  value === "" ? null : Number(value)
+                );
+              }}
+            >
+              <option value="">미지정</option>
+
+              {SALARY_OPTIONS.map((salary) => (
+                <option
+                  key={salary}
+                  value={salary}
+                  disabled={
+                    salaryMax != null &&
+                    salary > salaryMax
+                  }
+                >
+                  {salary.toLocaleString()}円
+                </option>
+              ))}
+            </select>
+
+            <label htmlFor="search-salaryMax">최고 월급</label>
+            <select
+              id="search-salaryMax"
+              value={salaryMax ?? ""}
+              onChange={(event) => {
+                const value = event.target.value;
+
+                setSalaryMax(
+                  value === "" ? null : Number(value)
+                );
+              }}
+            >
+              <option value="">미지정</option>
+              {SALARY_OPTIONS.map((salary) => (
+                <option
+                  key={salary}
+                  value={salary}
+                  disabled={
+                    salaryMin !== null &&
+                    salary < salaryMin
+                  }
+                >
+                  {salary.toLocaleString()}円
+                </option>
+              ))}
+
+            </select>
+
+            <label htmlFor="deadlineFrom">開始日</label>
+            <input
+              id="deadlineFrom"
+              type="date"
+              value={deadlineFrom ?? ''}
+              onChange={(event) =>
+                setDeadlineFrom(
+                  event.target.value || null,
+                )
+              }
+            />
+
+            <label htmlFor="deadlineTo">締切日</label>
+            <input
+              id="deadlineTo"
+              type="date"
+              value={deadlineTo ?? ''}
+              onChange={(event) =>
+                setDeadlineTo(
+                  event.target.value || null,
+                )
+              }
+            />
+
+            <label htmlFor="sorting">정렬</label>
+            <select
+              // 새로운 정렬값을 먼저 보관(nextSorting), UI와 이후의 렌더링을 위한 상태 저장(setSorting)
+              id="sorting"
+              value={sorting}
+              onChange={(event) => {
+                const nextSorting =
+                  event.target.value as JobPostingSorting;
+                setSorting(nextSorting);
+
+                setLoading(true);
+                setError(null);
+                // 지금 당장 API 요청에 사용할 값
+                void loadJobPostings(
+                  appliedKeyword,
+                  appliedStatus,
+                  0,
+                  nextSorting,
+                  appliedSalaryMin,
+                  appliedSalaryMax,
+                  appliedDeadlineFrom,
+                  appliedDeadlineTo,
+                );
+              }}
+            >
+              <option value='createdAt,desc'>
+                최신순
+              </option>
+              <option value='createdAt,asc'>
+                오래된순
+              </option>
+              <option value='companyName,asc'>
+                회사명순
+              </option>
+            </select>
+          </div>
+        )}
       </form>
 
       {loading ? (

@@ -50,8 +50,15 @@ const mockSummary = {
 vi.mocked(fetchJobPostings).mockResolvedValue(mockPage);
 vi.mocked(fetchApplicationStatusSummary).mockResolvedValue(mockSummary);
 
-test('정렬 select가 보인다', () => {
+test('정렬 select가 보인다', async () => {
+  const user = userEvent.setup();
   renderApp();
+
+  await user.click(
+    screen.getByRole('button', {
+      name: '＋ 詳細条件',
+    }),
+  );
 
   const sortingSelect = screen.getByRole('combobox', {
     name: '정렬',
@@ -64,6 +71,12 @@ test('회사명순 선택 시 해당 정렬값으로 다시 조회한다', async
   const user = userEvent.setup();
 
   renderApp();
+
+  await user.click(
+    screen.getByRole('button', {
+      name: '＋ 詳細条件',
+    }),
+  );
 
   const sortingSelect = screen.getByRole('combobox', {
     name: '정렬',
@@ -82,12 +95,20 @@ test('회사명순 선택 시 해당 정렬값으로 다시 조회한다', async
       'companyName,asc',
       null,
       null,
+      null,
+      null,
     );
 });
 
 test('검색 조건을 유지한 채 회사명 순으로 정렬한다', async () => {
   const user = userEvent.setup();
   renderApp();
+
+  await user.click(
+    screen.getByRole('button', {
+      name: '＋ 詳細条件',
+    }),
+  );
 
   const keywordInput = screen.getByRole('textbox', {
     name: '검색어',
@@ -119,12 +140,20 @@ test('검색 조건을 유지한 채 회사명 순으로 정렬한다', async ()
       'companyName,asc',
       null,
       null,
+      null,
+      null,
     );
 });
 
 test('현재 정렬 조건이 페이지를 넘겨도 유지된다', async () => {
   const user = userEvent.setup();
   renderApp();
+
+  await user.click(
+    screen.getByRole('button', {
+      name: '＋ 詳細条件',
+    }),
+  );
 
   const sortingSelect = screen.getByRole('combobox', {
     name: '정렬',
@@ -149,6 +178,8 @@ test('현재 정렬 조건이 페이지를 넘겨도 유지된다', async () => 
       '',
       1,
       'companyName,asc',
+      null,
+      null,
       null,
       null,
     );
@@ -178,6 +209,12 @@ test('사용자가 선택한 정렬 상태를 유지한 채 다음 페이지로 
 
   const user = userEvent.setup();
   renderApp();
+
+  await user.click(
+    screen.getByRole('button', {
+      name: '＋ 詳細条件',
+    }),
+  );
 
   const sortingSelect = screen.getByRole('combobox', {
     name: '정렬',
@@ -210,6 +247,8 @@ test('사용자가 선택한 정렬 상태를 유지한 채 다음 페이지로 
       '',
       0,
       'companyName,asc',
+      null,
+      null,
       null,
       null,
     );
@@ -322,6 +361,8 @@ test('현재 페이지가 범위를 벗어나면 마지막 유효 페이지를 �
         '',
         1, // 마지막 유효 페이지
         'createdAt,desc',
+        null,
+        null,
         null,
         null,
       );
@@ -445,6 +486,12 @@ test('특정 정렬 상태에서 삭제 행위가 이뤄져도 사용자가 선�
   const user = userEvent.setup();
   renderApp();
 
+  await user.click(
+    screen.getByRole('button', {
+      name: '＋ 詳細条件',
+    }),
+  );
+
   const sortingSelect = screen.getByRole('combobox', {
     name: '정렬',
   });
@@ -467,6 +514,8 @@ test('특정 정렬 상태에서 삭제 행위가 이뤄져도 사용자가 선�
         '',
         0,
         'companyName,asc',
+        null,
+        null,
         null,
         null,
       );
@@ -503,6 +552,12 @@ test('특정 정렬 상태에서 수정 행위가 이뤄져도 사용자가 선�
 
   const user = userEvent.setup();
   renderApp();
+
+  await user.click(
+    screen.getByRole('button', {
+      name: '＋ 詳細条件',
+    }),
+  );
 
   const sortingSelect = screen.getByRole('combobox', {
     name: '정렬',
@@ -555,6 +610,8 @@ test('특정 정렬 상태에서 수정 행위가 이뤄져도 사용자가 선�
         'companyName,asc',
         null,
         null,
+        null,
+        null,
       );
   });
 });
@@ -603,6 +660,12 @@ test('검색어나 필터가 적용된 상태에서 JobLens Japan 을 누르면,
   const user = userEvent.setup();
   renderApp();
 
+  await user.click(
+    screen.getByRole('button', {
+      name: '＋ 詳細条件',
+    }),
+  );
+
   const keywordInput = screen.getByRole('textbox', {
     name: '검색어',
   });
@@ -650,6 +713,8 @@ test('검색어나 필터가 적용된 상태에서 JobLens Japan 을 누르면,
         'createdAt,desc',
         null,
         null,
+        null,
+        null,
       );
   });
 });
@@ -658,6 +723,12 @@ test('월급 범위를 선택하고 검색하면 salaryMin과 salaryMax를 전�
   const user = userEvent.setup();
 
   renderApp();
+
+  await user.click(
+    screen.getByRole('button', {
+      name: '＋ 詳細条件',
+    }),
+  );
 
   const salaryMinSelect = screen.getByLabelText(
     '최저 월급',
@@ -694,6 +765,8 @@ test('월급 범위를 선택하고 검색하면 salaryMin과 salaryMax를 전�
       'createdAt,desc',
       300000,
       500000,
+      null,
+      null,
     );
 });
 
@@ -701,6 +774,12 @@ test('최저 월급보다 낮은 최고 월급은 선택할 수 없다', async (
   const user = userEvent.setup();
 
   renderApp();
+
+  await user.click(
+    screen.getByRole('button', {
+      name: '＋ 詳細条件',
+    }),
+  );
 
   const salaryMinSelect = screen.getByLabelText(
     '최저 월급',
@@ -907,6 +986,8 @@ describe('URL Query State', () => {
             'APPLIED',
             2,
             'createdAt,desc',
+            null,
+            null,
             null,
             null,
           );
@@ -1158,6 +1239,8 @@ describe('URL Query State', () => {
             'createdAt,desc',
             null,
             null,
+            null,
+            null,
           );
       });
     },
@@ -1198,6 +1281,8 @@ describe('URL Query State', () => {
             '',
             0,
             'createdAt,desc',
+            null,
+            null,
             null,
             null,
           );
@@ -1264,8 +1349,78 @@ describe('URL Query State', () => {
           'createdAt,desc',
           null,
           null,
+          null,
+          null,
         );
     },
   );
 
+  test('지원 마감일 범위를 선택하고 검색하면 deadlineFrom과 deadlineTo를 전달한다', async () => {
+    const user = userEvent.setup();
+
+    renderApp();
+
+    await user.click(
+      screen.getByRole('button', {
+        name: '＋ 詳細条件',
+      }),
+    );
+
+    const deadlineFromInput = screen.getByLabelText(
+      '開始日',
+    );
+    const deadlineToInput= screen.getByLabelText(
+      '締切日'
+    );
+
+    const searchButton = await screen.findByRole(
+      'button',
+      { name: '검색' },
+    );
+
+    await user.type(
+      deadlineFromInput,
+      '2026-10-01',
+    );
+
+    await user.type(
+      deadlineToInput,
+      '2026-10-31',
+    );
+
+    await user.click(searchButton);
+
+    expect(fetchJobPostings)
+      .toHaveBeenLastCalledWith(
+        '',
+        '',
+        0,
+        'createdAt,desc',
+        null,
+        null,
+        '2026-10-01',
+        '2026-10-31',
+      );
+  });
+
+});
+
+test('詳細条件 버튼을 누르면 상세 검색 조건이 표시된다', async () => {
+  const user = userEvent.setup();
+
+  renderApp();
+
+  expect(
+    screen.queryByLabelText('開始日'),
+  ).toBeNull();
+
+  await user.click(
+    screen.getByRole('button', {
+      name: '＋ 詳細条件',
+    }),
+  );
+
+  expect(
+    screen.getByLabelText('開始日'),
+  ).toBeDefined();
 });
