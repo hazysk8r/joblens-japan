@@ -1367,10 +1367,10 @@ describe('URL Query State', () => {
     );
 
     const deadlineFromInput = screen.getByLabelText(
-      '開始日',
+      '締切日（以降）'
     );
     const deadlineToInput= screen.getByLabelText(
-      '締切日'
+      '締切日（以前）'
     );
 
     const searchButton = await screen.findByRole(
@@ -1411,7 +1411,7 @@ test('詳細条件 버튼을 누르면 상세 검색 조건이 표시된다', as
   renderApp();
 
   expect(
-    screen.queryByLabelText('開始日'),
+    screen.queryByLabelText('締切日（以前）'),
   ).toBeNull();
 
   await user.click(
@@ -1421,6 +1421,6 @@ test('詳細条件 버튼을 누르면 상세 검색 조건이 표시된다', as
   );
 
   expect(
-    screen.getByLabelText('開始日'),
+    screen.getByLabelText('締切日（以前）'),
   ).toBeDefined();
 });

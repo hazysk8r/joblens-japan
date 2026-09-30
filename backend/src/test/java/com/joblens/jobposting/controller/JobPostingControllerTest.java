@@ -5,6 +5,7 @@ import com.joblens.jobposting.repository.JobPostingRepository;
 import com.joblens.jobposting.domain.ApplicationStatus;
 import com.joblens.TestcontainersConfiguration;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -73,354 +74,904 @@ class JobPostingControllerTest {
         jobPostingRepository.deleteAll();
     }
 
-    @Test
-    void 존재하지_않는_채용공고를_조회하면_404를_반환한다() throws Exception {
-        mockMvc.perform(get("/api/job-postings/{id}", 9999L))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.status").value(404))
-                .andExpect(jsonPath("$.code")
-                        .value("JOB_POSTING_NOT_FOUND"))
-                .andExpect(jsonPath("$.message")
-                        .value("채용공고를 찾을 수 없습니다. id=9999"))
-                .andExpect(jsonPath("$.path")
-                        .value("/api/job-postings/9999"));
+    @Nested
+    class JobPostingCrudTests {
+        @Test
+        void 존재하지_않는_채용공고를_조회하면_404를_반환한다() throws Exception {
+                mockMvc.perform(get("/api/job-postings/{id}", 9999L))
+                                .andExpect(status().isNotFound())
+                                .andExpect(jsonPath("$.status").value(404))
+                                .andExpect(jsonPath("$.code")
+                                                .value("JOB_POSTING_NOT_FOUND"))
+                                .andExpect(jsonPath("$.message")
+                                                .value("채용공고를 찾을 수 없습니다. id=9999"))
+                                .andExpect(jsonPath("$.path")
+                                                .value("/api/job-postings/9999"));
+        }
+
+        // JsonPath는 응답 JSON의 특정 값을 검사한다. $는 JSON 전체를 의미함
+        @Test
+        void 제목과_원문이_비어있으면_400을_반환한다() throws Exception {
+                String requestBody = """
+                                {
+                                  "companyName": "テスト株式会社",
+                                  "title": "",
+                                  "sourceUrl": "https://example.com/jobs/invalid",
+                                  "originalText": ""
+                                }
+                                """;
+
+                mockMvc.perform(post("/api/job-postings")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.status").value(400))
+                                .andExpect(jsonPath("$.code")
+                                                .value("VALIDATION_FAILED"))
+                                .andExpect(jsonPath("$.fieldErrors.title")
+                                                .value("공고 제목은 필수입니다."))
+                                .andExpect(jsonPath("$.fieldErrors.originalText")
+                                                .value("공고 원문은 필수입니다."));
+                // mockMvc는 실제 브라우저나 curl.exe 없이 Spring MVC에 가짜 HTTP 요청을 보낸다.
+        }
+
+        @Test
+        void 정상적으로_채용공고를_생성하면_201을_반환한다() throws Exception {
+                String requestBody = """
+                                {
+                                  "companyName": "テスト株式会社",
+                                  "title": "Webエンジニア求人中",
+                                  "sourceUrl": "https://example.com/jobs/check",
+                                  "originalText": "難しい知識は後からでOK！まずは「チェックと報告」から",
+                                  "applicationDeadline": "2026-12-31"
+                                }
+                                """;
+
+                mockMvc.perform(post("/api/job-postings")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody))
+                                .andExpect(status().isCreated())
+                                .andExpect(jsonPath("$.title")
+                                                .value("Webエンジニア求人中"))
+                                .andExpect(jsonPath("$.originalText")
+                                                .value("難しい知識は後からでOK！まずは「チェックと報告」から"))
+                                .andExpect(jsonPath("$.applicationDeadline")
+                                                .value("2026-12-31"));
+                // mockMvc는 실제 브라우저나 curl.exe 없이 Spring MVC에 가짜 HTTP 요청을 보낸다.
+        }
+
+        @Test
+        void 채용공고를_수정하면_변경된_내용과_201을_반환한다() throws Exception {
+                /*
+                 * 수정하려면 기존 데이터가 먼저 존재해야 하므로
+                 * Repository를 통해 테스트용 채용공고를 저장한다.
+                 */
+                JobPosting savedJobPosting = jobPostingRepository.saveAndFlush(
+                                new JobPosting(
+                                                "기존 회사",
+                                                "기존 제목",
+                                                "https://example.com/old",
+                                                "기존 채용공고 원문",
+                                                null,
+                                                null,
+                                                LocalDate.parse("2026-10-31")));
+
+                Long savedVersion = savedJobPosting.getVersion();
+
+                String requestBody = """
+                                {
+                                  "companyName": "札幌クラウド株式会社",
+                                  "title": "Java・AWSエンジニア",
+                                  "sourceUrl": "https://example.com/jobs/updated",
+                                  "originalText": "Spring BootとAWSを利用した開発業務です。",
+                                  "salaryMin": null,
+                                  "salaryMax": null
+                                }
+                                """;
+
+                mockMvc.perform(put(
+                                "/api/job-postings/{id}",
+                                savedJobPosting.getId())
+                                .header(
+                                                HttpHeaders.IF_MATCH,
+                                                "\"" + savedVersion + "\"")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.id")
+                                                .value(savedJobPosting.getId()))
+                                .andExpect(header().string(
+                                                HttpHeaders.ETAG,
+                                                "\"" + (savedVersion + 1) + "\""))
+                                .andExpect(jsonPath("$.companyName")
+                                                .value("札幌クラウド株式会社"))
+                                .andExpect(jsonPath("$.title")
+                                                .value("Java・AWSエンジニア"))
+                                .andExpect(jsonPath("$.sourceUrl")
+                                                .value("https://example.com/jobs/updated"));
+
+                JobPosting updatedJobPosting = jobPostingRepository
+                                .findById(savedJobPosting.getId())
+                                .orElseThrow();
+
+                assertEquals(
+                                "Java・AWSエンジニア",
+                                updatedJobPosting.getTitle());
+
+                assertEquals(
+                                savedVersion + 1,
+                                updatedJobPosting.getVersion());
+
+                /**
+                 * HTTP 응답만 수정된 척한 것이 아니라
+                 * PostgreSQL 안의 실제 데이터도 바뀌었는지 검사한다.
+                 *
+                 * 또한 Optimistic Locking이 정상적으로 동작하여
+                 * version이 1 증가했는지도 확인한다.
+                 */
+        }
+
+        @Test
+        void 채용공고를_삭제하면_204를_반환하고_DB에서_제거된다() throws Exception {
+                JobPosting savedJobPosting = jobPostingRepository.save(
+                                new JobPosting(
+                                                "삭제 테스트 회사",
+                                                "삭제 테스트 공고",
+                                                "https://example.com/delete",
+                                                "삭제할 채용공고 원문",
+                                                null,
+                                                null,
+                                                null));
+
+                Long jobPostingId = savedJobPosting.getId();
+
+                /*
+                 * 삭제 성공 시 응답 본문이 필요 없으므로
+                 * API는 204 No Content를 반환한다.
+                 */
+                mockMvc.perform(delete(
+                                "/api/job-postings/{id}",
+                                jobPostingId))
+                                .andExpect(status().isNoContent());
+
+                /*
+                 * 상태 코드뿐 아니라 실제 DB에서도 데이터가 삭제됐는지 확인한다.
+                 */
+                boolean exists = jobPostingRepository.existsById(jobPostingId);
+
+                assertFalse(exists);
+        }
+
+        @Test
+        void 채용공고를_등록하면_기본_지원_상태는_SAVED이다() throws Exception {
+
+                // 정상적인 채용 공고 등록 요청
+                String requestBody = """
+                                {
+                                  "companyName": "기본 상태 테스트 회사",
+                                  "title": "Java 백엔드 엔지니어",
+                                  "sourceUrl": "https://example.com/default-status",
+                                  "originalText": "신규 공고 기본 상태 테스트용 원문"
+                                }
+                                """;
+
+                // POST 요청 후 응답 상태 확인
+                mockMvc.perform(post("/api/job-postings")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody))
+                                .andExpect(status().isCreated())
+                                .andExpect(jsonPath("$.id").exists())
+                                .andExpect(jsonPath("$.applicationStatus")
+                                                .value("SAVED"));
+
+                // DB에 실제 저장된 공고 조회
+                JobPosting savedJobPosting = jobPostingRepository
+                                .findAll()
+                                .stream()
+                                .findFirst()
+                                .orElseThrow();
+
+                // DB에서도 기본 상태가 SAVED인지 확인
+                assertEquals(
+                                ApplicationStatus.SAVED,
+                                savedJobPosting.getApplicationStatus());
+        }
     }
-    //JsonPath는 응답 JSON의 특정 값을 검사한다. $는 JSON 전체를 의미함
-    @Test
-    void 제목과_원문이_비어있으면_400을_반환한다() throws Exception {
-        String requestBody = """
-                {
-                  "companyName": "テスト株式会社",
-                  "title": "",
-                  "sourceUrl": "https://example.com/jobs/invalid",
-                  "originalText": ""
-                }
-                """;
 
-        mockMvc.perform(post("/api/job-postings")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value(400))
-                .andExpect(jsonPath("$.code")
-                        .value("VALIDATION_FAILED"))
-                .andExpect(jsonPath("$.fieldErrors.title")
-                        .value("공고 제목은 필수입니다."))
-                .andExpect(jsonPath("$.fieldErrors.originalText")
-                        .value("공고 원문은 필수입니다."));
-        //mockMvc는 실제 브라우저나 curl.exe 없이 Spring MVC에 가짜 HTTP 요청을 보낸다.
-    }
+    @Nested
+    class SearchAndPaginationTests {
+        @Test
+        void 키워드로_채용공고를_검색할_수_있다() throws Exception {
+                jobPostingRepository.save(
+                                new JobPosting(
+                                                "北海道クラウド株式会社",
+                                                "AWSクラウドエンジニア",
+                                                "https://example.com/aws",
+                                                "AWS環境の設計と構築を担当します。",
+                                                null,
+                                                null,
+                                                null));
 
-    @Test
-    void 정상적으로_채용공고를_생성하면_201을_반환한다() throws Exception {
-            String requestBody = """
-                            {
-                              "companyName": "テスト株式会社",
-                              "title": "Webエンジニア求人中",
-                              "sourceUrl": "https://example.com/jobs/check",
-                              "originalText": "難しい知識は後からでOK！まずは「チェックと報告」から",
-                              "applicationDeadline": "2026-12-31"
-                            }
-                            """;
+                jobPostingRepository.save(
+                                new JobPosting(
+                                                "札幌Java株式会社",
+                                                "Javaバックエンドエンジニア",
+                                                "https://example.com/java",
+                                                "Spring Bootを利用した開発を担当します。",
+                                                null,
+                                                null,
+                                                null));
 
-            mockMvc.perform(post("/api/job-postings")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(requestBody))
-                            .andExpect(status().isCreated())
-                            .andExpect(jsonPath("$.title")
-                                            .value("Webエンジニア求人中"))
-                            .andExpect(jsonPath("$.originalText")
-                                            .value("難しい知識は後からでOK！まずは「チェックと報告」から"))
-                            .andExpect(jsonPath("$.applicationDeadline")
-                                            .value("2026-12-31"));
-            // mockMvc는 실제 브라우저나 curl.exe 없이 Spring MVC에 가짜 HTTP 요청을 보낸다.
-    }
-
-    @Test
-    void 채용공고를_수정하면_변경된_내용과_201을_반환한다() throws Exception {
-            /*
-             * 수정하려면 기존 데이터가 먼저 존재해야 하므로
-             * Repository를 통해 테스트용 채용공고를 저장한다.
-             */
-            JobPosting savedJobPosting = jobPostingRepository.saveAndFlush(
-                            new JobPosting(
-                                            "기존 회사",
-                                            "기존 제목",
-                                            "https://example.com/old",
-                                            "기존 채용공고 원문",
-                                            null,
-                                            null,
-                                            LocalDate.parse("2026-10-31")));
-
-            Long savedVersion = savedJobPosting.getVersion();
-
-            String requestBody = """
-                            {
-                              "companyName": "札幌クラウド株式会社",
-                              "title": "Java・AWSエンジニア",
-                              "sourceUrl": "https://example.com/jobs/updated",
-                              "originalText": "Spring BootとAWSを利用した開発業務です。",
-                              "salaryMin": null,
-                              "salaryMax": null
-                            }
-                            """;
-
-            mockMvc.perform(put(
-                            "/api/job-postings/{id}",
-                            savedJobPosting.getId())
-                            .header(
-                                HttpHeaders.IF_MATCH,
-                                "\"" + savedVersion + "\"")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(requestBody))
-                            .andExpect(status().isOk())
-                            .andExpect(jsonPath("$.id")
-                                            .value(savedJobPosting.getId()))
-                            .andExpect(header().string(
-                                            HttpHeaders.ETAG,
-                                            "\"" + (savedVersion + 1) + "\""))
-                            .andExpect(jsonPath("$.companyName")
-                                            .value("札幌クラウド株式会社"))
-                            .andExpect(jsonPath("$.title")
-                                            .value("Java・AWSエンジニア"))
-                            .andExpect(jsonPath("$.sourceUrl")
-                                            .value("https://example.com/jobs/updated"));
-
-            JobPosting updatedJobPosting = jobPostingRepository
-                            .findById(savedJobPosting.getId())
-                            .orElseThrow();
-
-            assertEquals(
-                            "Java・AWSエンジニア",
-                            updatedJobPosting.getTitle());
-
-            assertEquals(
-                            savedVersion + 1,
-                            updatedJobPosting.getVersion());
-
-            /**
-             * HTTP 응답만 수정된 척한 것이 아니라
-             * PostgreSQL 안의 실제 데이터도 바뀌었는지 검사한다.
-             *
-             * 또한 Optimistic Locking이 정상적으로 동작하여
-             * version이 1 증가했는지도 확인한다.
-             */
-    }
-
-    @Test
-    void 채용공고를_삭제하면_204를_반환하고_DB에서_제거된다() throws Exception {
-        JobPosting savedJobPosting = jobPostingRepository.save(
-                new JobPosting(
-                        "삭제 테스트 회사",
-                        "삭제 테스트 공고",
-                        "https://example.com/delete",
-                        "삭제할 채용공고 원문",
-                        null,
-                        null,
-                        null
-                )
-        );
-
-        Long jobPostingId = savedJobPosting.getId();
-
-        /*
-        * 삭제 성공 시 응답 본문이 필요 없으므로
-        * API는 204 No Content를 반환한다.
-        */
-        mockMvc.perform(delete(
-                        "/api/job-postings/{id}",
-                        jobPostingId
-                ))
-                .andExpect(status().isNoContent());
-
-        /*
-        * 상태 코드뿐 아니라 실제 DB에서도 데이터가 삭제됐는지 확인한다.
-        */
-        boolean exists = jobPostingRepository.existsById(jobPostingId);
-
-        assertFalse(exists);
-    }
-
-    @Test
-    void 키워드로_채용공고를_검색할_수_있다() throws Exception {
-        jobPostingRepository.save(
-                new JobPosting(
-                        "北海道クラウド株式会社",
-                        "AWSクラウドエンジニア",
-                        "https://example.com/aws",
-                        "AWS環境の設計と構築を担当します。",
-                        null,
-                        null,
-                        null
-                )
-        );
-
-        jobPostingRepository.save(
-                new JobPosting(
-                        "札幌Java株式会社",
-                        "Javaバックエンドエンジニア",
-                        "https://example.com/java",
-                        "Spring Bootを利用した開発を担当します。",
-                        null,
-                        null,
-                        null
-                )
-        );
-
-        mockMvc.perform(get("/api/job-postings")
-                    .param("keyword", "AWS")
-                    .param("page", "0")
-                    .param("size", "10"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.content.length()").value(1))
-            .andExpect(jsonPath("$.content[0].title")
-                    .value("AWSクラウドエンジニア"))
-            .andExpect(jsonPath("$.totalElements").value(1));
+                mockMvc.perform(get("/api/job-postings")
+                                .param("keyword", "AWS")
+                                .param("page", "0")
+                                .param("size", "10"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.content.length()").value(1))
+                                .andExpect(jsonPath("$.content[0].title")
+                                                .value("AWSクラウドエンジニア"))
+                                .andExpect(jsonPath("$.totalElements").value(1));
 
         }
 
-    @Test
-    void 채용공고를_페이지_단위로_조회할_수_있다() throws Exception {
-        jobPostingRepository.save(
-                new JobPosting("회사 1", "공고 1", null, "원문 1",null, null, null)
-        );
-        jobPostingRepository.save(
-                new JobPosting("회사 2", "공고 2", null, "원문 2", null, null, null)
-        );
-        jobPostingRepository.save(
-                new JobPosting("회사 3", "공고 3", null, "원문 3", null, null, null)
-        );
+        @Test
+        void 채용공고를_페이지_단위로_조회할_수_있다() throws Exception {
+                jobPostingRepository.save(
+                                new JobPosting("회사 1", "공고 1", null, "원문 1", null, null, null));
+                jobPostingRepository.save(
+                                new JobPosting("회사 2", "공고 2", null, "원문 2", null, null, null));
+                jobPostingRepository.save(
+                                new JobPosting("회사 3", "공고 3", null, "원문 3", null, null, null));
 
-        mockMvc.perform(get("/api/job-postings")
-                    .param("page", "0")
-                    .param("size", "2"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.content.length()").value(2))
-            .andExpect(jsonPath("$.page").value(0))
-            .andExpect(jsonPath("$.size").value(2))
-            .andExpect(jsonPath("$.totalElements").value(3))
-            .andExpect(jsonPath("$.totalPages").value(2))
-            .andExpect(jsonPath("$.first").value(true))
-            .andExpect(jsonPath("$.last").value(false));
+                mockMvc.perform(get("/api/job-postings")
+                                .param("page", "0")
+                                .param("size", "2"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.content.length()").value(2))
+                                .andExpect(jsonPath("$.page").value(0))
+                                .andExpect(jsonPath("$.size").value(2))
+                                .andExpect(jsonPath("$.totalElements").value(3))
+                                .andExpect(jsonPath("$.totalPages").value(2))
+                                .andExpect(jsonPath("$.first").value(true))
+                                .andExpect(jsonPath("$.last").value(false));
+        }
+
+        @Test
+        void 대소문자_상관_없이_필터링_할_수_있다() throws Exception {
+
+                jobPostingRepository.save(
+                                new JobPosting("회사1", "Spring Backend Engineer", null, "원문1", null, null, null));
+
+                mockMvc.perform(get("/api/job-postings")
+                                .param("keyword", "spring"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.content.length()").value(1))
+                                .andExpect(jsonPath("$.content[0].title").value("Spring Backend Engineer"));
+        }
+
+        @Test
+        void 와일드카드_이스케이프_할_수_있다() throws Exception {
+
+                jobPostingRepository.save(
+                                new JobPosting("회사1", "100% Remote Engineer", null, "원문1", null, null, null));
+                jobPostingRepository.save(
+                                new JobPosting("회사2", "Java Developer", null, "원문2", null, null, null));
+
+                mockMvc.perform(get("/api/job-postings")
+                                .param("keyword", "%"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.content.length()").value(1))
+                                .andExpect(jsonPath("$.content[0].title").value("100% Remote Engineer"));
+        }
+
+        @Test
+        void 지원_상태_및_키워드를_통해서_필터링_할_수_있다() throws Exception {
+
+                jobPostingRepository.save(
+                                new JobPosting("회사1", "공고1", null, "원문1", null, null, null));
+
+                JobPosting appliedJobPosting = new JobPosting("회사2", "공고2", null, "원문2", null, null, null);
+                appliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
+                jobPostingRepository.save(appliedJobPosting);
+
+                mockMvc.perform(get("/api/job-postings")
+                                .param("keyword", "공고")
+                                .param("status", "APPLIED"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.content.length()").value(1))
+                                .andExpect(jsonPath("$.content[0].applicationStatus").value("APPLIED"))
+                                .andExpect(jsonPath("$.content[0].title").value("공고2"));
+        }
+
+        @Test
+        void 지원_상태로_필터링_할_수_있다() throws Exception {
+
+                jobPostingRepository.save(
+                                new JobPosting("회사1", "공고1", null, "원문1", null, null, null));
+
+                JobPosting appliedJobPosting = new JobPosting("회사2", "공고2", null, "원문2", null, null, null);
+                appliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
+                jobPostingRepository.save(appliedJobPosting);
+
+                JobPosting secondAppliedJobPosting = new JobPosting("회사2", "공고2", null, "원문2", null, null, null);
+                secondAppliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
+                jobPostingRepository.save(secondAppliedJobPosting);
+
+                mockMvc.perform(get("/api/job-postings")
+                                .param("status", "APPLIED"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.content.length()").value(2))
+                                .andExpect(jsonPath("$.content[0].applicationStatus").value("APPLIED"))
+                                .andExpect(jsonPath("$.content[1].applicationStatus").value("APPLIED"));
+        }
+
+        @Test
+        void 유효하지_않는_상태는_Bad_Request_전송한다() throws Exception {
+
+            mockMvc.perform(get("/api/job-postings?status=INVALID"))
+                            .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void 상태와_페이지네이션을_활용해_필터링_할_수_있다() throws Exception {
+                JobPosting appliedJobPosting = new JobPosting("회사1", "공고1", null, "원문1", null, null, null);
+                appliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
+                jobPostingRepository.save(appliedJobPosting);
+
+                JobPosting secondAppliedJobPosting = new JobPosting("회사2", "공고2", null, "원문2", null, null, null);
+                secondAppliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
+                jobPostingRepository.save(secondAppliedJobPosting);
+
+                JobPosting thirdAppliedJobPosting = new JobPosting("회사3", "공고3", null, "원문3", null, null, null);
+                thirdAppliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
+                jobPostingRepository.save(thirdAppliedJobPosting);
+
+                jobPostingRepository.save(
+                                new JobPosting("회사4", "100% Remote Engineer", null, "원문4", null, null, null));
+                jobPostingRepository.save(
+                                new JobPosting("회사5", "Java Developer", null, "원문5", null, null, null));
+                        
+                mockMvc.perform(get("/api/job-postings")
+                            .param("status", "APPLIED")
+                            .param("page", "0")
+                            .param("size", "2"))
+                            .andExpect(status().isOk())
+                            .andExpect(jsonPath("$.page").value(0))
+                            .andExpect(jsonPath("$.content.length()").value(2))
+                            .andExpect(jsonPath("$.content[0].applicationStatus").value("APPLIED"))
+                            .andExpect(jsonPath("$.content[1].applicationStatus").value("APPLIED"))
+                            .andExpect(jsonPath("$.totalElements").value(3));
+        }
     }
 
-    @Test
-    void 채용공고의_지원_상태를_변경하면_응답과_DB에_반영된다() throws Exception {
-        // 테스트용 공고 DB에 저장
-        JobPosting savedJobPosting = jobPostingRepository.saveAndFlush(
-                new JobPosting("상태 변경 테스트 회사", "백엔드 엔지니어", "https://example.com/status", "지원 상태 변경 테스트용 원문", null, null,
-                                        null)
-        );
-        Long savedVersion = savedJobPosting.getVersion();
+    @Nested
+    class SortingTests {
+        @Test
+        void 허용_목록에_없는_필드의_정렬_요청은_거부된다() throws Exception {
+                mockMvc.perform(get("/api/job-postings").param("sort", "id,asc"))
+                            .andExpect(status().isBadRequest())
+                            .andExpect(jsonPath("$.status").value(400))   
+                            .andExpect(jsonPath("$.code").value("INVALID_SORT_FIELD"))
+                            .andExpect(jsonPath("$.message").value("허용되지 않는 정렬 필드입니다: id"));
+        }
 
-        // SAVED에서 다른 지원 상태로 변경하는 요청
-        String requestBody = """
-                {
-                  "status": "APPLIED"
-                }
-                """;
-
-        // PATCH API 호출 후, HTTP 응답 확인
-        mockMvc.perform(patch(
-                        "/api/job-postings/{id}/status",
-                        savedJobPosting.getId()
-                )
-                        .header(HttpHeaders.IF_MATCH, "\"" + savedVersion + "\"")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
-                .andExpect(status().isOk())
-                .andExpect(header().string(HttpHeaders.ETAG, "\"" + (savedVersion + 1) + "\""))
-                .andExpect(jsonPath("$.id")
-                        .value(savedJobPosting.getId()))
-                .andExpect(jsonPath("$.version").value(savedVersion + 1))
-                .andExpect(jsonPath("$.applicationStatus")
-                        .value("APPLIED"));
-
-        JobPosting updatedJobPosting = jobPostingRepository
-                .findById(savedJobPosting.getId())
-                .orElseThrow();
+        @Test
+        void 회사명_으로_정렬기능이_동작하는지_확인한다() throws Exception {
+                jobPostingRepository.save(
+                                new JobPosting("B", "Java Developer", null, "원문1", null, null, null));
+                jobPostingRepository.save(
+                                new JobPosting("A", "Python Developer", null, "원문2", null, null, null));
+                jobPostingRepository.save(
+                                new JobPosting("C", "C++ Developer", null, "원문3", null, null, null));
         
-        assertEquals(
-                ApplicationStatus.APPLIED, 
-                updatedJobPosting.getApplicationStatus()
-        );
-        assertEquals(savedVersion + 1, updatedJobPosting.getVersion());
+                mockMvc.perform(get("/api/job-postings").param("sort", "companyName,asc"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.content[0].companyName").value("A"))
+                                .andExpect(jsonPath("$.content[1].companyName").value("B"))
+                                .andExpect(jsonPath("$.content[2].companyName").value("C"));
+        }
 
-        mockMvc.perform(get("/api/job-postings/{id}", savedJobPosting.getId()))
-                .andExpect(status().isOk())
-                .andExpect(header().string(HttpHeaders.ETAG, "\"" + (savedVersion + 1) + "\""))
-                .andExpect(jsonPath("$.version").value(savedVersion + 1))
-                .andExpect(jsonPath("$.applicationStatus").value("APPLIED"));
+        @Test
+        void 키워드와_지원상태로_필터링하고_회사명순으로_정렬할_수_있다() throws Exception {
+                JobPosting charlie = jobPostingRepository.save(
+                                new JobPosting("Charlie Company","AWS Engineer","https://example.com/charlie","Cloud", 
+                                                null, null, null));
+                JobPosting alpha = jobPostingRepository.save(
+                                new JobPosting("Alpha Company", "AWS Engineer", "https://example.com/alpha", "Cloud", null,
+                                                null, null));
+                JobPosting wrongKeyword = jobPostingRepository.save(
+                                new JobPosting("Beta Company", "JAVA Engineer", "https://example.com/beta", "Spring", null,
+                                                null, null));
+                JobPosting wrongStatus = jobPostingRepository.save(
+                                new JobPosting("Delta Company", "AWS Engineer", "https://example.com/delta", "Cloud", null,
+                                                null, null));
+            
+                charlie.changeApplicationStatus(ApplicationStatus.APPLIED);
+                alpha.changeApplicationStatus(ApplicationStatus.APPLIED);
+                wrongKeyword.changeApplicationStatus(ApplicationStatus.APPLIED);
+                wrongStatus.changeApplicationStatus(ApplicationStatus.SAVED);
+
+                jobPostingRepository.saveAll(List.of(charlie, alpha, wrongKeyword, wrongStatus));
+
+                mockMvc.perform(get("/api/job-postings")
+                                .param("keyword", "AWS")
+                                .param("status", "APPLIED")
+                                .param("sort", "companyName,asc"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.content.length()").value(2))
+                                .andExpect(jsonPath("$.content[0].companyName").value("Alpha Company"))
+                                .andExpect(jsonPath("$.content[1].companyName").value("Charlie Company"));
+        }
     }
 
-    @Test
-    void 존재하지_않는_채용공고의_지원_상태를_변경하면_404를_반환한다() throws Exception {
-        String requestBody = """
-                {
-                  "status": "APPLIED"       
-                }
-                """;
-        mockMvc.perform(patch(
-                        "/api/job-postings/{id}/status",
-                        9999L
-                )
-                        .header(HttpHeaders.IF_MATCH, "\"0\"")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.status").value(404))
-                .andExpect(jsonPath("$.code").value("JOB_POSTING_NOT_FOUND"))
-                .andExpect(jsonPath("$.message").value("채용공고를 찾을 수 없습니다. id=9999"))
-                .andExpect(jsonPath("$.path").value("/api/job-postings/9999/status"));
+    @Nested
+    class ApplicationStatusTests {
+        @Test
+        void 채용공고의_지원_상태를_변경하면_응답과_DB에_반영된다() throws Exception {
+                // 테스트용 공고 DB에 저장
+                JobPosting savedJobPosting = jobPostingRepository.saveAndFlush(
+                                new JobPosting("상태 변경 테스트 회사", "백엔드 엔지니어", "https://example.com/status",
+                                                "지원 상태 변경 테스트용 원문", null, null,
+                                                null));
+                Long savedVersion = savedJobPosting.getVersion();
+
+                // SAVED에서 다른 지원 상태로 변경하는 요청
+                String requestBody = """
+                                {
+                                  "status": "APPLIED"
+                                }
+                                """;
+
+                // PATCH API 호출 후, HTTP 응답 확인
+                mockMvc.perform(patch(
+                                "/api/job-postings/{id}/status",
+                                savedJobPosting.getId())
+                                .header(HttpHeaders.IF_MATCH, "\"" + savedVersion + "\"")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody))
+                                .andExpect(status().isOk())
+                                .andExpect(header().string(HttpHeaders.ETAG, "\"" + (savedVersion + 1) + "\""))
+                                .andExpect(jsonPath("$.id")
+                                                .value(savedJobPosting.getId()))
+                                .andExpect(jsonPath("$.version").value(savedVersion + 1))
+                                .andExpect(jsonPath("$.applicationStatus")
+                                                .value("APPLIED"));
+
+                JobPosting updatedJobPosting = jobPostingRepository
+                                .findById(savedJobPosting.getId())
+                                .orElseThrow();
+
+                assertEquals(
+                                ApplicationStatus.APPLIED,
+                                updatedJobPosting.getApplicationStatus());
+                assertEquals(savedVersion + 1, updatedJobPosting.getVersion());
+
+                mockMvc.perform(get("/api/job-postings/{id}", savedJobPosting.getId()))
+                                .andExpect(status().isOk())
+                                .andExpect(header().string(HttpHeaders.ETAG, "\"" + (savedVersion + 1) + "\""))
+                                .andExpect(jsonPath("$.version").value(savedVersion + 1))
+                                .andExpect(jsonPath("$.applicationStatus").value("APPLIED"));
+        }
+
+        @Test
+        void 존재하지_않는_채용공고의_지원_상태를_변경하면_404를_반환한다() throws Exception {
+                String requestBody = """
+                                {
+                                  "status": "APPLIED"
+                                }
+                                """;
+                mockMvc.perform(patch(
+                                "/api/job-postings/{id}/status",
+                                9999L)
+                                .header(HttpHeaders.IF_MATCH, "\"0\"")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody))
+                                .andExpect(status().isNotFound())
+                                .andExpect(jsonPath("$.status").value(404))
+                                .andExpect(jsonPath("$.code").value("JOB_POSTING_NOT_FOUND"))
+                                .andExpect(jsonPath("$.message").value("채용공고를 찾을 수 없습니다. id=9999"))
+                                .andExpect(jsonPath("$.path").value("/api/job-postings/9999/status"));
+        }
+
+        @Test
+        void 지원_상태를_누락하면_400을_반환하고_DB는_변경되지_않는다() throws Exception {
+
+                // 기본 상태가 SAVED인 상태 저장
+                JobPosting savedJobPosting = jobPostingRepository.save(
+                                new JobPosting(
+                                                "검증 테스트 회사",
+                                                "백엔드 엔지니어",
+                                                "https://example.com/status-validation",
+                                                "지원 상태 검증 테스트용 원문",
+                                                null,
+                                                null,
+                                                null));
+
+                // status 필드가 없는 요청
+                String requestBody = """
+                                {
+                                }
+                                """;
+
+                // PATCH 요청 후 검증 오류 확인
+                mockMvc.perform(patch(
+                                "/api/job-postings/{id}/status",
+                                savedJobPosting.getId())
+                                .header(HttpHeaders.IF_MATCH, "\"" + savedJobPosting.getVersion() + "\"")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.status")
+                                                .value(400))
+                                .andExpect(jsonPath("$.code")
+                                                .value("VALIDATION_FAILED"))
+                                .andExpect(jsonPath("$.fieldErrors.status").exists());
+
+                // 실패한 요청이 DB 상태를 변경하지 않았는 지 확인
+                JobPosting unchangedJobPosting = jobPostingRepository
+                                .findById(savedJobPosting.getId())
+                                .orElseThrow();
+                assertEquals(
+                                ApplicationStatus.SAVED,
+                                unchangedJobPosting.getApplicationStatus());
+
+        }
+
+        @Test
+        void 지원_상태별_채용공고_개수를_조회할_수_있다() throws Exception {
+                // 1. SAVED 상태 공고 2개
+                jobPostingRepository.save(
+                                new JobPosting("회사1", "공고1", null, "원문1", null, null, null));
+                jobPostingRepository.save(
+                                new JobPosting("회사2", "공고2", null, "원문2", null, null, null));
+
+                // 2. APPLIED 상태 공고 1개
+                JobPosting appliedJobPosting = new JobPosting("회사3", "공고3", null, "원문3", null, null, null);
+                appliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
+                jobPostingRepository.save(appliedJobPosting);
+
+                // 3. INTERVIEWING 상태 공고 1개
+                JobPosting interviewingJobPosting = new JobPosting("회사4", "공고4", null, "원문4", null, null, null);
+                interviewingJobPosting.changeApplicationStatus(ApplicationStatus.INTERVIEWING);
+                jobPostingRepository.save(interviewingJobPosting);
+
+                // 4. OFFERED 상태 공고 1개
+                JobPosting offeredJobPosting = new JobPosting("회사5", "공고5", null, "원문5", null, null, null);
+                offeredJobPosting.changeApplicationStatus(ApplicationStatus.OFFERED);
+                jobPostingRepository.save(offeredJobPosting);
+
+                // 5. 상태 요약 API 호출
+                mockMvc.perform(get("/api/job-postings/status-summary"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.saved").value(2))
+                                .andExpect(jsonPath("$.applied").value(1))
+                                .andExpect(jsonPath("$.interviewing").value(1))
+                                .andExpect(jsonPath("$.offered").value(1))
+                                .andExpect(jsonPath("$.rejected").value(0));
+        }
     }
 
-    @Test
-    void 지원_상태를_누락하면_400을_반환하고_DB는_변경되지_않는다() throws Exception {
-        
-        // 기본 상태가 SAVED인 상태 저장
-        JobPosting savedJobPosting = jobPostingRepository.save(
-                new JobPosting(
-                        "검증 테스트 회사", 
-                        "백엔드 엔지니어", 
-                        "https://example.com/status-validation", 
-                        "지원 상태 검증 테스트용 원문",
-                        null,
-                        null, 
-                        null
-                )
-        );
+    @Nested
+    class SkillsTests {
+        @Test
+        void 기술이_포함된_공고에서__해당_포스트의_기술_스택을_확인할_수_있다() throws Exception {
+                JobPosting charlie = jobPostingRepository.save(
+                                new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie", "JavaとSpring Bootを使ったバックエンド開発です", 
+                                                null, null, null));
+                JobPosting alpha = jobPostingRepository.save(
+                                new JobPosting("Alpha Company", "AWS Engineer", "https://example.com/alpha", "AWSとDockerを利用します。", 
+                                                null, null, null));
 
-        // status 필드가 없는 요청
-        String requestBody = """
-                        {
-                        }
-                        """;
-        
-        // PATCH 요청 후 검증 오류 확인
-        mockMvc.perform(patch(
-                        "/api/job-postings/{id}/status",
-                        savedJobPosting.getId()      
-                )
-                        .header(HttpHeaders.IF_MATCH, "\"" + savedJobPosting.getVersion() + "\"")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status")
-                        .value(400))
-                .andExpect(jsonPath("$.code")
-                        .value("VALIDATION_FAILED")) 
-                .andExpect(jsonPath("$.fieldErrors.status").exists());
+                mockMvc.perform(get("/api/job-postings/{id}/skills", charlie.getId()))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$[0]").value("Java" ))
+                                .andExpect(jsonPath("$[1]").value("Spring Boot"));
+                mockMvc.perform(get("/api/job-postings/{id}/skills", alpha.getId()))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$[0]").value("AWS"))
+                                .andExpect(jsonPath("$[1]").value("Docker"));
+            
+        }
 
-        // 실패한 요청이 DB 상태를 변경하지 않았는 지 확인
-        JobPosting unchangedJobPosting = jobPostingRepository
-                        .findById(savedJobPosting.getId())
-                        .orElseThrow();
-        assertEquals(
-                ApplicationStatus.SAVED,
-                unchangedJobPosting.getApplicationStatus()
-        );
+        @Test
+        void 기술이_기입되어_있지_않는_포스트의_경우_공백을_보여준다() throws Exception {
+                JobPosting charlie = jobPostingRepository.save(
+                                new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
+                                                "営業部求人中", null, null, null));
+                mockMvc.perform(get("/api/job-postings/{id}/skills", charlie.getId()))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$").isEmpty());
+        }
 
+        @Test 
+        void 존재하지_않는_채용공고의_기술스택을_조회하면_404를_반환한다() throws Exception {
+                mockMvc.perform(get("/api/job-postings/{id}/skills", 9999L))
+                       .andExpect(status().isNotFound());
+        }
 
+        @Test
+        void JavaScript가_포함된_내용을_조회하면_Java를_추출하지_않는다() throws Exception {
+                JobPosting charlie = jobPostingRepository.save(
+                                new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
+                                                "JavaScript開発者求人中", null, null, null));
+                mockMvc.perform(get("/api/job-postings/{id}/skills", charlie.getId()))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$").isEmpty());
+        }
+
+        @Test
+        void 내용에_Cpp과_C가_모두_있을_때_Cpp과_C를_구분하여_추출한다() throws Exception {
+                JobPosting charlie = jobPostingRepository.save(
+                                new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
+                                                "CとC++を全部開発できる人は大歓迎", null, null, null));
+                mockMvc.perform(get("/api/job-postings/{id}/skills", charlie.getId()))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$", hasSize(2)))
+                                .andExpect(jsonPath("$[0]").value("C"))
+                                .andExpect(jsonPath("$[1]").value("C++"));
+        }
+
+        @Test
+        void 내용에_Cpp만_있을_때_C를_추출하지_않는다() throws Exception {
+                JobPosting charlie = jobPostingRepository.save(
+                                new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
+                                                "C++を開発できる人は大歓迎", null, null, null));
+                mockMvc.perform(get("/api/job-postings/{id}/skills", charlie.getId()))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$", hasSize(1)))
+                                .andExpect(jsonPath("$[0]").value("C++"));
+        }
+    }
+
+    @Nested
+    class SalaryFilterTests {
+        @Test
+        void SalaryRange가_유효하면_정상적으로_출력된다() throws Exception {
+                jobPostingRepository.save(
+                                new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
+                                                "AWSを開発できる人は大歓迎", 300000, 500000, null));
+                mockMvc.perform(get("/api/job-postings")
+                                    .param("salaryMin", "300000")
+                                    .param("salaryMax", "500000"))
+                            .andExpect(status().isOk());
+        }
+
+        @Test
+        void 최소월급의_조건을_최고월급의_조건보다_크게_설정하면_400코드를_반환한다() throws Exception {
+                mockMvc.perform(get("/api/job-postings")
+                                .param("salaryMin", "500000")
+                                .param("salaryMax", "300000"))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.status").value(400))
+                                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        }
+
+        @Test
+        void 최소월급의_조건이_음수로_설정되면_400코드를_반환한다() throws Exception {
+                mockMvc.perform(get("/api/job-postings")
+                                .param("salaryMin", "-10"))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.status").value(400))
+                                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        }
+    }
+
+    @Nested
+    class DeadlineFilterTests {
+        @Test
+        void 시작일이_마감일보다_뒤의_날짜로_설정되면_400을_반환한다() throws Exception {
+            mockMvc.perform(get("/api/job-postings")
+                    .param("deadlineFrom", "2026-11-01")
+                    .param("deadlineTo", "2026-10-01"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.status").value(400))
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        }
+    }
+
+    @Nested
+    class IfMatchTests {
+        @Test
+        void 이전_If_Match로_지원_상태를_다시_변경하면_412를_반환한다() throws Exception {
+            JobPosting savedJobPosting = jobPostingRepository.saveAndFlush(
+                    new JobPosting("상태 변경 테스트 회사", "백엔드 엔지니어", null, "상태 변경 테스트 원문", null, null, null)
+            );
+            Long staleVersion = savedJobPosting.getVersion();
+            String path = "/api/job-postings/" + savedJobPosting.getId() + "/status";
+
+            mockMvc.perform(patch(path)
+                            .header(HttpHeaders.IF_MATCH, "\"" + staleVersion + "\"")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"status": "APPLIED"}
+                                    """))
+                    .andExpect(status().isOk());
+
+            mockMvc.perform(patch(path)
+                            .header(HttpHeaders.IF_MATCH, "\"" + staleVersion + "\"")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"status": "INTERVIEWING"}
+                                    """))
+                    .andExpect(status().isPreconditionFailed())
+                    .andExpect(jsonPath("$.status").value(412))
+                    .andExpect(jsonPath("$.code").value("JOB_POSTING_VERSION_CONFLICT"))
+                    .andExpect(jsonPath("$.path").value(path));
+
+            JobPosting unchangedJobPosting = jobPostingRepository.findById(savedJobPosting.getId()).orElseThrow();
+            assertEquals(ApplicationStatus.APPLIED, unchangedJobPosting.getApplicationStatus());
+            assertEquals(staleVersion + 1, unchangedJobPosting.getVersion());
+        }
+
+        @Test
+        void 일반_수정_이전의_If_Match로_지원_상태를_변경하면_412를_반환한다() throws Exception {
+            JobPosting savedJobPosting = jobPostingRepository.saveAndFlush(
+                    new JobPosting("상태 변경 테스트 회사", "기존 제목", null, "기존 원문", null, null, null)
+            );
+            Long staleVersion = savedJobPosting.getVersion();
+
+            mockMvc.perform(put("/api/job-postings/{id}", savedJobPosting.getId())
+                            .header(HttpHeaders.IF_MATCH, "\"" + staleVersion + "\"")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"companyName": "상태 변경 테스트 회사", "title": "수정된 제목", "originalText": "기존 원문"}
+                                    """))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string(HttpHeaders.ETAG, "\"" + (staleVersion + 1) + "\""));
+
+            mockMvc.perform(patch("/api/job-postings/{id}/status", savedJobPosting.getId())
+                            .header(HttpHeaders.IF_MATCH, "\"" + staleVersion + "\"")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"status": "APPLIED"}
+                                    """))
+                    .andExpect(status().isPreconditionFailed())
+                    .andExpect(jsonPath("$.code").value("JOB_POSTING_VERSION_CONFLICT"));
+
+            JobPosting unchangedJobPosting = jobPostingRepository.findById(savedJobPosting.getId()).orElseThrow();
+            assertEquals("수정된 제목", unchangedJobPosting.getTitle());
+            assertEquals(ApplicationStatus.SAVED, unchangedJobPosting.getApplicationStatus());
+            assertEquals(staleVersion + 1, unchangedJobPosting.getVersion());
+        }
+
+        @Test
+        void 지원_상태_변경_이전의_If_Match로_일반_수정하면_412를_반환한다() throws Exception {
+            JobPosting savedJobPosting = jobPostingRepository.saveAndFlush(
+                    new JobPosting("상태 변경 테스트 회사", "기존 제목", null, "기존 원문", null, null, null)
+            );
+            Long staleVersion = savedJobPosting.getVersion();
+
+            mockMvc.perform(patch("/api/job-postings/{id}/status", savedJobPosting.getId())
+                            .header(HttpHeaders.IF_MATCH, "\"" + staleVersion + "\"")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"status": "APPLIED"}
+                                    """))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string(HttpHeaders.ETAG, "\"" + (staleVersion + 1) + "\""));
+
+            mockMvc.perform(put("/api/job-postings/{id}", savedJobPosting.getId())
+                            .header(HttpHeaders.IF_MATCH, "\"" + staleVersion + "\"")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"companyName": "상태 변경 테스트 회사", "title": "수정된 제목", "originalText": "기존 원문"}
+                                    """))
+                    .andExpect(status().isPreconditionFailed())
+                    .andExpect(jsonPath("$.code").value("JOB_POSTING_VERSION_CONFLICT"));
+
+            JobPosting unchangedJobPosting = jobPostingRepository.findById(savedJobPosting.getId()).orElseThrow();
+            assertEquals("기존 제목", unchangedJobPosting.getTitle());
+            assertEquals(ApplicationStatus.APPLIED, unchangedJobPosting.getApplicationStatus());
+            assertEquals(staleVersion + 1, unchangedJobPosting.getVersion());
+        }
+
+        @Test
+        void If_Match_헤더_없이_수정하면_428을_반환한다() throws Exception {
+                JobPosting charlie = jobPostingRepository.saveAndFlush(
+                                new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
+                                                "AWSを開発できる人は大歓迎", 300000, 500000, null));
+
+                String requestBody = """
+                                {
+                                  "companyName": "Charlie Company",
+                                  "title": "Junior AWS Engineer",
+                                  "sourceUrl": "https://example.com/charlie",
+                                  "originalText": "AWSを開発できる人は大歓迎",
+                                  "salaryMin": 300000,
+                                  "salaryMax": 500000
+                                }
+                                """;
+
+                mockMvc.perform(put(
+                                "/api/job-postings/{id}",
+                                charlie.getId())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody))
+                                .andExpect(status().is(428))
+                                .andExpect(jsonPath("$.code")
+                                                .value("IF_MATCH_REQUIRED"));
+            
+        }
+
+        @Test
+        void If_Match_헤더_버전이_오래됐다면_412를_반환한다() throws Exception {
+                JobPosting charlie = jobPostingRepository.saveAndFlush(
+                                new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
+                                                "AWSを開発できる人は大歓迎", 300000, 500000, null));
+
+                Long staleVersion = charlie.getVersion();
+
+                String requestBody = """
+                                {
+                                  "companyName": "Charlie Company",
+                                  "title": "Junior AWS Engineer",
+                                  "sourceUrl": "https://example.com/charlie",
+                                  "originalText": "AWSを開発できる人は大歓迎",
+                                  "salaryMin": 300000,
+                                  "salaryMax": 500000
+                                }
+                                """;
+                mockMvc.perform(put(
+                    "/api/job-postings/{id}",
+                    charlie.getId())
+                    .header(
+                            HttpHeaders.IF_MATCH,
+                            "\"" + staleVersion +"\""
+                    )
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody))
+                    .andExpect(status().isOk());
+
+                mockMvc.perform(put(
+                                "/api/job-postings/{id}",
+                                charlie.getId())
+                                .header(
+                                    HttpHeaders.IF_MATCH,
+                                    "\""+ staleVersion + "\""
+                                )
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody))               
+                                .andExpect(status().isPreconditionFailed())
+                                .andExpect(jsonPath("$.code")
+                                                .value("JOB_POSTING_VERSION_CONFLICT"));
+
+        }
+
+        @Test
+        void If_Match_헤더_버전이_일치한다면_수정에_성공한다() throws Exception {
+                JobPosting charlie = jobPostingRepository.saveAndFlush(
+                                new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
+                                                "AWSを開発できる人は大歓迎", 300000, 500000, null));
+
+                Long currentVersion = charlie.getVersion();
+
+                String requestBody = """
+                                {
+                                  "companyName": "Charlie Company",
+                                  "title": "Junior AWS Engineer",
+                                  "sourceUrl": "https://example.com/charlie",
+                                  "originalText": "AWSを開発できる人は大歓迎",
+                                  "salaryMin": 300000,
+                                  "salaryMax": 500000
+                                }
+                                """;
+
+                mockMvc.perform(put(
+                                "/api/job-postings/{id}",
+                                charlie.getId())
+                                .header(
+                                    HttpHeaders.IF_MATCH,
+                                    "\""+ currentVersion +"\"")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody))
+                                .andExpect(status().isOk())
+                                .andExpect(header().string(
+                                    HttpHeaders.ETAG,
+                                    "\"" + (currentVersion + 1) + "\""
+                                ))
+                                .andExpect(jsonPath("$.title")
+                                    .value("Junior AWS Engineer"));
+        }
     }
 
     // If-Matchの未指定・空文字・空白文字を同じ条件としてまとめて検証する。
@@ -452,545 +1003,6 @@ class JobPostingControllerTest {
         JobPosting unchangedJobPosting = jobPostingRepository.findById(savedJobPosting.getId()).orElseThrow();
         assertEquals(ApplicationStatus.SAVED, unchangedJobPosting.getApplicationStatus());
         assertEquals(savedVersion, unchangedJobPosting.getVersion());
-    }
-
-    @Test
-    void 이전_If_Match로_지원_상태를_다시_변경하면_412를_반환한다() throws Exception {
-        JobPosting savedJobPosting = jobPostingRepository.saveAndFlush(
-                new JobPosting("상태 변경 테스트 회사", "백엔드 엔지니어", null, "상태 변경 테스트 원문", null, null, null)
-        );
-        Long staleVersion = savedJobPosting.getVersion();
-        String path = "/api/job-postings/" + savedJobPosting.getId() + "/status";
-
-        mockMvc.perform(patch(path)
-                        .header(HttpHeaders.IF_MATCH, "\"" + staleVersion + "\"")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"status": "APPLIED"}
-                                """))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(patch(path)
-                        .header(HttpHeaders.IF_MATCH, "\"" + staleVersion + "\"")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"status": "INTERVIEWING"}
-                                """))
-                .andExpect(status().isPreconditionFailed())
-                .andExpect(jsonPath("$.status").value(412))
-                .andExpect(jsonPath("$.code").value("JOB_POSTING_VERSION_CONFLICT"))
-                .andExpect(jsonPath("$.path").value(path));
-
-        JobPosting unchangedJobPosting = jobPostingRepository.findById(savedJobPosting.getId()).orElseThrow();
-        assertEquals(ApplicationStatus.APPLIED, unchangedJobPosting.getApplicationStatus());
-        assertEquals(staleVersion + 1, unchangedJobPosting.getVersion());
-    }
-
-    @Test
-    void 일반_수정_이전의_If_Match로_지원_상태를_변경하면_412를_반환한다() throws Exception {
-        JobPosting savedJobPosting = jobPostingRepository.saveAndFlush(
-                new JobPosting("상태 변경 테스트 회사", "기존 제목", null, "기존 원문", null, null, null)
-        );
-        Long staleVersion = savedJobPosting.getVersion();
-
-        mockMvc.perform(put("/api/job-postings/{id}", savedJobPosting.getId())
-                        .header(HttpHeaders.IF_MATCH, "\"" + staleVersion + "\"")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"companyName": "상태 변경 테스트 회사", "title": "수정된 제목", "originalText": "기존 원문"}
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(header().string(HttpHeaders.ETAG, "\"" + (staleVersion + 1) + "\""));
-
-        mockMvc.perform(patch("/api/job-postings/{id}/status", savedJobPosting.getId())
-                        .header(HttpHeaders.IF_MATCH, "\"" + staleVersion + "\"")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"status": "APPLIED"}
-                                """))
-                .andExpect(status().isPreconditionFailed())
-                .andExpect(jsonPath("$.code").value("JOB_POSTING_VERSION_CONFLICT"));
-
-        JobPosting unchangedJobPosting = jobPostingRepository.findById(savedJobPosting.getId()).orElseThrow();
-        assertEquals("수정된 제목", unchangedJobPosting.getTitle());
-        assertEquals(ApplicationStatus.SAVED, unchangedJobPosting.getApplicationStatus());
-        assertEquals(staleVersion + 1, unchangedJobPosting.getVersion());
-    }
-
-    @Test
-    void 지원_상태_변경_이전의_If_Match로_일반_수정하면_412를_반환한다() throws Exception {
-        JobPosting savedJobPosting = jobPostingRepository.saveAndFlush(
-                new JobPosting("상태 변경 테스트 회사", "기존 제목", null, "기존 원문", null, null, null)
-        );
-        Long staleVersion = savedJobPosting.getVersion();
-
-        mockMvc.perform(patch("/api/job-postings/{id}/status", savedJobPosting.getId())
-                        .header(HttpHeaders.IF_MATCH, "\"" + staleVersion + "\"")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"status": "APPLIED"}
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(header().string(HttpHeaders.ETAG, "\"" + (staleVersion + 1) + "\""));
-
-        mockMvc.perform(put("/api/job-postings/{id}", savedJobPosting.getId())
-                        .header(HttpHeaders.IF_MATCH, "\"" + staleVersion + "\"")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"companyName": "상태 변경 테스트 회사", "title": "수정된 제목", "originalText": "기존 원문"}
-                                """))
-                .andExpect(status().isPreconditionFailed())
-                .andExpect(jsonPath("$.code").value("JOB_POSTING_VERSION_CONFLICT"));
-
-        JobPosting unchangedJobPosting = jobPostingRepository.findById(savedJobPosting.getId()).orElseThrow();
-        assertEquals("기존 제목", unchangedJobPosting.getTitle());
-        assertEquals(ApplicationStatus.APPLIED, unchangedJobPosting.getApplicationStatus());
-        assertEquals(staleVersion + 1, unchangedJobPosting.getVersion());
-    }
-
-    @Test
-    void 채용공고를_등록하면_기본_지원_상태는_SAVED이다() throws Exception {
-
-        // 정상적인 채용 공고 등록 요청
-        String requestBody = """
-                {
-                  "companyName": "기본 상태 테스트 회사",
-                  "title": "Java 백엔드 엔지니어",
-                  "sourceUrl": "https://example.com/default-status",
-                  "originalText": "신규 공고 기본 상태 테스트용 원문"
-                }
-                """;
-
-        // POST 요청 후 응답 상태 확인
-        mockMvc.perform(post("/api/job-postings")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.applicationStatus")
-                        .value("SAVED"));
-                  
-        // DB에 실제 저장된 공고 조회 
-        JobPosting savedJobPosting = jobPostingRepository
-                .findAll()
-                .stream()
-                .findFirst()
-                .orElseThrow();
-        
-        // DB에서도 기본 상태가 SAVED인지 확인
-        assertEquals(
-                ApplicationStatus.SAVED, 
-                savedJobPosting.getApplicationStatus()
-        );
-    }
-
-    @Test
-    void 지원_상태별_채용공고_개수를_조회할_수_있다() throws Exception {
-        // 1. SAVED 상태 공고 2개
-        jobPostingRepository.save(
-                new JobPosting("회사1", "공고1", null, "원문1", null, null, null)
-        );
-        jobPostingRepository.save(
-                        new JobPosting("회사2", "공고2", null, "원문2", null, null, null)
-        );
-
-        // 2. APPLIED 상태 공고 1개
-        JobPosting appliedJobPosting = new JobPosting("회사3", "공고3", null, "원문3", null, null, null);
-        appliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
-        jobPostingRepository.save(appliedJobPosting);
-
-        // 3. INTERVIEWING 상태 공고 1개
-        JobPosting interviewingJobPosting = new JobPosting("회사4", "공고4", null, "원문4", null, null, null);
-        interviewingJobPosting.changeApplicationStatus(ApplicationStatus.INTERVIEWING);
-        jobPostingRepository.save(interviewingJobPosting);
-
-        // 4. OFFERED 상태 공고 1개
-        JobPosting offeredJobPosting = new JobPosting("회사5", "공고5", null, "원문5", null, null, null);
-        offeredJobPosting.changeApplicationStatus(ApplicationStatus.OFFERED);
-        jobPostingRepository.save(offeredJobPosting);
-
-        // 5. 상태 요약 API 호출
-        mockMvc.perform(get("/api/job-postings/status-summary"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.saved").value(2))
-                .andExpect(jsonPath("$.applied").value(1))
-                .andExpect(jsonPath("$.interviewing").value(1))
-                .andExpect(jsonPath("$.offered").value(1))
-                .andExpect(jsonPath("$.rejected").value(0));
-    }
-
-    @Test
-    void 지원_상태_및_키워드를_통해서_필터링_할_수_있다() throws Exception {
-
-        jobPostingRepository.save(
-                new JobPosting("회사1", "공고1", null, "원문1", null, null, null)
-        );
-
-        JobPosting appliedJobPosting = new JobPosting("회사2", "공고2", null, "원문2", null, null, null);
-        appliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
-        jobPostingRepository.save(appliedJobPosting);
-
-
-        mockMvc.perform(get("/api/job-postings")
-                        .param("keyword", "공고")
-                        .param("status", "APPLIED"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content.length()").value(1))
-                .andExpect(jsonPath("$.content[0].applicationStatus").value("APPLIED"))
-                .andExpect(jsonPath("$.content[0].title").value("공고2"));
-    }
-
-    @Test
-    void 지원_상태로_필터링_할_수_있다() throws Exception {
-
-        jobPostingRepository.save(
-                new JobPosting("회사1", "공고1", null, "원문1", null, null, null));
-
-        JobPosting appliedJobPosting = new JobPosting("회사2", "공고2", null, "원문2", null, null, null);
-        appliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
-        jobPostingRepository.save(appliedJobPosting);
-
-        JobPosting secondAppliedJobPosting = new JobPosting("회사2", "공고2", null, "원문2", null, null, null);
-        secondAppliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
-        jobPostingRepository.save(secondAppliedJobPosting);
-
-        mockMvc.perform(get("/api/job-postings")
-                        .param("status", "APPLIED"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content.length()").value(2))
-                .andExpect(jsonPath("$.content[0].applicationStatus").value("APPLIED"))
-                .andExpect(jsonPath("$.content[1].applicationStatus").value("APPLIED"));
-    }
-
-    @Test
-    void 대소문자_상관_없이_필터링_할_수_있다() throws Exception {
-
-            jobPostingRepository.save(
-                            new JobPosting("회사1", "Spring Backend Engineer", null, "원문1", null, null, null));
-
-            mockMvc.perform(get("/api/job-postings")
-                            .param("keyword", "spring"))
-                            .andExpect(status().isOk())
-                            .andExpect(jsonPath("$.content.length()").value(1))
-                            .andExpect(jsonPath("$.content[0].title").value("Spring Backend Engineer"));
-    }
-
-    @Test
-    void 와일드카드_이스케이프_할_수_있다() throws Exception {
-
-            jobPostingRepository.save(
-                            new JobPosting("회사1", "100% Remote Engineer", null, "원문1", null, null, null));
-            jobPostingRepository.save(
-                            new JobPosting("회사2", "Java Developer", null, "원문2", null, null, null));
-
-            mockMvc.perform(get("/api/job-postings")
-                            .param("keyword", "%"))
-                            .andExpect(status().isOk())
-                            .andExpect(jsonPath("$.content.length()").value(1))
-                            .andExpect(jsonPath("$.content[0].title").value("100% Remote Engineer"));
-    }
-
-    @Test
-    void 유효하지_않는_상태는_Bad_Request_전송한다() throws Exception {
-
-        mockMvc.perform(get("/api/job-postings?status=INVALID"))
-                        .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void 상태와_페이지네이션을_활용해_필터링_할_수_있다() throws Exception {
-            JobPosting appliedJobPosting = new JobPosting("회사1", "공고1", null, "원문1", null, null, null);
-            appliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
-            jobPostingRepository.save(appliedJobPosting);
-
-            JobPosting secondAppliedJobPosting = new JobPosting("회사2", "공고2", null, "원문2", null, null, null);
-            secondAppliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
-            jobPostingRepository.save(secondAppliedJobPosting);
-
-            JobPosting thirdAppliedJobPosting = new JobPosting("회사3", "공고3", null, "원문3", null, null, null);
-            thirdAppliedJobPosting.changeApplicationStatus(ApplicationStatus.APPLIED);
-            jobPostingRepository.save(thirdAppliedJobPosting);
-
-            jobPostingRepository.save(
-                            new JobPosting("회사4", "100% Remote Engineer", null, "원문4", null, null, null));
-            jobPostingRepository.save(
-                            new JobPosting("회사5", "Java Developer", null, "원문5", null, null, null));
-                        
-            mockMvc.perform(get("/api/job-postings")
-                        .param("status", "APPLIED")
-                        .param("page", "0")
-                        .param("size", "2"))
-                        .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.page").value(0))
-                        .andExpect(jsonPath("$.content.length()").value(2))
-                        .andExpect(jsonPath("$.content[0].applicationStatus").value("APPLIED"))
-                        .andExpect(jsonPath("$.content[1].applicationStatus").value("APPLIED"))
-                        .andExpect(jsonPath("$.totalElements").value(3));
-    }
-
-    @Test
-    void 허용_목록에_없는_필드의_정렬_요청은_거부된다() throws Exception {
-            mockMvc.perform(get("/api/job-postings").param("sort", "id,asc"))
-                        .andExpect(status().isBadRequest())
-                        .andExpect(jsonPath("$.status").value(400))   
-                        .andExpect(jsonPath("$.code").value("INVALID_SORT_FIELD"))
-                        .andExpect(jsonPath("$.message").value("허용되지 않는 정렬 필드입니다: id"));
-    }
-
-    @Test
-    void 회사명_으로_정렬기능이_동작하는지_확인한다() throws Exception {
-            jobPostingRepository.save(
-                            new JobPosting("B", "Java Developer", null, "원문1", null, null, null));
-            jobPostingRepository.save(
-                            new JobPosting("A", "Python Developer", null, "원문2", null, null, null));
-            jobPostingRepository.save(
-                            new JobPosting("C", "C++ Developer", null, "원문3", null, null, null));
-        
-            mockMvc.perform(get("/api/job-postings").param("sort", "companyName,asc"))
-                            .andExpect(status().isOk())
-                            .andExpect(jsonPath("$.content[0].companyName").value("A"))
-                            .andExpect(jsonPath("$.content[1].companyName").value("B"))
-                            .andExpect(jsonPath("$.content[2].companyName").value("C"));
-    }
-
-    @Test
-    void 키워드와_지원상태로_필터링하고_회사명순으로_정렬할_수_있다() throws Exception {
-            JobPosting charlie = jobPostingRepository.save(
-                            new JobPosting("Charlie Company","AWS Engineer","https://example.com/charlie","Cloud", 
-                                            null, null, null));
-            JobPosting alpha = jobPostingRepository.save(
-                            new JobPosting("Alpha Company", "AWS Engineer", "https://example.com/alpha", "Cloud", null,
-                                            null, null));
-            JobPosting wrongKeyword = jobPostingRepository.save(
-                            new JobPosting("Beta Company", "JAVA Engineer", "https://example.com/beta", "Spring", null,
-                                            null, null));
-            JobPosting wrongStatus = jobPostingRepository.save(
-                            new JobPosting("Delta Company", "AWS Engineer", "https://example.com/delta", "Cloud", null,
-                                            null, null));
-            
-            charlie.changeApplicationStatus(ApplicationStatus.APPLIED);
-            alpha.changeApplicationStatus(ApplicationStatus.APPLIED);
-            wrongKeyword.changeApplicationStatus(ApplicationStatus.APPLIED);
-            wrongStatus.changeApplicationStatus(ApplicationStatus.SAVED);
-
-            jobPostingRepository.saveAll(List.of(charlie, alpha, wrongKeyword, wrongStatus));
-
-            mockMvc.perform(get("/api/job-postings")
-                            .param("keyword", "AWS")
-                            .param("status", "APPLIED")
-                            .param("sort", "companyName,asc"))
-                            .andExpect(status().isOk())
-                            .andExpect(jsonPath("$.content.length()").value(2))
-                            .andExpect(jsonPath("$.content[0].companyName").value("Alpha Company"))
-                            .andExpect(jsonPath("$.content[1].companyName").value("Charlie Company"));
-    }
-
-
-    @Test
-    void 기술이_포함된_공고에서__해당_포스트의_기술_스택을_확인할_수_있다() throws Exception {
-            JobPosting charlie = jobPostingRepository.save(
-                            new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie", "JavaとSpring Bootを使ったバックエンド開発です", 
-                                            null, null, null));
-            JobPosting alpha = jobPostingRepository.save(
-                            new JobPosting("Alpha Company", "AWS Engineer", "https://example.com/alpha", "AWSとDockerを利用します。", 
-                                            null, null, null));
-
-            mockMvc.perform(get("/api/job-postings/{id}/skills", charlie.getId()))
-                            .andExpect(status().isOk())
-                            .andExpect(jsonPath("$[0]").value("Java" ))
-                            .andExpect(jsonPath("$[1]").value("Spring Boot"));
-            mockMvc.perform(get("/api/job-postings/{id}/skills", alpha.getId()))
-                            .andExpect(status().isOk())
-                            .andExpect(jsonPath("$[0]").value("AWS"))
-                            .andExpect(jsonPath("$[1]").value("Docker"));
-            
-    }
-
-    @Test
-    void 기술이_기입되어_있지_않는_포스트의_경우_공백을_보여준다() throws Exception {
-            JobPosting charlie = jobPostingRepository.save(
-                            new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
-                                            "営業部求人中", null, null, null));
-            mockMvc.perform(get("/api/job-postings/{id}/skills", charlie.getId()))
-                            .andExpect(status().isOk())
-                            .andExpect(jsonPath("$").isEmpty());
-    }
-
-    @Test 
-    void 존재하지_않는_채용공고의_기술스택을_조회하면_404를_반환한다() throws Exception {
-            mockMvc.perform(get("/api/job-postings/{id}/skills", 9999L))
-                   .andExpect(status().isNotFound());
-    }
-
-    @Test
-    void JavaScript가_포함된_내용을_조회하면_Java를_추출하지_않는다() throws Exception {
-            JobPosting charlie = jobPostingRepository.save(
-                            new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
-                                            "JavaScript開発者求人中", null, null, null));
-            mockMvc.perform(get("/api/job-postings/{id}/skills", charlie.getId()))
-                            .andExpect(status().isOk())
-                            .andExpect(jsonPath("$").isEmpty());
-    }
-
-    @Test
-    void 내용에_Cpp과_C가_모두_있을_때_Cpp과_C를_구분하여_추출한다() throws Exception {
-            JobPosting charlie = jobPostingRepository.save(
-                            new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
-                                            "CとC++を全部開発できる人は大歓迎", null, null, null));
-            mockMvc.perform(get("/api/job-postings/{id}/skills", charlie.getId()))
-                            .andExpect(status().isOk())
-                            .andExpect(jsonPath("$", hasSize(2)))
-                            .andExpect(jsonPath("$[0]").value("C"))
-                            .andExpect(jsonPath("$[1]").value("C++"));
-    }
-
-    @Test
-    void 내용에_Cpp만_있을_때_C를_추출하지_않는다() throws Exception {
-            JobPosting charlie = jobPostingRepository.save(
-                            new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
-                                            "C++を開発できる人は大歓迎", null, null, null));
-            mockMvc.perform(get("/api/job-postings/{id}/skills", charlie.getId()))
-                            .andExpect(status().isOk())
-                            .andExpect(jsonPath("$", hasSize(1)))
-                            .andExpect(jsonPath("$[0]").value("C++"));
-    }
-
-    @Test
-    void SalaryRange가_유효하면_정상적으로_출력된다() throws Exception {
-            jobPostingRepository.save(
-                            new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
-                                            "AWSを開発できる人は大歓迎", 300000, 500000, null));
-            mockMvc.perform(get("/api/job-postings")
-                                .param("salaryMin", "300000")
-                                .param("salaryMax", "500000"))
-                        .andExpect(status().isOk());
-    }
-
-    @Test
-    void 최소월급의_조건을_최고월급의_조건보다_크게_설정하면_400코드를_반환한다() throws Exception {
-            mockMvc.perform(get("/api/job-postings")
-                            .param("salaryMin", "500000")
-                            .param("salaryMax", "300000"))
-                            .andExpect(status().isBadRequest())
-                            .andExpect(jsonPath("$.status").value(400))
-                            .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
-    }
-
-    @Test
-    void 최소월급의_조건이_음수로_설정되면_400코드를_반환한다() throws Exception {
-            mockMvc.perform(get("/api/job-postings")
-                            .param("salaryMin", "-10"))
-                            .andExpect(status().isBadRequest())
-                            .andExpect(jsonPath("$.status").value(400))
-                            .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
-    }
-
-    @Test
-    void If_Match_헤더_없이_수정하면_428을_반환한다() throws Exception {
-            JobPosting charlie = jobPostingRepository.saveAndFlush(
-                            new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
-                                            "AWSを開発できる人は大歓迎", 300000, 500000, null));
-
-            String requestBody = """
-                            {
-                              "companyName": "Charlie Company",
-                              "title": "Junior AWS Engineer",
-                              "sourceUrl": "https://example.com/charlie",
-                              "originalText": "AWSを開発できる人は大歓迎",
-                              "salaryMin": 300000,
-                              "salaryMax": 500000
-                            }
-                            """;
-
-            mockMvc.perform(put(
-                            "/api/job-postings/{id}",
-                            charlie.getId())
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(requestBody))
-                            .andExpect(status().is(428))
-                            .andExpect(jsonPath("$.code")
-                                            .value("IF_MATCH_REQUIRED"));
-            
-    }
-
-    @Test
-    void If_Match_헤더_버전이_오래됐다면_412를_반환한다() throws Exception {
-            JobPosting charlie = jobPostingRepository.saveAndFlush(
-                            new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
-                                            "AWSを開発できる人は大歓迎", 300000, 500000, null));
-
-            Long staleVersion = charlie.getVersion();
-
-            String requestBody = """
-                            {
-                              "companyName": "Charlie Company",
-                              "title": "Junior AWS Engineer",
-                              "sourceUrl": "https://example.com/charlie",
-                              "originalText": "AWSを開発できる人は大歓迎",
-                              "salaryMin": 300000,
-                              "salaryMax": 500000
-                            }
-                            """;
-            mockMvc.perform(put(
-                "/api/job-postings/{id}",
-                charlie.getId())
-                .header(
-                        HttpHeaders.IF_MATCH,
-                        "\"" + staleVersion +"\""
-                )
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
-                .andExpect(status().isOk());
-
-            mockMvc.perform(put(
-                            "/api/job-postings/{id}",
-                            charlie.getId())
-                            .header(
-                                HttpHeaders.IF_MATCH,
-                                "\""+ staleVersion + "\""
-                            )
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(requestBody))               
-                            .andExpect(status().isPreconditionFailed())
-                            .andExpect(jsonPath("$.code")
-                                            .value("JOB_POSTING_VERSION_CONFLICT"));
-
-    }
-
-    @Test
-    void If_Match_헤더_버전이_일치한다면_수정에_성공한다() throws Exception {
-            JobPosting charlie = jobPostingRepository.saveAndFlush(
-                            new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
-                                            "AWSを開発できる人は大歓迎", 300000, 500000, null));
-
-            Long currentVersion = charlie.getVersion();
-
-            String requestBody = """
-                            {
-                              "companyName": "Charlie Company",
-                              "title": "Junior AWS Engineer",
-                              "sourceUrl": "https://example.com/charlie",
-                              "originalText": "AWSを開発できる人は大歓迎",
-                              "salaryMin": 300000,
-                              "salaryMax": 500000
-                            }
-                            """;
-
-            mockMvc.perform(put(
-                            "/api/job-postings/{id}",
-                            charlie.getId())
-                            .header(
-                                HttpHeaders.IF_MATCH,
-                                "\""+ currentVersion +"\"")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(requestBody))
-                            .andExpect(status().isOk())
-                            .andExpect(header().string(
-                                HttpHeaders.ETAG,
-                                "\"" + (currentVersion + 1) + "\""
-                            ))
-                            .andExpect(jsonPath("$.title")
-                                .value("Junior AWS Engineer"));
     }
 
     // If-Matchヘッダーの形式が不正な場合に400が返されることを複数パターンで確認する
@@ -1034,6 +1046,7 @@ class JobPostingControllerTest {
                                             .value("MALFORMED_IF_MATCH_HEADER"));
     }
 
+    @Test
     void ApplicationStatus_수정시_If_Match_형식이_잘못되면_400을_반환한다() throws Exception {
         JobPosting charlie = jobPostingRepository.saveAndFlush(
                 new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie",
@@ -1117,16 +1130,6 @@ class JobPostingControllerTest {
                         List.of("求人B")
                 )
         );
-    }
-
-    @Test
-    void 시작일이_마감일보다_뒤의_날짜로_설정되면_400을_반환한다() throws Exception {
-        mockMvc.perform(get("/api/job-postings")
-                .param("deadlineFrom", "2026-11-01")
-                .param("deadlineTo", "2026-10-01"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value(400))
-                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
     }
 
 }

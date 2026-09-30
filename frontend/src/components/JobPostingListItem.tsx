@@ -225,7 +225,7 @@ function JobPostingListItem({
 									</p>
 
 									<p className="job-posting-card__deadline">
-										横暴締切日：{' '}
+										応募締切日：{' '}
 										{jobPosting.applicationDeadline ?? '미등록'}
 									</p>
 							</div>

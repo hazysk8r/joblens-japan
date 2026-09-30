@@ -265,7 +265,7 @@ function JobPostingEditForm({
       </div>
 
       <div>
-        <label htmlFor={`edit-applicationDeadline-${jobPosting.id}`}>
+        <label htmlFor={`edit-applicationDeadline-${jobPosting.id}`}>締切日</label>
           <input 
             id={`edit-applicationDeadline-${jobPosting.id}`}
             type="date"
@@ -278,7 +278,6 @@ function JobPostingEditForm({
               }));
             }}
           />
-        </label>
       </div>
 
       {validationError && (

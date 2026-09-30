@@ -734,6 +734,8 @@ function HomePage() {
         <button 
           type="button"
           className="advanced-filter-toggle"
+          aria-expanded={showAdvancedFilters}
+          aria-controls="advanced-search-filters"
           onClick={() => 
             setShowAdvancedFilters((previous) => !previous)
           }
@@ -745,7 +747,10 @@ function HomePage() {
         </button>
 
         {showAdvancedFilters && (
-          <div className="advanced-filter">
+          <div 
+            id="advanced-search-filters"
+            className="advanced-filter"
+          >
             <label htmlFor="search-salaryMin">최저 월급</label>
             <select
               id="search-salaryMin"
@@ -802,7 +807,7 @@ function HomePage() {
 
             </select>
 
-            <label htmlFor="deadlineFrom">開始日</label>
+            <label htmlFor="deadlineFrom">締切日（以降）</label>
             <input
               id="deadlineFrom"
               type="date"
@@ -814,7 +819,7 @@ function HomePage() {
               }
             />
 
-            <label htmlFor="deadlineTo">締切日</label>
+            <label htmlFor="deadlineTo">締切日（以前）</label>
             <input
               id="deadlineTo"
               type="date"
