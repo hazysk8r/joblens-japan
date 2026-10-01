@@ -23,10 +23,11 @@ Frontend
 * React
 * TypeScript
 * Vite
+* React Router
 
 Testing
 
-* JUnit 5
+* JUnit Jupiter
 * MockMvc
 * Testcontainers
 * Vitest
@@ -72,13 +73,13 @@ Database schema changes are managed with Flyway.
 
 Frontend memo state management is separated into a custom hook, while UI-related state remains in the component.
 
-Search conditions are synchronized with URL query parameters through React Router.
+Keyword, application status, and page are synchronized with URL query parameters through React Router.
 
 ## Current Development
 
-Improving regression test coverage
+Improving consistency between URL parameters and applied search filters
 
-Hardening If-Match validation
+Expanding regression tests for concurrent updates and asynchronous responses
 
 Improving frontend state consistency
 
@@ -86,6 +87,6 @@ Updating project documentation
 
 ## Planned
 
-* Improve frontend UI and styling
-* Additional job management features
+* Job posting detail page
+* Location, employment type, and remote work filters
 * Continue AWS deployment learning and deployment verification
