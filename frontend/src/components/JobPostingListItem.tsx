@@ -68,6 +68,7 @@ function JobPostingListItem({
 	const {
 		memos,
 		memosError,
+		memoMutationError,
 		memosLoading,
 		deletingMemoId,
 		editingMemoId,
@@ -220,14 +221,14 @@ function JobPostingListItem({
 									'회사명 미등록'}
 							</p>
 							<div className="job-posting-card__meta">
-									<p className="job-posting-card__salary">
-										{salaryText}
-									</p>
+								<p className="job-posting-card__salary">
+									{salaryText}
+								</p>
 
-									<p className="job-posting-card__deadline">
-										応募締切日：{' '}
-										{jobPosting.applicationDeadline ?? '미등록'}
-									</p>
+								<p className="job-posting-card__deadline">
+									応募締切日：{' '}
+									{jobPosting.applicationDeadline ?? '미등록'}
+								</p>
 							</div>
 						</div>
 						<div className="job-posting-card__status">
@@ -352,7 +353,7 @@ function JobPostingListItem({
 						<p role="alert">
 							{skillsError}
 						</p>
-				)}
+					)}
 
 				{!isEditing && (
 					<div className="job-posting-card__memo-area">
@@ -378,101 +379,110 @@ function JobPostingListItem({
 								<p role="alert">
 									{memosError}
 								</p>
-							) : memos.length > 0 ? (
-								<ul className="job-posting-card__memo-list">
-									{memos.map(
-										(memo) => (
-											<li key={memo.id}>
-												{editingMemoId ===
-													memo.id ? (
-													<>
-														<JobPostingMemoEditForm
-															jobPostingMemo={
-																memo
-															}
-															saving={
-																savingMemoId ===
-																memo.id
-															}
-															onSave={(
-																request,
-															) =>
-																saveMemoEdit(
-																	memo.id,
-																	request,
-																)
-															}
-															onCancel={
-																cancelMemoEdit
-															}
-														/>
-
-														{memoUpdateError !==
-															null && (
-																<p role="alert">
-																	{
-																		memoUpdateError
-																	}
-																</p>
-															)}
-													</>
-												) : (
-													<>
-														<span>
-															{
-																memo.content
-															}
-														</span>
-
-														<p>
-															更新日時:{' '}
-															{formatDateTime(
-																memo.updatedAt,
-															)}
-														</p>
-
-														<button
-															type="button"
-															onClick={() =>
-																startMemoEdit(
-																	memo.id,
-																)
-															}
-															disabled={
-																deletingMemoId ===
-																memo.id
-															}
-														>
-															수정
-														</button>
-
-														<button
-															type="button"
-															onClick={() => {
-																void handleMemoDeletion(
-																	memo.id,
-																);
-															}}
-															disabled={
-																deletingMemoId ===
-																memo.id
-															}
-														>
-															{deletingMemoId ===
-																memo.id
-																? '메모 삭제 중...'
-																: '메모 삭제'}
-														</button>
-													</>
-												)}
-											</li>
-										),
-									)}
-								</ul>
 							) : (
-								<p>
-									등록된 메모가 없습니다.
-								</p>
+								<>
+									{memoMutationError !== null && (
+										<p role="alert">
+											{memoMutationError}
+										</p>
+									)}
+
+									{memos.length > 0 ? (
+										<ul className="job-posting-card__memo-list">
+											{memos.map(
+												(memo) => (
+													<li key={memo.id}>
+														{editingMemoId ===
+															memo.id ? (
+															<>
+																<JobPostingMemoEditForm
+																	jobPostingMemo={
+																		memo
+																	}
+																	saving={
+																		savingMemoId ===
+																		memo.id
+																	}
+																	onSave={(
+																		request,
+																	) =>
+																		saveMemoEdit(
+																			memo.id,
+																			request,
+																		)
+																	}
+																	onCancel={
+																		cancelMemoEdit
+																	}
+																/>
+
+																{memoUpdateError !==
+																	null && (
+																		<p role="alert">
+																			{
+																				memoUpdateError
+																			}
+																		</p>
+																	)}
+															</>
+														) : (
+															<>
+																<span>
+																	{
+																		memo.content
+																	}
+																</span>
+
+																<p>
+																	更新日時:{' '}
+																	{formatDateTime(
+																		memo.updatedAt,
+																	)}
+																</p>
+
+																<button
+																	type="button"
+																	onClick={() =>
+																		startMemoEdit(
+																			memo.id,
+																		)
+																	}
+																	disabled={
+																		deletingMemoId ===
+																		memo.id
+																	}
+																>
+																	수정
+																</button>
+
+																<button
+																	type="button"
+																	onClick={() => {
+																		void handleMemoDeletion(
+																			memo.id,
+																		);
+																	}}
+																	disabled={
+																		deletingMemoId ===
+																		memo.id
+																	}
+																>
+																	{deletingMemoId ===
+																		memo.id
+																		? '메모 삭제 중...'
+																		: '메모 삭제'}
+																</button>
+															</>
+														)}
+													</li>
+												))}
+										</ul>
+									) : (
+										<p>
+											등록된 메모가 없습니다.
+										</p>
+									)}
+								</>
 							)}
 						</div>
 					</div>

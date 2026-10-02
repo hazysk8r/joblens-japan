@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, vi, test, expect, describe } from 'vitest';
 
@@ -774,67 +774,123 @@ describe('memos', () => {
     expect(await screen.findByText('面談準備中')).toBeInTheDocument();
   });
 
-  test('메모 삭제 에러가 발생하였을 때 에러 메시지 및 삭제 버튼이 재활성화된다.', async () => {
-    const mockContent: JobPosting = {
-      id: 1,
-      companyName: '黄猿',
-      title: 'エンジニア求人',
-      sourceUrl: 'http://example.com/kizaruengineer',
-      originalText: '営業部求人',
-      createdAt: '2026-08-14T00:00:00Z',
-      applicationStatus: 'SAVED',
-      salaryMin: null,
-      salaryMax: null,
-      applicationDeadline: null,
-      version: 0,
-    };
-    const mockMemo: JobPostingMemo = {
-      id: 1,
-      content: '面談準備中',
-      createdAt: '2026-08-26T00:00:00Z',
-      updatedAt: '2026-08-26T00:00:00Z',
-    };
-    const errorMessage = '삭제 중 알 수 없는 오류가 발생하였습니다.';
+  test(
+    '메모 삭제가 한 번 실패해도 목록과 삭제 버튼을 유지하고 다시 삭제할 수 있다.',
+    async () => {
+      const mockContent: JobPosting = {
+        id: 1,
+        companyName: '黄猿',
+        title: 'エンジニア求人',
+        sourceUrl: 'http://example.com/kizaruengineer',
+        originalText: '営業部求人',
+        createdAt: '2026-08-14T00:00:00Z',
+        applicationStatus: 'SAVED',
+        salaryMin: null,
+        salaryMax: null,
+        version: 0,
+        applicationDeadline: null
+      };
 
-    vi.mocked(getJobPostingMemos)
-      .mockResolvedValueOnce([mockMemo]);
-    vi.mocked(deleteJobPostingMemo)
-      .mockRejectedValueOnce(new Error(errorMessage));
+      const mockMemo: JobPostingMemo = {
+        id: 1,
+        content: '面談準備中',
+        createdAt: '2026-08-26T00:00:00Z',
+        updatedAt: '2026-08-26T00:00:00Z',
+      };
 
-    const user = userEvent.setup();
-    render(
-      <JobPostingListItem
-        jobPosting={mockContent}
-        isEditing={false}
-        isSaving={false}
-        isDeleting={false}
-        isUpdatingStatus={false}
-        onStartEdit={vi.fn()}
-        onSave={vi.fn()}
-        onCancel={vi.fn()}
-        onDelete={vi.fn()}
-        onApplicationStatusChange={vi.fn()}
-      />
-    );
+      const errorMessage =
+        '삭제 중 알 수 없는 오류가 발생하였습니다.';
 
-    await user.click(
-      screen.getByRole('button', {
-        name: '메모 보기',
-      }),
-    );
+      vi.mocked(getJobPostingMemos)
+        .mockResolvedValueOnce([mockMemo])
+        .mockResolvedValueOnce([]);
 
-    const deleteMemo = await screen.findByRole('button', {
-      name: '메모 삭제',
-    });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
-    await user.click(deleteMemo);
+      vi.mocked(deleteJobPostingMemo)
+        .mockRejectedValueOnce(
+          new Error(errorMessage),
+        )
+        .mockResolvedValueOnce(undefined);
 
-    expect(deleteJobPostingMemo)
-      .toHaveBeenCalledWith(1, 1);
-    expect(await screen.findByRole('alert')).toHaveTextContent(errorMessage);
-    expect(getJobPostingMemos)
-      .toHaveBeenCalledTimes(1);
-  });
+      vi.spyOn(window, 'confirm')
+        .mockReturnValue(true);
+
+      const user = userEvent.setup();
+
+      render(
+        <JobPostingListItem
+          jobPosting={mockContent}
+          isEditing={false}
+          isSaving={false}
+          isDeleting={false}
+          isUpdatingStatus={false}
+          onStartEdit={vi.fn()}
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          onDelete={vi.fn()}
+          onApplicationStatusChange={vi.fn()}
+        />,
+      );
+
+      // 最初のメモ取得
+      await user.click(
+        screen.getByRole('button', {
+          name: '메모 보기',
+        }),
+      );
+
+      expect(
+        await screen.findByText('面談準備中'),
+      ).toBeInTheDocument();
+
+      // 一次削除失敗
+      await user.click(
+        screen.getByRole('button', {
+          name: '메모 삭제',
+        }),
+      );
+
+      expect(
+        await screen.findByRole('alert'),
+      ).toHaveTextContent(errorMessage);
+
+      expect(
+        screen.getByText('面談準備中'),
+      ).toBeInTheDocument();
+
+      const retryDeleteButton =
+        screen.getByRole('button', {
+          name: '메모 삭제',
+        });
+
+      expect(retryDeleteButton).toBeEnabled();
+
+      // 2次削除成功
+      await user.click(retryDeleteButton);
+
+      await waitFor(() => {
+        expect(deleteJobPostingMemo)
+          .toHaveBeenCalledTimes(2);
+      });
+
+      expect(deleteJobPostingMemo)
+        .toHaveBeenNthCalledWith(1, 1, 1);
+
+      expect(deleteJobPostingMemo)
+        .toHaveBeenNthCalledWith(2, 1, 1);
+
+      // 삭제 성공 후 최신 Memo 목록 재조회
+      await waitFor(() => {
+        expect(getJobPostingMemos)
+          .toHaveBeenCalledTimes(2);
+      });
+
+      expect(
+        await screen.findByText(
+          '등록된 메모가 없습니다.',
+        ),
+      ).toBeInTheDocument();
+    },
+  );
 
   test('메모를 수정한 후 재조회하여 수정된 내용을 표시한다.', async () => {
     const mockContent: JobPosting = {
@@ -1446,4 +1502,197 @@ describe('memos', () => {
     expect(getJobPostingMemos)
       .toHaveBeenCalledTimes(1);
   });
+
+  test(
+    '다른 메모 편집 중 이전 저장 요청이 완료되어도 현재 편집 상태를 유지한다',
+    async () => {
+      const mockContent: JobPosting = {
+        id: 1,
+        companyName: '黄猿',
+        title: 'エンジニア求人',
+        sourceUrl: 'http://example.com/kizaruengineer',
+        originalText: '営業部求人',
+        createdAt: '2026-08-14T00:00:00Z',
+        applicationStatus: 'SAVED',
+        salaryMin: null,
+        salaryMax: null,
+        applicationDeadline: null,
+        version: 0,
+      };
+
+      const mockMemoA: JobPostingMemo = {
+        id: 1,
+        content: '面談準備中',
+        createdAt: '2026-08-26T00:00:00Z',
+        updatedAt: '2026-08-26T00:00:00Z',
+      };
+
+      const mockMemoB: JobPostingMemo = {
+        id: 2,
+        content: '面接日程確認済み',
+        createdAt: '2026-08-27T00:00:00Z',
+        updatedAt: '2026-08-27T00:00:00Z',
+      };
+
+      const updatedMemoA: JobPostingMemo = {
+        ...mockMemoA,
+        content: '面談準備完了',
+        updatedAt: '2026-08-30T00:00:00Z',
+      };
+
+      vi.mocked(getJobPostingMemos)
+        .mockResolvedValueOnce([
+          mockMemoA,
+          mockMemoB,
+        ])
+        .mockResolvedValueOnce([
+          updatedMemoA,
+          mockMemoB,
+        ]);
+
+      let resolveUpdate!: (
+        value: JobPostingMemo,
+      ) => void;
+
+      // Memo AのResponseを遅延させ、途中でMemo Bを編集する状況を再現する。
+      const pendingUpdate =
+        new Promise<JobPostingMemo>((resolve) => {
+          resolveUpdate = resolve;
+        });
+
+      vi.mocked(updateJobPostingMemo)
+        .mockReturnValueOnce(pendingUpdate);
+
+      const user = userEvent.setup();
+
+      render(
+        <JobPostingListItem
+          jobPosting={mockContent}
+          isEditing={false}
+          isSaving={false}
+          isDeleting={false}
+          isUpdatingStatus={false}
+          onStartEdit={vi.fn()}
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          onDelete={vi.fn()}
+          onApplicationStatusChange={vi.fn()}
+        />,
+      );
+
+      await user.click(
+        screen.getByRole('button', {
+          name: '메모 보기',
+        }),
+      );
+
+      const memoAContent =
+        await screen.findByText('面談準備中');
+
+      const memoBContent =
+        screen.getByText('面接日程確認済み');
+
+      const memoAItem =
+        memoAContent.closest('li');
+
+      const memoBItem =
+        memoBContent.closest('li');
+
+      if (!memoAItem || !memoBItem) {
+        throw new Error(
+          '메모 목록 요소를 찾을 수 없습니다.',
+        );
+      }
+
+      // Memo Aの編集を開始する
+      await user.click(
+        within(memoAItem).getByRole(
+          'button',
+          {
+            name: '수정',
+          },
+        ),
+      );
+
+      const memoATextArea =
+        within(memoAItem).getByRole(
+          'textbox',
+          {
+            name: '메모 수정',
+          },
+        );
+
+      await user.clear(memoATextArea);
+
+      await user.type(
+        memoATextArea,
+        '面談準備完了',
+      );
+
+      // Memo Aの保存要求を開始するが、
+      // Responseはまだ返さない
+      await user.click(
+        within(memoAItem).getByRole(
+          'button',
+          {
+            name: '저장',
+          },
+        ),
+      );
+
+      expect(updateJobPostingMemo)
+        .toHaveBeenCalledWith(
+          1,
+          1,
+          {
+            content: '面談準備完了',
+          },
+        );
+
+      // Memo Aの保存中にMemo Bの編集を開始する
+      await user.click(
+        within(memoBItem).getByRole(
+          'button',
+          {
+            name: '수정',
+          },
+        ),
+      );
+
+      expect(
+        within(memoBItem).getByRole(
+          'textbox',
+          {
+            name: '메모 수정',
+          },
+        ),
+      ).toHaveValue(
+        '面接日程確認済み',
+      );
+
+      // 遅れてMemo Aの保存Responseを返す
+      await act(async () => {
+        resolveUpdate(updatedMemoA);
+      });
+
+      await waitFor(() => {
+        expect(getJobPostingMemos)
+          .toHaveBeenCalledTimes(2);
+      });
+
+      // Memo Aの保存完了によって、
+      // 現在編集中のMemo Bが閉じられないことを確認する
+      expect(
+        screen.getByRole(
+          'textbox',
+          {
+            name: '메모 수정',
+          },
+        ),
+      ).toHaveValue(
+        '面接日程確認済み',
+      );
+    },
+  );
+
 })

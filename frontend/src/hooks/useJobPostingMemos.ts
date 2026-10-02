@@ -14,6 +14,10 @@ import type {
 export function useJobPostingMemos(jobPostingId: number) {
   const [memos, setMemos] = useState<JobPostingMemo[]>([]);
   const [memosError, setMemosError] = useState<string | null>(null);
+
+  // 取得エラーと変更処理のエラーを分離し、 削除失敗時でも取得済みのMemo一覧を維持する
+  const [memoMutationError, setMemoMutationError] = useState<string | null>(null);
+
   const [memosLoading, setMemosLoading] = useState(false);
   const [memosLoaded, setMemosLoaded] = useState(false);
 
@@ -113,7 +117,12 @@ export function useJobPostingMemos(jobPostingId: number) {
         request,
       );
 
-      setEditingMemoId(null);
+      // 保存開始後に別のMemoが編集された場合、その編集状態を古いResponseで解除しない
+      setEditingMemoId((currentEditingMemoId) => 
+        currentEditingMemoId === memoId
+          ? null
+          : currentEditingMemoId,
+      );
 
       // Server側のMemo内容・updatedAtが変更されたため
       // 現在のCacheを無効化する
@@ -127,7 +136,12 @@ export function useJobPostingMemos(jobPostingId: number) {
           : '수정 중 알 수 없는 오류가 발생하였습니다.',
       );
     } finally {
-      setSavingMemoId(null);
+      // 別のMemoが保存中の場合、その保存状態を解除しない。
+      setSavingMemoId((currentSavingMemoId) =>
+        currentSavingMemoId === memoId
+          ? null
+          : currentSavingMemoId,
+      );
     }
   }
 
@@ -137,7 +151,7 @@ export function useJobPostingMemos(jobPostingId: number) {
    */
   async function deleteMemo(memoId: number) {
     setDeletingMemoId(memoId);
-    setMemosError(null);
+    setMemoMutationError(null); // 再試行時に前回の削除エラーを残さない
 
     try {
       await deleteJobPostingMemo(
@@ -151,7 +165,7 @@ export function useJobPostingMemos(jobPostingId: number) {
 
       await loadMemos(true);
     } catch (error) {
-      setMemosError(
+      setMemoMutationError(
         error instanceof Error
           ? error.message
           : '삭제 중 알 수 없는 오류가 발생하였습니다.',
@@ -171,6 +185,7 @@ export function useJobPostingMemos(jobPostingId: number) {
   return {
     memos,
     memosError,
+    memoMutationError,
     memosLoading,
 
     deletingMemoId,
