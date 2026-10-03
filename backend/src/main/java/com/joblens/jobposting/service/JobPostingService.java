@@ -29,6 +29,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.dao.OptimisticLockingFailureException;
 
 
 @Service
@@ -66,6 +67,18 @@ public class JobPostingService {
 
         return JobPostingResponse.from(savedJobPosting);
     }
+
+    /**
+     * 更新後のversionをレスポンスに含めるため、変更内容をflushする。
+     * 保存時の楽観的ロック競合は、原因となった例外を保持して、共通の競合例外へ変換する。
+     */
+    private void flushConditionalUpdate(Long id) {
+        try {
+            jobPostingRepository.flush();
+        } catch (OptimisticLockingFailureException exception) {
+            throw new JobPostingVersionConflictException(id, exception);
+        }
+    }
     
     /**
      * 기존 채용공고를 수정한다.
@@ -94,9 +107,8 @@ public class JobPostingService {
                 request.applicationDeadline()
         );
 
-        // Optimistic Lockingの更新を即時にDBへ反映し、
-        // 更新後の最新versionをレスポンスに含めるためにflushする。
-        jobPostingRepository.flush();
+        // 保存時の競合を検出し、更新後のversionをレスポンスに反映する。
+        flushConditionalUpdate(id);
 
         return JobPostingResponse.from(jobPosting);
     }
@@ -123,6 +135,10 @@ public class JobPostingService {
                 .orElseThrow(() -> new JobPostingNotFoundException(id));
     }
 
+    /**
+     * If-Matchのversionと、取得した求人情報のversionを比較する。
+     * 不一致の場合は、変更前に競合例外を送出する。
+     */
     private void validateVersion(JobPosting jobPosting, Long expectedVersion) {
         if (!Objects.equals(expectedVersion, jobPosting.getVersion())) {
             throw new JobPostingVersionConflictException(
@@ -214,8 +230,8 @@ public class JobPostingService {
         jobPosting.changeApplicationStatus(
             request.status()
         );
-        // レスポンスに更新後のversionを含めるため、変更内容をDBへ反映する。
-        jobPostingRepository.flush();
+        // 保存時の競合を検出し、更新後のversionをレスポンスに反映する。
+        flushConditionalUpdate(id);
 
         return JobPostingResponse.from(jobPosting);
     }
