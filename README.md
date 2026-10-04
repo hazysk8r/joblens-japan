@@ -40,26 +40,47 @@ DevOps
 
 ## Implemented Features
 
-* Job posting CRUD
-* Keyword search
-* Application status filtering and management
-* Pagination
-* Sorting
-* Required skills extraction
-* Job posting memo CRUD
-* Monthly salary registration and editing
-* Monthly salary range filtering
-* Invalid salary range option prevention
-* Required skills stale-response prevention with AbortController
-* Optimistic locking with JPA @Version
-* ETag / If-Match conditional updates
-* PostgreSQL pg_trgm + GIN search optimization
-* Malformed If-Match header validation
-* URL query state for keyword, status, and page
-* Browser history restoration
-* Pagination boundary correction
-* Frontend/backend automated tests
-* GitHub Actions CI
+### Job Posting Management
+
+- Job posting CRUD
+- Application status filtering and updates
+- Pagination and sorting
+- Required skills extraction
+- Job posting memo CRUD
+- Application deadline registration and editing
+
+### Search and Filtering
+
+- Keyword search
+- Monthly salary range filtering and validation
+- Application deadline range filtering and validation
+- Advanced search filter UI
+- PostgreSQL `pg_trgm` + GIN search optimization
+
+### Concurrency and API Consistency
+
+- Optimistic locking with JPA `@Version`
+- ETag / If-Match conditional updates
+- Malformed If-Match header validation
+- Flush-time optimistic lock conflict handling
+
+### Frontend Reliability
+
+- Required skills stale-response prevention with `AbortController`
+- Job posting list stale-response protection
+- Memo lazy loading and cache invalidation
+- Memo mutation retry handling
+- Memo stale save-response protection
+- URL query state for keyword, status, and page
+- Browser history restoration
+- Pagination boundary correction
+
+### Testing and CI
+
+- Backend and frontend regression tests
+- PostgreSQL integration tests with Testcontainers
+- Optimistic locking integration tests
+- GitHub Actions CI
 
 ## Architecture
 
@@ -77,13 +98,11 @@ Keyword, application status, and page are synchronized with URL query parameters
 
 ## Current Development
 
-Improving consistency between URL parameters and applied search filters
+- Improving consistency between URL parameters and applied search filters
 
-Expanding regression tests for concurrent updates and asynchronous responses
+- Expanding regression tests for concurrent updates and asynchronous responses
 
-Improving frontend state consistency
-
-Updating project documentation
+- Refactoring growing frontend state-management responsibilities
 
 ## Planned
 

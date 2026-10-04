@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within, } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within, } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router';
@@ -6,7 +6,7 @@ import { afterEach, beforeEach, vi, test, expect, describe, } from 'vitest';
 
 import App from '../App';
 import { fetchApplicationStatusSummary, fetchJobPostings, deleteJobPosting, updateJobPosting, createJobPosting, extractRequiredSkills } from '../api/jobPostingApi';
-import type { JobPosting } from '../types/jobPosting';
+import type { JobPosting, PageResponse } from '../types/jobPosting';
 import JobPostingListItem from '../components/JobPostingListItem';
 
 // 이전 Mock 호출 기록 삭제
@@ -45,6 +45,19 @@ const mockSummary = {
   offered: 0,
   rejected: 0,
 };
+
+// 非同期リクエストの完了順をテスト側で制御する。
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, resolve, reject };
+}
 
 
 vi.mocked(fetchJobPostings).mockResolvedValue(mockPage);
@@ -904,6 +917,195 @@ test('홈에서求人を登録する 링크를 누르면 채용공고 등록 페
   expect(createFormHeading).toBeDefined();
 });
 
+test('오래된 목록 응답이 최신 정렬 결과를 덮어쓰지 않는다', async () => {
+
+  const firstSortRequest = deferred<PageResponse<JobPosting>>();
+  const secondSortRequest = deferred<PageResponse<JobPosting>>();
+  
+  const initialPage: PageResponse<JobPosting> = {
+    ...mockPage,
+    totalPages: 1,
+    last: true,
+  };
+
+  const olderResponseJob: JobPosting = {
+    id: 1,
+    companyName: 'Old Company',
+    title: '古いソート結果',
+    sourceUrl: null,
+    originalText: 'old response',
+    createdAt: '2026-10-01T00:00:00Z',
+    applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
+    applicationDeadline: null,
+    version: 0,
+  };
+
+  const latestResponseJob: JobPosting = {
+    ...olderResponseJob,
+    id: 2,
+    companyName: 'Latest Company',
+    title: '最新ソート結果',
+    originalText: 'latest response',
+  };
+
+  vi.mocked(fetchJobPostings)
+    .mockResolvedValueOnce(initialPage)
+    .mockReturnValueOnce(firstSortRequest.promise)
+    .mockReturnValueOnce(secondSortRequest.promise);
+
+  const user = userEvent.setup();
+
+  renderApp();
+
+  await screen.findByRole('button', {
+    name: '검색',
+  });
+
+  await user.click(
+    screen.getByRole('button', {
+      name: '＋ 詳細条件',
+    }),
+  );
+
+  const sortingSelect = 
+    screen.getByRole('combobox', {
+      name: '정렬',
+    });
+
+  await user.selectOptions(
+    sortingSelect,
+    'companyName,asc',
+  );
+
+  await user.selectOptions(
+    sortingSelect,
+    'createdAt,asc',
+  );
+
+  // 最新のリクエストBを先に完了させる。
+  await act(async () => {
+    secondSortRequest.resolve({
+      ...initialPage,
+      content: [latestResponseJob],
+      totalElements: 1,
+    });
+  });
+
+  expect(
+    await screen.findByText('最新ソート結果'),
+  ).toBeInTheDocument();
+
+  await act(async () => {
+    firstSortRequest.resolve({
+      ...initialPage,
+      content: [olderResponseJob],
+      totalElements: 1,
+    });
+  });
+
+  await waitFor(() => {
+    expect(
+      screen.getByText('最新ソート結果'),
+    ).toBeInTheDocument();
+  });
+
+  expect(
+    screen.queryByText('古いソート結果'),
+  ).not.toBeInTheDocument();
+
+});
+
+test('오래된 목록 요청오류가 최신 정렬 결과 화면에 표시되지 않는다', async () => {
+
+  const firstSortRequest = deferred<PageResponse<JobPosting>>();
+  const secondSortRequest = deferred<PageResponse<JobPosting>>();
+
+  const initialPage: PageResponse<JobPosting> = {
+    ...mockPage,
+    totalPages: 1,
+    last: true,
+  }
+
+  const latestResponseJob: JobPosting = {
+    id: 2,
+    companyName: 'Latest Company',
+    title: '最新ソート結果',
+    sourceUrl: null,
+    originalText: 'latest response',
+    createdAt: '2026-10-01T00:00:00Z',
+    applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
+    applicationDeadline: null,
+    version: 0,
+  };
+
+  vi.mocked(fetchJobPostings)
+    .mockResolvedValueOnce(initialPage)
+    .mockReturnValueOnce(firstSortRequest.promise)
+    .mockReturnValueOnce(secondSortRequest.promise)
+  
+  const user = userEvent.setup();
+
+  renderApp();
+
+  await screen.findByRole('button', {
+    name: '검색',
+  });
+
+  await user.click(
+    screen.getByRole('button', {
+      name: '＋ 詳細条件',
+    }),
+  );
+
+  const sortingSelect = 
+    screen.getByRole('combobox', {
+      name: '정렬',
+    });
+
+  await user.selectOptions(
+    sortingSelect,
+    'companyName,asc',
+  );
+
+  await user.selectOptions(
+    sortingSelect,
+    'createdAt,asc',
+  );
+
+  await act(async () => {
+    secondSortRequest.resolve({
+      ...initialPage,
+      content: [latestResponseJob],
+      totalElements: 1,
+    });
+  });
+
+  expect(
+    await screen.findByText('最新ソート結果'),
+  ).toBeInTheDocument();
+
+  await act(async () => {
+    firstSortRequest.reject(
+      new Error('古いリクエストのエラー'),
+    );
+  });
+
+  await waitFor(() => {
+    expect(
+      screen.getByText('最新ソート結果'),
+    ).toBeInTheDocument();
+  });
+
+  expect(
+    screen.queryByText('古いリクエストのエラー'),
+  ).not.toBeInTheDocument();
+
+})
+
 describe('URL Query State', () => {
   // MemoryRouter内の現在のURLをテストから確認できるように表示する。
   function LocationDisplay() {
@@ -965,6 +1167,8 @@ describe('URL Query State', () => {
         },
       );
 
+
+
       const statusSelect = screen.getByRole(
         'combobox',
         {
@@ -1016,6 +1220,12 @@ describe('URL Query State', () => {
         {
           name: '상태',
         },
+      );
+
+      await user.click(
+        screen.getByRole('button', {
+          name: '＋ 詳細条件',
+        }),
       );
 
       await user.clear(keywordInput);

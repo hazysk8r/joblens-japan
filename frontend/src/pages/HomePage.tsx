@@ -88,6 +88,9 @@ function HomePage() {
     page: pageFromUrl,
   });
 
+  // 最新の一覧取得リクエストだけがStateを更新できるようにする。
+  const latestListRequestIdRef = useRef(0);
+
   const [keyword, setKeyword] = useState(keywordFromUrl);
   const [appliedKeyword, setAppliedKeyword] = useState(keywordFromUrl);
   const [jobPostings, setJobPostings] = useState<JobPosting[]>([]);
@@ -150,6 +153,9 @@ function HomePage() {
     deadlineFrom: DeadlineFilter,
     deadlineTo: DeadlineFilter,
   ) => {
+    const requestId = 
+      ++latestListRequestIdRef.current;
+
     try {
       let page = await fetchJobPostings(
         searchKeyword,
@@ -161,6 +167,13 @@ function HomePage() {
         deadlineFrom,
         deadlineTo,
       );
+
+      // 古いレスポンスは現在の一覧Stateへ反映しない。
+      if (
+        requestId !== latestListRequestIdRef.current
+      ) {
+        return;
+      }
 
       // 現在のページが範囲外になった場合、最後の有効ページを再取得する。
       if (
@@ -180,6 +193,12 @@ function HomePage() {
           deadlineFrom,
           deadlineTo,
         );
+
+        if (
+          requestId !== latestListRequestIdRef.current
+        ) {
+          return;
+        }
       }
       /*
       * 공고 목록뿐 아니라 백엔드가 반환한 페이지 정보도
@@ -192,6 +211,12 @@ function HomePage() {
       setLast(page.last);
       
     } catch (caughtError) {
+      if (
+        requestId !== latestListRequestIdRef.current
+      ) {
+        return;
+      }
+
       const message =
         caughtError instanceof Error
           ? caughtError.message
@@ -199,8 +224,11 @@ function HomePage() {
 
       setError(message);
     } finally {
-      //성공하거나 실패해도 반드시 실행. 버튼 비활성화된 상태 방지
-      setLoading(false);
+      if (
+        requestId === latestListRequestIdRef.current
+      ) {
+        setLoading(false);
+      }
     }
   }, []);
 
