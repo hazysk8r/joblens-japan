@@ -11,6 +11,8 @@ import type {
   DeadlineFilter,
 } from '../types/jobPosting';
 
+import { ApiError } from './apiError';
+
 /**
  * 백엔드의 채용공고 목록 API를 호출한다.
  *
@@ -154,11 +156,18 @@ export async function updateJobPosting(
   );
 
   if (!response.ok) {
-    const errorBody = await response.text();
+    const errorBody = await response
+      .json()
+      .catch(() => null) as {
+        code?: string;
+        message?: string;
+      } | null;
 
-    throw new Error(
-      `채용공고 수정에 실패했습니다. ` + 
-        `status=${response.status}, body =${errorBody}`,
+    throw new ApiError(
+      errorBody?.message ??
+        '채용공고 수정에 실패했습니다.',
+      response.status,
+      errorBody?.code,
     );
   }
 
@@ -183,11 +192,18 @@ export async function updateApplicationStatus(
   );
 
   if (!response.ok) {
-    const errorBody = await response.text();
+    const errorBody = await response
+      .json()
+      .catch(() => null) as {
+        code?: string;
+        message?: string;
+      } | null;
 
-    throw new Error(
-      `지원 상태 변경에 실패하였습니다. ` + 
-        `status=${response.status}, body=${errorBody}`,
+    throw new ApiError(
+      errorBody?.message ??
+        '지원 상태 변경에 실패하였습니다.',
+      response.status,
+      errorBody?.code,
     );
   }
 

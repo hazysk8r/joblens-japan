@@ -11,6 +11,8 @@ import {
   updateJobPosting,
 } from '../api/jobPostingApi';
 
+import { ApiError } from '../api/apiError';
+
 import {
   type ApplicationStatus,
   type JobPosting,
@@ -594,13 +596,13 @@ function HomePage() {
       await updateJobPosting(id, request, expectedVersion);
 
       /*
-       * PUT 요청 성공 후 수정 모드를 종료
+       * PUTリクエスト成功後、編集モードを終了する。
        */
       setEditingId(null);
 
       /*
-       * 현재 검색어와 페이지를 유지하며
-       * 서버의 최신 목록을 다시 가져온다
+       * 現在の検索条件とページを維持したまま、
+       * サーバーから最新の一覧を再取得する。
        */
       await loadJobPostings(
         appliedKeyword,
@@ -613,11 +615,36 @@ function HomePage() {
         appliedDeadlineTo,
       );
     } catch (caughtError) {
-      const message =
+      if (
+        caughtError instanceof ApiError &&
+        caughtError.status === 412 &&
+        caughtError.code ===
+          'JOB_POSTING_VERSION_CONFLICT'
+      ) {
+        setMutationError(
+          '다른 화면에서 채용공고가 수정되었습니다.',
+        );
+
+        await loadJobPostings(
+          appliedKeyword,
+          appliedStatus,
+          currentPage,
+          sorting,
+          appliedSalaryMin,
+          appliedSalaryMax,
+          appliedDeadlineFrom,
+          appliedDeadlineTo,
+        );
+
+        return;
+      }
+
+      const message = 
         caughtError instanceof Error
           ? caughtError.message
           : '수정 중 알 수 없는 오류가 발생했습니다.';
       setMutationError(message);
+      
     } finally {
       setSavingId(null);
     }
@@ -648,6 +675,36 @@ function HomePage() {
       await loadApplicationStatusSummary();
 
     } catch (caughtError) {
+      if (
+        caughtError instanceof ApiError &&
+        caughtError.status === 412 &&
+        caughtError.code ===
+          'JOB_POSTING_VERSION_CONFLICT'
+      ) {
+        /*
+         * Version競合時はServerを最新状態のSource of Truthとして再取得し、
+         * 古いJobPosting情報を画面に残さないようにする。
+         */
+        setMutationError(
+          '다른 화면에서 채용공고가 수정되었습니다.',
+        );
+
+        await loadJobPostings(
+          appliedKeyword,
+          appliedStatus,
+          currentPage,
+          sorting,
+          appliedSalaryMin,
+          appliedSalaryMax,
+          appliedDeadlineFrom,
+          appliedDeadlineTo,
+        );
+
+        await loadApplicationStatusSummary();
+
+        return;
+      }
+
       const message =
         caughtError instanceof Error
           ? caughtError.message

@@ -5,7 +5,8 @@ import { MemoryRouter, useLocation, useNavigate } from 'react-router';
 import { afterEach, beforeEach, vi, test, expect, describe, } from 'vitest';
 
 import App from '../App';
-import { fetchApplicationStatusSummary, fetchJobPostings, deleteJobPosting, updateJobPosting, createJobPosting, extractRequiredSkills } from '../api/jobPostingApi';
+import { ApiError } from '../api/apiError';
+import { fetchApplicationStatusSummary, fetchJobPostings, deleteJobPosting, updateJobPosting, createJobPosting, extractRequiredSkills, updateApplicationStatus } from '../api/jobPostingApi';
 import type { JobPosting, PageResponse } from '../types/jobPosting';
 import JobPostingListItem from '../components/JobPostingListItem';
 
@@ -1633,4 +1634,277 @@ test('詳細条件 버튼을 누르면 상세 검색 조건이 표시된다', as
   expect(
     screen.getByLabelText('締切日（以前）'),
   ).toBeDefined();
+});
+
+test('version 불일치가 발생하면 안내 message를 표시하고, 최신 공고를 다시 조회한다', async () => {
+  const staleJobPosting: JobPosting = {
+    id: 1,
+    companyName: '札幌クラウド',
+    title: 'AWSエンジニア',
+    sourceUrl: null,
+    originalText: 'AWS求人',
+    createdAt: '2026-10-05T00:00:00Z',
+    applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
+    applicationDeadline: null,
+    version: 3,
+  };
+
+  const latestJobPosting: JobPosting = {
+    ...staleJobPosting,
+    title: 'AWSクラウドエンジニア',
+    version: 5, 
+  };
+
+  const initialPage = {
+    ...mockPage,
+    content: [staleJobPosting],
+    totalElements: 1,
+    totalPages: 1,
+    first: true,
+    last: true,
+  };
+
+  const refreshedPage = {
+    ...initialPage,
+    content: [latestJobPosting],
+  };
+
+  vi.mocked(fetchJobPostings)
+    .mockResolvedValueOnce(initialPage)
+    .mockResolvedValueOnce(refreshedPage);
+
+  vi.mocked(updateJobPosting)
+    .mockRejectedValueOnce(
+      new ApiError(
+        'JobPosting version conflict',
+        412,
+        'JOB_POSTING_VERSION_CONFLICT',
+      ),
+    );
+
+  const user = userEvent.setup();
+
+  renderApp();
+
+  const editButton = 
+    await screen.findByRole('button', {
+      name: '수정',
+    });
+  
+  await user.click(editButton);
+
+  const titleInput =
+    screen.getByRole('textbox', {
+      name: '공고 제목',
+    });
+
+  await user.clear(titleInput);
+  await user.type(
+    titleInput,
+    '自分が修正したタイトル',
+  );
+
+  await user.click(
+    screen.getByRole('button', {
+      name: '저장',
+    }),
+  );
+
+  expect(
+    await screen.findByRole('alert'),
+  ).toHaveTextContent(
+    '다른 화면에서 채용공고가 수정되었습니다.',
+  );
+
+  await waitFor(() => {
+    expect(fetchJobPostings)
+      .toHaveBeenCalledTimes(2);
+  });
+
+  expect(
+    screen.getByRole('textbox', {
+      name: '공고 제목',
+    }),
+  ).toHaveValue('自分が修正したタイトル');
+
+});
+
+test('version 불일치가 발생하면 안내 message를 표시하고, 최신 공고를 다시 조회한다', async () => {
+  const staleJobPosting: JobPosting = {
+    id: 1,
+    companyName: '札幌クラウド',
+    title: 'AWSエンジニア',
+    sourceUrl: null,
+    originalText: 'AWS求人',
+    createdAt: '2026-10-05T00:00:00Z',
+    applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
+    applicationDeadline: null,
+    version: 3,
+  };
+
+  const latestJobPosting: JobPosting = {
+    ...staleJobPosting,
+    title: 'AWSクラウドエンジニア',
+    version: 5,
+  };
+
+  const initialPage = {
+    ...mockPage,
+    content: [staleJobPosting],
+    totalElements: 1,
+    totalPages: 1,
+    first: true,
+    last: true,
+  };
+
+  const refreshedPage = {
+    ...initialPage,
+    content: [latestJobPosting],
+  };
+
+  vi.mocked(fetchJobPostings)
+    .mockResolvedValueOnce(initialPage)
+    .mockResolvedValueOnce(refreshedPage);
+
+  vi.mocked(updateJobPosting)
+    .mockRejectedValueOnce(
+      new ApiError(
+        'JobPosting version conflict',
+        412,
+        'JOB_POSTING_VERSION_CONFLICT',
+      ),
+    );
+
+  const user = userEvent.setup();
+
+  renderApp();
+
+  const editButton =
+    await screen.findByRole('button', {
+      name: '수정',
+    });
+
+  await user.click(editButton);
+
+  const titleInput =
+    screen.getByRole('textbox', {
+      name: '공고 제목',
+    });
+
+  await user.clear(titleInput);
+  await user.type(
+    titleInput,
+    '自分が修正したタイトル',
+  );
+
+  await user.click(
+    screen.getByRole('button', {
+      name: '저장',
+    }),
+  );
+
+  expect(
+    await screen.findByRole('alert'),
+  ).toHaveTextContent(
+    '다른 화면에서 채용공고가 수정되었습니다.',
+  );
+
+  await waitFor(() => {
+    expect(fetchJobPostings)
+      .toHaveBeenCalledTimes(2);
+  });
+
+  expect(
+    screen.getByRole('textbox', {
+      name: '공고 제목',
+    }),
+  ).toHaveValue('自分が修正したタイトル');
+
+});
+
+test('Status 변경 도중에 version 불일치가 발생하면 안내 message를 표시하고, 최신 공고를 다시 조회한다', async () => {
+  const staleJobPosting: JobPosting = {
+    id: 1,
+    companyName: '札幌クラウド',
+    title: 'AWSエンジニア',
+    sourceUrl: null,
+    originalText: 'AWS求人',
+    createdAt: '2026-10-05T00:00:00Z',
+    applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
+    applicationDeadline: null,
+    version: 3,
+  };
+
+  const latestJobPosting: JobPosting = {
+    ...staleJobPosting,
+    applicationStatus: 'INTERVIEWING',
+    version: 5,
+  };
+
+  const initialPage = {
+    ...mockPage,
+    content: [staleJobPosting],
+    totalElements: 1,
+    totalPages: 1,
+    first: true,
+    last: true,
+  };
+
+  const refreshedPage = {
+    ...initialPage,
+    content: [latestJobPosting],
+  };
+
+  vi.mocked(fetchJobPostings)
+    .mockResolvedValueOnce(initialPage)
+    .mockResolvedValueOnce(refreshedPage);
+
+  vi.mocked(updateApplicationStatus)
+    .mockRejectedValueOnce(
+      new ApiError(
+        'JobPosting version conflict',
+        412,
+        'JOB_POSTING_VERSION_CONFLICT',
+      ),
+    );
+
+  const user = userEvent.setup();
+
+  renderApp();
+
+  const statusSelect =
+    await screen.findByRole('combobox', {
+      name: /지원 상태/,
+    });
+
+  await user.selectOptions(statusSelect, 'APPLIED');
+
+  expect(
+    await screen.findByRole('alert'),
+  ).toHaveTextContent(
+    '다른 화면에서 채용공고가 수정되었습니다.',
+  );
+
+  await waitFor(() => {
+    expect(fetchJobPostings)
+      .toHaveBeenCalledTimes(2);
+  });
+
+  await waitFor(() => {
+    expect(fetchApplicationStatusSummary)
+      .toHaveBeenCalledTimes(2);
+  });
+
+  expect(
+    screen.getByRole('combobox', {
+      name: /지원 상태/,
+    }),
+  ).toHaveValue('INTERVIEWING');
+
 });
