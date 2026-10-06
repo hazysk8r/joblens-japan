@@ -11,7 +11,7 @@ import {
   updateJobPosting,
 } from '../api/jobPostingApi';
 
-import { ApiError } from '../api/apiError';
+import { isJobPostingVersionConflict } from '../api/apiError';
 
 import {
   type ApplicationStatus,
@@ -616,10 +616,7 @@ function HomePage() {
       );
     } catch (caughtError) {
       if (
-        caughtError instanceof ApiError &&
-        caughtError.status === 412 &&
-        caughtError.code ===
-          'JOB_POSTING_VERSION_CONFLICT'
+        isJobPostingVersionConflict(caughtError)
       ) {
         setMutationError(
           '다른 화면에서 채용공고가 수정되었습니다.',
@@ -676,10 +673,7 @@ function HomePage() {
 
     } catch (caughtError) {
       if (
-        caughtError instanceof ApiError &&
-        caughtError.status === 412 &&
-        caughtError.code ===
-          'JOB_POSTING_VERSION_CONFLICT'
+        isJobPostingVersionConflict(caughtError)
       ) {
         /*
          * Version競合時はServerを最新状態のSource of Truthとして再取得し、

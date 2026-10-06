@@ -1908,3 +1908,64 @@ test('Status 변경 도중에 version 불일치가 발생하면 안내 message�
   ).toHaveValue('INTERVIEWING');
 
 });
+
+describe('NotFoundPage', () => {
+
+  function LocationDisplay() {
+    const location = useLocation();
+
+    return (
+      <div data-testid="location">
+        {location.pathname}
+        {location.search}
+      </div>
+    );
+  }
+
+  test('정의되지 않은 경로로 접근하면 Not Found 페이지를 표시한다', async () => {
+    render(
+      <MemoryRouter initialEntries={['/unknown-page']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'ページが見つかりません',
+      }),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        /お探しのページは存在しないか、\s*移動された可能性があります。/
+      ),
+    ).toBeInTheDocument();
+
+  });
+
+  test('ホームに戻る를 클릭하면 HomePage로 이동한다', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={['/invalid-route']}>
+        <App />
+        <LocationDisplay />
+      </MemoryRouter>
+    );
+
+    const homeLink = screen.getByRole('link', {
+      name: 'ホームに戻る',
+    });
+
+    await user.click(homeLink);
+
+    expect(
+      await screen.findByText('JobLens Japan')
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByTestId('location')
+    ).toHaveTextContent('/');
+  });
+})
+

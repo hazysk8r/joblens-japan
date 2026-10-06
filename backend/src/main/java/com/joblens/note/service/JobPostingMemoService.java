@@ -77,6 +77,12 @@ public class JobPostingMemoService {
         request.content()
       );
 
+      /*
+       * Response生成前にupdatedAtの最新値を反映するため、
+       * 明示的にflushする。
+       */
+      jobPostingMemoRepository.flush();
+
       return JobPostingMemoResponse.from(jobPostingMemo);
   }
 

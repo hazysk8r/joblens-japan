@@ -14,3 +14,14 @@ export class ApiError extends Error {
     this.code = code;
   }
 }
+
+export const isJobPostingVersionConflict = (
+  error: unknown,
+): boolean => {
+  return (
+    error instanceof ApiError &&
+    error.status === 412 &&
+    error.code ===
+      'JOB_POSTING_VERSION_CONFLICT'
+  );
+};

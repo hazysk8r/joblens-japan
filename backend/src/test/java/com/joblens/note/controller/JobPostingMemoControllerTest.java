@@ -30,6 +30,8 @@ import com.joblens.jobposting.repository.JobPostingRepository;
 import com.joblens.note.domain.JobPostingMemo;
 import com.joblens.note.repository.JobPostingMemoRepository;
 
+import tools.jackson.databind.ObjectMapper;
+
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -44,6 +46,9 @@ public class JobPostingMemoControllerTest {
 
   @Autowired
   private JobPostingRepository jobPostingRepository;
+
+  @Autowired
+  ObjectMapper objectMapper;
 
   @BeforeEach
   void setUp() {
@@ -398,6 +403,51 @@ public class JobPostingMemoControllerTest {
     JobPostingMemo updatedMemo = jobPostingMemoRepository.findById(memoAId).orElseThrow();
     assertEquals("修正後のメモ", updatedMemo.getContent());
 
+  }
+
+  @Test
+  void 수정_응답의_updatedAt과_이후_조회한_updatedAt이_같다() throws Exception {
+      JobPosting savedJobPosting = jobPostingRepository.save(
+              new JobPosting(
+                      "テスト会社",
+                      "メモテスト情報",
+                      "https://example.com/memotest",
+                      "メモが正常に作動するかな",
+                      null,
+                      null,
+                      null));
+
+      JobPostingMemo savedJobPostingMemo = jobPostingMemoRepository
+              .save(new JobPostingMemo("メモテストA", savedJobPosting));
+
+      Long jobPostingId = savedJobPosting.getId();
+      Long memoId = savedJobPostingMemo.getId();
+      
+      String updateResponse = mockMvc.perform(
+              put("/api/job-postings/{jobPostingId}/notes/{memoId}",
+                      jobPostingId, memoId)
+                      .contentType(MediaType.APPLICATION_JSON)
+                      .content("""
+                              {
+                                "content": "変更後のメモ"
+                              }
+                              """))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      String updatedAt = objectMapper.readTree(updateResponse)
+              .get("updatedAt")
+              .asString();
+
+      mockMvc.perform(
+              get("/api/job-postings/{jobPostingId}/notes",
+                      jobPostingId))
+              .andExpect(status().isOk())
+              .andExpect(
+                      jsonPath("$[0].updatedAt")
+                              .value(updatedAt));
   }
 
 

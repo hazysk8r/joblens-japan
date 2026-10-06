@@ -1,0 +1,89 @@
+.not-found-page {
+  box-sizing: border-box;
+  width: calc(100% - 2rem);
+  max-width: 40rem;
+  min-width: 0;
+  margin: clamp(2rem, 10vh, 6rem) auto;
+  padding: clamp(1.5rem, 5vw, 3rem);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 4%);
+  color: var(--text);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.not-found-page::before {
+  content: '404';
+  display: block;
+  width: fit-content;
+  margin: 0 auto 1.25rem;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--code-bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+}
+
+.not-found-page > h1 {
+  margin: 0 0 0.75rem;
+  color: var(--text-h);
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  font-weight: 700;
+  line-height: 1.45;
+  letter-spacing: -0.025em;
+}
+
+.not-found-page > p {
+  max-width: 30rem;
+  margin: 0 auto;
+  font-size: 0.95rem;
+  line-height: 1.8;
+}
+
+.not-found-page > a {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  min-height: 2.75rem;
+  margin-top: 1.75rem;
+  padding: 0.65rem 1.25rem;
+  border: 1px solid var(--text-h);
+  border-radius: 8px;
+  background: var(--text-h);
+  color: var(--bg);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.not-found-page > a:hover {
+  opacity: 0.85;
+}
+
+.not-found-page > a:focus-visible {
+  outline: 2px solid var(--text-h);
+  outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+  .not-found-page {
+    width: calc(100% - 2rem);
+    padding: 1.5rem;
+  }
+
+  .not-found-page > a {
+    width: 100%;
+    max-width: 18rem;
+  }
+}
