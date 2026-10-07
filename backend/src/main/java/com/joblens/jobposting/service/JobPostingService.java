@@ -3,12 +3,14 @@ package com.joblens.jobposting.service;
 import com.joblens.common.response.PageResponse;
 import com.joblens.jobposting.domain.ApplicationStatus;
 import com.joblens.jobposting.domain.JobPosting;
+import com.joblens.jobposting.domain.JobPostingStatusHistory;
 import com.joblens.jobposting.dto.ApplicationStatusSummaryResponse;
 import com.joblens.jobposting.dto.CreateJobPostingRequest;
 import com.joblens.jobposting.dto.JobPostingResponse;
 import com.joblens.jobposting.dto.UpdateJobPostingRequest;
 import com.joblens.jobposting.dto.UpdateApplicationStatusRequest;
 import com.joblens.jobposting.repository.JobPostingRepository;
+import com.joblens.jobposting.repository.JobPostingStatusHistoryRepository;
 import com.joblens.jobposting.specification.JobPostingSpecifications;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
 import com.joblens.jobposting.exception.JobPostingVersionConflictException;
@@ -39,6 +41,7 @@ public class JobPostingService {
 
     private final JobPostingSortValidator jobPostingSortValidator;
     private final JobPostingRepository jobPostingRepository;
+    private final JobPostingStatusHistoryRepository jobPostingStatusHistoryRepository;
     private static final List<String> SUPPORTED_SKILLS = List.of(
             "Java",
             "Spring Boot",
@@ -223,15 +226,36 @@ public class JobPostingService {
         Long expectedVersion,
         UpdateApplicationStatusRequest request
     ) {
-        // 1. 기존 공고 조회 및 공유 version 검증
+        // 1. 既存の求人情報を取得し、共有versionを検証する。
         JobPosting jobPosting = findEntityById(id);
         validateVersion(jobPosting, expectedVersion);
-        // 2. 요청받은 상태로 엔티티 변경
-        jobPosting.changeApplicationStatus(
-            request.status()
-        );
+
+        // 2. 履歴保存のため、変更前後の応募状態を取得する。
+        ApplicationStatus fromStatus =
+            jobPosting.getApplicationStatus();
+        
+        ApplicationStatus toStatus = 
+            request.status();
+        
+        // 3. 要求された応募状態に変更する。
+        jobPosting.changeApplicationStatus(toStatus);
+
         // 保存時の競合を検出し、更新後のversionをレスポンスに反映する。
         flushConditionalUpdate(id);
+
+        /*
+         * 実際に応募状態が変更された場合のみ、
+         * 変更前後の状態を履歴として保存する。
+         */
+        if (fromStatus != toStatus) {
+            jobPostingStatusHistoryRepository.save(
+                new JobPostingStatusHistory(
+                    jobPosting, 
+                    fromStatus, 
+                    toStatus
+                )
+            );
+        }
 
         return JobPostingResponse.from(jobPosting);
     }
