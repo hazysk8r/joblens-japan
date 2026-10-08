@@ -6,12 +6,14 @@ import com.joblens.jobposting.dto.CreateJobPostingRequest;
 import com.joblens.jobposting.dto.JobPostingDeadlineFilterRequest;
 import com.joblens.jobposting.dto.JobPostingResponse;
 import com.joblens.jobposting.dto.JobPostingSalaryFilterRequest;
+import com.joblens.jobposting.dto.JobPostingStatusHistoryResponse;
 import com.joblens.jobposting.service.JobPostingService;
 import com.joblens.jobposting.dto.UpdateApplicationStatusRequest;
 import com.joblens.jobposting.dto.UpdateJobPostingRequest;
 import com.joblens.jobposting.exception.IfMatchRequiredException;
 import com.joblens.jobposting.exception.MalformedIfMatchHeaderException;
 import com.joblens.jobposting.domain.ApplicationStatus;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -177,6 +179,14 @@ public class JobPostingController {
     public List<String> getExtractedSkills(@PathVariable Long id) {
         return jobPostingService.extractSkills(id);
     }
+
+    @GetMapping("/{id}/status-history")
+    public ResponseEntity<List<JobPostingStatusHistoryResponse>> 
+        getApplicationStatusHistory(@PathVariable Long id) {
+            return ResponseEntity.ok(jobPostingService.getApplicationStatusHistory(id)
+        );
+    }
+    
     
 
 }

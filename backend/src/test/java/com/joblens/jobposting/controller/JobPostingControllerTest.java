@@ -1132,4 +1132,62 @@ class JobPostingControllerTest {
         );
     }
 
+    @Test
+    void 応募状態の変更履歴を新しい順に取得できる() throws Exception {
+            JobPosting charlie = jobPostingRepository.saveAndFlush(
+                            new JobPosting("회사1", "공고1", null, "원문1", null, null, null));
+            Long version = charlie.getVersion();
+
+            mockMvc.perform(
+                            patch("/api/job-postings/{id}/status", charlie.getId())
+                                            .header(HttpHeaders.IF_MATCH,
+                                                            "\"" + version + "\"")
+                                            .contentType(MediaType.APPLICATION_JSON)
+                                            .content("""
+                                                            {
+                                                              "status": "APPLIED"
+                                                            }
+                                                            """))
+                            .andExpect(status().isOk());
+        
+            mockMvc.perform(
+                            patch("/api/job-postings/{id}/status", charlie.getId())
+                                            .header(HttpHeaders.IF_MATCH,
+                                                            "\"" + (version+1) + "\"")
+                                            .contentType(MediaType.APPLICATION_JSON)
+                                            .content("""
+                                                            {
+                                                              "status": "INTERVIEWING"
+                                                            }
+                                                            """))
+                            .andExpect(status().isOk());
+
+            mockMvc.perform(get("/api/job-postings/{id}/status-history", charlie.getId()))
+                            .andExpect(status().isOk())
+                            .andExpect(jsonPath("$.length()").value(2))
+                            .andExpect(jsonPath("$[0].fromStatus").value("APPLIED"))
+                            .andExpect(jsonPath("$[0].toStatus").value("INTERVIEWING"))
+                            .andExpect(jsonPath("$[1].fromStatus").value("SAVED"))
+                            .andExpect(jsonPath("$[1].toStatus").value("APPLIED"));
+    }
+
+    @Test
+    void 応募状態の変更履歴が存在しない場合は空のリストを返す() throws Exception {
+            JobPosting charlie = jobPostingRepository.saveAndFlush(
+                            new JobPosting("회사1", "공고1", null, "원문1", null, null, null));
+
+            mockMvc.perform(get("/api/job-postings/{id}/status-history", charlie.getId()))
+                            .andExpect(status().isOk())
+                            .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test 
+    void 存在しない求人情報の応募状態履歴を取得すると404を返す() throws Exception {
+            mockMvc.perform(get("/api/job-postings/{id}/status-history", 9999L))
+                                .andExpect(status().isNotFound())
+                                .andExpect(jsonPath("$.status").value(404))
+                                .andExpect(jsonPath("$.code").value("JOB_POSTING_NOT_FOUND"))
+                                .andExpect(jsonPath("$.message").value("채용공고를 찾을 수 없습니다. id=9999"));
+    }
+
 }

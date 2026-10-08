@@ -7,6 +7,7 @@ import com.joblens.jobposting.domain.JobPostingStatusHistory;
 import com.joblens.jobposting.dto.ApplicationStatusSummaryResponse;
 import com.joblens.jobposting.dto.CreateJobPostingRequest;
 import com.joblens.jobposting.dto.JobPostingResponse;
+import com.joblens.jobposting.dto.JobPostingStatusHistoryResponse;
 import com.joblens.jobposting.dto.UpdateJobPostingRequest;
 import com.joblens.jobposting.dto.UpdateApplicationStatusRequest;
 import com.joblens.jobposting.repository.JobPostingRepository;
@@ -306,6 +307,18 @@ public class JobPostingService {
         }
         return extractedSkills;
     }   
+
+    public List<JobPostingStatusHistoryResponse>
+        getApplicationStatusHistory(Long jobPostingId) {
+    
+    findEntityById(jobPostingId);
+
+    List<JobPostingStatusHistory> histories = jobPostingStatusHistoryRepository.findByJobPosting_IdOrderByChangedAtDescIdDesc(jobPostingId);
+
+    return histories.stream()
+        .map(JobPostingStatusHistoryResponse::from)
+        .toList();
+    }
 
 
 }
