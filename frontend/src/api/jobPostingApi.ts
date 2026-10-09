@@ -5,6 +5,7 @@ import type {
   PageResponse,
   UpdateApplicationStatusRequest,
   ApplicationStatusSummaryResponse,
+  JobPostingStatusHistory,
   StatusFilter,
   SalaryFilter,
   JobPostingSorting,
@@ -226,6 +227,26 @@ export async function fetchApplicationStatusSummary(
   }
 
   return (await response.json()) as ApplicationStatusSummaryResponse;
+}
+
+export async function fetchApplicationStatusHistory(
+  id: number,
+): Promise<JobPostingStatusHistory[]> {
+  const response = await fetch(
+    `/api/job-postings/${id}/status-history`
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.json();
+
+    throw new ApiError(
+      errorBody.message ?? "変更履歴の取得に失敗しました。",
+      response.status,
+      errorBody.codePointAt,
+    );
+  }
+
+  return (await response.json()) as JobPostingStatusHistory[];
 }
 
 export async function extractRequiredSkills(

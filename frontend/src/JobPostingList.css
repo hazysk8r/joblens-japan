@@ -11,3 +11,115 @@
     padding-inline: 0.75rem;
   }
 }
+
+.application-status-summary {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.75rem;
+  width: calc(100% - 2rem);
+  max-width: 58rem;
+  margin: 1.25rem auto 1.75rem;
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 4%);
+  color: var(--text-h);
+  text-align: left;
+}
+
+.application-status-summary > h2 {
+  grid-column: 1 / -1;
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.application-status-summary > p {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--code-bg);
+  overflow-wrap: anywhere;
+}
+
+.application-status-summary > p > span {
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.application-status-summary > p > strong {
+  color: var(--text-h);
+  font-size: 1.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.home-header > .create-job-posting-link {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: calc(100% - 2rem);
+  min-height: 2.5rem;
+  padding: 0.55rem 0.95rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.5;
+  text-decoration: none;
+}
+
+.home-header > .create-job-posting-link:hover {
+  border-color: var(--text);
+  background: var(--code-bg);
+}
+
+.home-header > .create-job-posting-link:focus-visible {
+  outline: 2px solid var(--text-h);
+  outline-offset: 3px;
+}
+
+@media (max-width: 860px) {
+  .application-status-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .application-status-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: calc(100% - 1.5rem);
+  }
+}
+
+@media (max-width: 380px) {
+  .application-status-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .application-status-summary > p {
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .application-status-summary > p > strong {
+    font-size: 1.5rem;
+  }
+}

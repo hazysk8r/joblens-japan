@@ -10,29 +10,29 @@ function ApplicationStatusSummary({
   summary,
 }: ApplicationStatusSummaryProps) {
   return (
-    <section>
+    <section className="application-status-summary">
       <h2>
         지원현황
       </h2>
 
       <p>
-        저장: {summary.saved}
+        <span>저장:</span>{' '}<strong>{summary.saved}</strong>
       </p>
 
       <p>
-        지원완료: {summary.applied}
+        <span>지원완료:</span>{' '}<strong>{summary.applied}</strong>
       </p>
 
       <p>
-        면접 진행 중: {summary.interviewing}
+        <span>면접 진행 중:</span>{' '}<strong>{summary.interviewing}</strong>
       </p>
 
       <p>
-        오퍼 수령: {summary.offered}
+        <span>오퍼 수령:</span>{' '}<strong>{summary.offered}</strong>
       </p>
 
       <p>
-        거절됨: {summary.rejected}
+        <span>거절됨:</span>{' '}<strong>{summary.rejected}</strong>
       </p>
     </section>
   );

@@ -13,6 +13,13 @@ export type StatusFilter =
 export type DeadlineFilter =
   string | null;
 
+export type JobPostingStatusHistory = {
+  id: number;
+  fromStatus: ApplicationStatus;
+  toStatus: ApplicationStatus;
+  changedAt: string;
+} 
+
 export type JobPostingSorting =
   | 'createdAt,desc'
   | 'createdAt,asc'

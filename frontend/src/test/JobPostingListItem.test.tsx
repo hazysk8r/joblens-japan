@@ -4,11 +4,12 @@ import { afterEach, beforeEach, vi, test, expect, describe } from 'vitest';
 
 import '@testing-library/jest-dom/vitest';
 
-import { extractRequiredSkills } from '../api/jobPostingApi';
+import { extractRequiredSkills, fetchApplicationStatusHistory } from '../api/jobPostingApi';
 import { deleteJobPostingMemo, getJobPostingMemos, updateJobPostingMemo, } from '../api/jobPostingMemoApi';
-import type { JobPosting } from '../types/jobPosting';
+import type { JobPosting, JobPostingStatusHistory } from '../types/jobPosting';
 import JobPostingListItem from '../components/JobPostingListItem';
 import type { JobPostingMemo } from '../types/jobPostingMemo';
+import { ApiError } from '../api/apiError';
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -1695,4 +1696,176 @@ describe('memos', () => {
     },
   );
 
+})
+
+describe('status', () => {
+  test('応募状態の変更履歴を表示できる', async () => {
+    const mockContent: JobPosting = {
+      id: 1,
+      companyName: '黄猿',
+      title: 'エンジニア求人',
+      sourceUrl: 'http://example.com/kizaruengineer',
+      originalText: '営業部求人',
+      createdAt: '2026-08-14T00:00:00Z',
+      applicationStatus: 'SAVED',
+      salaryMin: null,
+      salaryMax: null,
+      applicationDeadline: null,
+      version: 0,
+    };
+
+    const statusHistory: JobPostingStatusHistory[] = [
+      {
+        id: 2,
+        fromStatus: 'APPLIED',
+        toStatus: 'INTERVIEWING',
+        changedAt: '2026-10-09T10:30:00Z',
+      },
+      {
+        id: 1,
+        fromStatus: 'SAVED',
+        toStatus: 'APPLIED',
+        changedAt: '2026-10-08T10:30:00Z',
+      },
+    ];
+
+    vi.mocked(fetchApplicationStatusHistory)
+      .mockResolvedValueOnce(statusHistory);
+    
+    const user = userEvent.setup();
+
+    render(
+      <JobPostingListItem
+        jobPosting={mockContent}
+        isEditing={false}
+        isSaving={false}
+        isDeleting={false}
+        isUpdatingStatus={false}
+        onStartEdit={vi.fn()}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        onDelete={vi.fn()}
+        onApplicationStatusChange={vi.fn()}
+      />
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "変更履歴を表示",
+      }),
+    );
+
+    expect(
+      await screen.findByText("APPLIED → INTERVIEWING"),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("SAVED → APPLIED"),
+    ).toBeInTheDocument();
+
+    expect(fetchApplicationStatusHistory)
+      .toHaveBeenCalledWith(mockContent.id);
+    
+  });
+
+  test('応募状態の変更履歴がない場合はメッセージを表示する', async () => {
+    const mockContent: JobPosting = {
+      id: 1,
+      companyName: '黄猿',
+      title: 'エンジニア求人',
+      sourceUrl: 'http://example.com/kizaruengineer',
+      originalText: '営業部求人',
+      createdAt: '2026-08-14T00:00:00Z',
+      applicationStatus: 'SAVED',
+      salaryMin: null,
+      salaryMax: null,
+      applicationDeadline: null,
+      version: 0,
+    };
+
+    vi.mocked(fetchApplicationStatusHistory)
+      .mockResolvedValueOnce([]);
+
+    const user = userEvent.setup();
+
+    render(
+      <JobPostingListItem
+        jobPosting={mockContent}
+        isEditing={false}
+        isSaving={false}
+        isDeleting={false}
+        isUpdatingStatus={false}
+        onStartEdit={vi.fn()}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        onDelete={vi.fn()}
+        onApplicationStatusChange={vi.fn()}
+      />
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "変更履歴を表示",
+      }),
+    );
+
+    expect(
+      await screen.findByText("変更履歴はありません。"),
+    ).toBeInTheDocument();
+
+  })
+
+  test('応募状態の変更履歴取得に失敗した場合はエラーを表示する', async () => {
+    const mockContent: JobPosting = {
+      id: 1,
+      companyName: '黄猿',
+      title: 'エンジニア求人',
+      sourceUrl: 'http://example.com/kizaruengineer',
+      originalText: '営業部求人',
+      createdAt: '2026-08-14T00:00:00Z',
+      applicationStatus: 'SAVED',
+      salaryMin: null,
+      salaryMax: null,
+      applicationDeadline: null,
+      version: 0,
+    };
+
+    vi.mocked(fetchApplicationStatusHistory)
+      .mockRejectedValueOnce(
+        new ApiError(
+          "変更履歴の取得に失敗しました。",
+          500,
+          "INTERNAL_SERVER_ERROR",
+        ),
+      );
+      
+    const user = userEvent.setup();
+
+    render(
+      <JobPostingListItem
+        jobPosting={mockContent}
+        isEditing={false}
+        isSaving={false}
+        isDeleting={false}
+        isUpdatingStatus={false}
+        onStartEdit={vi.fn()}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        onDelete={vi.fn()}
+        onApplicationStatusChange={vi.fn()}
+      />
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "変更履歴を表示",
+      }),
+    );
+
+    expect(
+      await screen.findByRole("alert"),
+    ).toHaveTextContent(
+      "変更履歴の取得に失敗しました。",
+    );
+  });
 })

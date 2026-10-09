@@ -1,6 +1,7 @@
 import type {
 	ApplicationStatus,
 	JobPosting,
+	JobPostingStatusHistory,
 	UpdateJobPostingRequest,
 } from '../types/jobPosting';
 
@@ -12,8 +13,9 @@ import JobPostingMemoCreateForm from './JobPostingMemoCreateForm';
 import JobPostingEditForm from './JobPostingEditForm';
 import JobPostingMemoEditForm from './JobPostingMemoEditForm';
 
-import { extractRequiredSkills } from '../api/jobPostingApi';
+import { extractRequiredSkills, fetchApplicationStatusHistory } from '../api/jobPostingApi';
 import { useJobPostingMemos } from '../hooks/useJobPostingMemos';
+import { ApiError } from '../api/apiError';
 
 interface JobPostingListItemProps {
 	jobPosting: JobPosting;
@@ -54,6 +56,11 @@ function JobPostingListItem({
 	const [loading, setLoading] = useState(false);
 	const [skillsVisible, setSkillsVisible] = useState(false);
 	const [skillsOriginalText, setSkillsOriginalText] = useState<string | null>(null);
+
+	const [statusHistory, setStatusHistory] = useState<JobPostingStatusHistory[]>([]);
+	const [statusHistoryError, setStatusHistoryError] = useState<string | null>(null);
+  const [isStatusHistoryVisible, setIsStatusHistoryVisible] = useState(false);
+  const [isLoadingStatusHistory, setIsLoadingStatusHistory] = useState(false);
 
 	const skillsAbortControllerRef = useRef<AbortController | null>(null);
 	useEffect(() => {
@@ -187,6 +194,34 @@ function JobPostingListItem({
 		}
 
 		await deleteMemo(memoId);
+	}
+
+	async function handleShowStatusHistory() {
+		if (isStatusHistoryVisible) {
+			setIsStatusHistoryVisible(false);
+			return;
+		}
+
+		setIsLoadingStatusHistory(true);
+		setStatusHistoryError(null);
+		
+		try {
+			const history =
+				await fetchApplicationStatusHistory(jobPosting.id);
+
+			setStatusHistory(history);
+			setIsStatusHistoryVisible(true);
+		} catch (error) {
+			if (error instanceof ApiError) {
+				setStatusHistoryError(error.message);
+			} else {
+				setStatusHistoryError(
+					"変更履歴の取得に失敗しました。",
+				);
+			}
+		} finally {
+			setIsLoadingStatusHistory(false);
+		}
 	}
 
 	const { salaryMin, salaryMax } = jobPosting;
@@ -326,6 +361,22 @@ function JobPostingListItem({
 						? '메모 닫기'
 						: '메모 보기'}
 				</button>
+
+				<button
+					type="button"
+					onClick={() => {
+						void handleShowStatusHistory();
+					}}
+					disabled={isLoadingStatusHistory}
+					aria-expanded={isStatusHistoryVisible}
+					aria-controls={`job-posting-status-history-${jobPosting.id}`}
+				>
+					{isLoadingStatusHistory
+						? 'ロード中...'
+						: isStatusHistoryVisible
+							? '変更履歴を閉じる'
+							: '変更履歴を表示'}
+				</button>
 			</div>
 
 			<div className="job-posting-card__details">
@@ -354,6 +405,31 @@ function JobPostingListItem({
 							{skillsError}
 						</p>
 					)}
+
+				{isStatusHistoryVisible && (
+					<div
+						id={`job-posting-status-history-${jobPosting.id}`}
+						className="job-posting-card__status-history"
+					>
+						{statusHistory.length > 0 ? (
+							<ul>
+								{statusHistory.map((history) => (
+									<li key={history.id}>
+										{history.fromStatus} → {history.toStatus}
+									</li>
+								))}
+							</ul>
+						) : (
+							<p>変更履歴はありません。</p>
+						)}
+					</div>
+				)}
+
+				{statusHistoryError && (
+					<p role="alert">
+						{statusHistoryError}
+					</p>
+				)}
 
 				{!isEditing && (
 					<div className="job-posting-card__memo-area">
