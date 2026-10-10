@@ -17,6 +17,15 @@ import { extractRequiredSkills, fetchApplicationStatusHistory } from '../api/job
 import { useJobPostingMemos } from '../hooks/useJobPostingMemos';
 import { ApiError } from '../api/apiError';
 
+const APPLICATION_STATUS_LABELS:
+	Record<ApplicationStatus, string> = {
+	SAVED: '保存',
+	APPLIED: '応募',
+	INTERVIEWING: '面接',
+	OFFERED: '内定',
+	REJECTED: '不採用',
+};
+
 interface JobPostingListItemProps {
 	jobPosting: JobPosting;
 	isEditing: boolean;
@@ -36,7 +45,7 @@ interface JobPostingListItemProps {
 		id: number,
 		status: ApplicationStatus,
 		expectedVersion: number,
-	) => Promise<void>;
+	) => Promise<boolean>;
 }
 
 function JobPostingListItem({
@@ -196,21 +205,17 @@ function JobPostingListItem({
 		await deleteMemo(memoId);
 	}
 
-	async function handleShowStatusHistory() {
-		if (isStatusHistoryVisible) {
-			setIsStatusHistoryVisible(false);
-			return;
-		}
-
+	async function loadStatusHistory() {
 		setIsLoadingStatusHistory(true);
 		setStatusHistoryError(null);
-		
+
 		try {
 			const history =
 				await fetchApplicationStatusHistory(jobPosting.id);
 
 			setStatusHistory(history);
-			setIsStatusHistoryVisible(true);
+
+			return true;
 		} catch (error) {
 			if (error instanceof ApiError) {
 				setStatusHistoryError(error.message);
@@ -219,8 +224,41 @@ function JobPostingListItem({
 					"変更履歴の取得に失敗しました。",
 				);
 			}
+
+			return false;
 		} finally {
 			setIsLoadingStatusHistory(false);
+		}
+	}
+
+	async function handleShowStatusHistory() {
+		if (isStatusHistoryVisible) {
+			setIsStatusHistoryVisible(false);
+			return;
+		}
+
+		const loaded = await loadStatusHistory();
+
+		if (loaded) {
+			setIsStatusHistoryVisible(true);
+		}
+	}
+
+	async function handleApplicationStatusChange(
+		status: ApplicationStatus,
+	) {
+		const updated =
+			await onApplicationStatusChange(
+				jobPosting.id,
+				status,
+				jobPosting.version,
+			);
+
+		if (
+			updated &&
+			isStatusHistoryVisible
+		) {
+			await loadStatusHistory();
 		}
 	}
 
@@ -277,11 +315,9 @@ function JobPostingListItem({
 										isUpdatingStatus
 									}
 									onChange={(event) => {
-										void onApplicationStatusChange(
-											jobPosting.id,
+										void handleApplicationStatusChange(
 											event.target
 												.value as ApplicationStatus,
-											jobPosting.version,
 										);
 									}}
 								>
@@ -415,7 +451,13 @@ function JobPostingListItem({
 							<ul>
 								{statusHistory.map((history) => (
 									<li key={history.id}>
-										{history.fromStatus} → {history.toStatus}
+										{APPLICATION_STATUS_LABELS[
+											history.fromStatus
+										]}
+										{' → '}
+										{APPLICATION_STATUS_LABELS[
+											history.toStatus
+										]}
 									</li>
 								))}
 							</ul>

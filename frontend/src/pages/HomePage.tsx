@@ -651,7 +651,7 @@ function HomePage() {
     id: number,
     status: ApplicationStatus,
     expectedVersion: number,
-  ): Promise<void> => {
+  ): Promise<boolean> => {
     setUpdatingStatusId(id);
     setMutationError(null);
 
@@ -670,6 +670,8 @@ function HomePage() {
       );
 
       await loadApplicationStatusSummary();
+
+      return true;
 
     } catch (caughtError) {
       if (
@@ -696,7 +698,7 @@ function HomePage() {
 
         await loadApplicationStatusSummary();
 
-        return;
+        return false;
       }
 
       const message =
@@ -704,6 +706,7 @@ function HomePage() {
           ? caughtError.message
           : '상태 업데이트에 실패하였습니다.';
       setMutationError(message);
+      return false;
     } finally {
       setUpdatingStatusId(null);
     }

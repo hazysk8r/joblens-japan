@@ -21,22 +21,22 @@ afterEach(() => {
   cleanup();
 });
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, resolve, reject };
+}
+
 vi.mock('../api/jobPostingApi');
 vi.mock('../api/jobPostingMemoApi')
 
 describe('skills', () => {
-  // Race Conditionを
-  function deferred<T>() {
-    let resolve!: (value: T) => void;
-    let reject!: (reason?: unknown) => void;
-
-    const promise = new Promise<T>((res, rej) => {
-      resolve = res;
-      reject = rej;
-    });
-
-    return { promise, resolve, reject };
-  }
 
   test('기술이 있는 공고의 기술 스택 보기 버튼을 누르면 기술 스택을 볼 수 있다', async () => {
     const mockContent: JobPosting = {
@@ -1756,11 +1756,11 @@ describe('status', () => {
     );
 
     expect(
-      await screen.findByText("APPLIED → INTERVIEWING"),
+      await screen.findByText("応募 → 面接"),
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText("SAVED → APPLIED"),
+      screen.getByText("保存 → 応募"),
     ).toBeInTheDocument();
 
     expect(fetchApplicationStatusHistory)
@@ -1868,4 +1868,271 @@ describe('status', () => {
       "変更履歴の取得に失敗しました。",
     );
   });
+
+  test('応募状態を変更すると表示中の変更履歴を再取得し、日本語で表示する',
+    async () => {
+      const statusChange = deferred<boolean>();
+
+      const mockContent: JobPosting = {
+        id: 1,
+        companyName: '黄猿',
+        title: 'エンジニア求人',
+        sourceUrl: null,
+        originalText: 'AWSエンジニア求人',
+        createdAt: '2026-10-09T00:00:00Z',
+        applicationStatus: 'APPLIED',
+        salaryMin: null,
+        salaryMax: null,
+        applicationDeadline: null,
+        version: 1,
+      };
+
+      const initialHistory: JobPostingStatusHistory[] = [
+        {
+          id: 1,
+          fromStatus: 'SAVED',
+          toStatus: 'APPLIED',
+          changedAt: '2026-10-09T10:00:00Z',
+        },
+      ];
+
+      const updatedHistory: JobPostingStatusHistory[] = [
+        {
+          id: 2,
+          fromStatus: 'APPLIED',
+          toStatus: 'INTERVIEWING',
+          changedAt: '2026-10-10T10:00:00Z',
+        },
+        {
+          id: 1,
+          fromStatus: 'SAVED',
+          toStatus: 'APPLIED',
+          changedAt: '2026-10-09T10:00:00Z',
+        },
+      ];
+
+      vi.mocked(fetchApplicationStatusHistory)
+        .mockResolvedValueOnce(initialHistory)
+        .mockResolvedValueOnce(updatedHistory);
+
+      const onApplicationStatusChange = 
+        vi.fn()
+          .mockReturnValueOnce(statusChange.promise);
+
+      const user = userEvent.setup();
+
+      render(
+        <JobPostingListItem
+          jobPosting={mockContent}
+          isEditing={false}
+          isSaving={false}
+          isDeleting={false}
+          isUpdatingStatus={false}
+          onStartEdit={vi.fn()}
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          onDelete={vi.fn()}
+          onApplicationStatusChange={
+            onApplicationStatusChange
+          }
+        />,
+      );
+
+      await user.click(
+        screen.getByRole('button', {
+          name: '変更履歴を表示',
+        }),
+      );
+
+      expect(
+        await screen.findByText(
+          '保存 → 応募',
+        ),
+      ).toBeInTheDocument();
+
+      await user.selectOptions(
+        screen.getByRole('combobox', {
+          name: '지원 상태:',
+        }),
+        'INTERVIEWING',
+      );
+
+      expect(onApplicationStatusChange)
+        .toHaveBeenCalledWith(
+          1,
+          'INTERVIEWING',
+          1,
+        );
+
+      expect(fetchApplicationStatusHistory)
+        .toHaveBeenCalledTimes(1);
+      
+      statusChange.resolve(true);
+
+      await waitFor(() => {
+        expect(fetchApplicationStatusHistory)
+          .toHaveBeenCalledTimes(2);
+      });
+
+      expect(
+        await screen.findByText(
+          '応募 → 面接',
+        ),
+      ).toBeInTheDocument();
+
+      expect(
+        screen.getByText(
+          '保存 → 応募',
+        ),
+      ).toBeInTheDocument();
+    },
+  );
+
+  test('応募状態の変更に失敗した場合は表示中の変更履歴を再取得しない',
+    async () => {
+
+      const mockContent: JobPosting = {
+        id: 1,
+        companyName: '黄猿',
+        title: 'エンジニア求人',
+        sourceUrl: null,
+        originalText: 'AWSエンジニア求人',
+        createdAt: '2026-10-09T00:00:00Z',
+        applicationStatus: 'APPLIED',
+        salaryMin: null,
+        salaryMax: null,
+        applicationDeadline: null,
+        version: 1,
+      };
+
+      const initialHistory: JobPostingStatusHistory[] = [
+        {
+          id: 1,
+          fromStatus: 'SAVED',
+          toStatus: 'APPLIED',
+          changedAt: '2026-10-09T10:00:00Z',
+        },
+      ];
+
+      vi.mocked(fetchApplicationStatusHistory)
+        .mockResolvedValueOnce(initialHistory);
+
+      const onApplicationStatusChange =
+        vi.fn()
+          .mockReturnValueOnce(false);
+
+      const user = userEvent.setup();
+
+      render(
+        <JobPostingListItem
+          jobPosting={mockContent}
+          isEditing={false}
+          isSaving={false}
+          isDeleting={false}
+          isUpdatingStatus={false}
+          onStartEdit={vi.fn()}
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          onDelete={vi.fn()}
+          onApplicationStatusChange={
+            onApplicationStatusChange
+          }
+        />,
+      );
+
+      await user.click(
+        screen.getByRole('button', {
+          name: '変更履歴を表示',
+        }),
+      );
+
+      expect(
+        await screen.findByText('保存 → 応募'),
+      ).toBeInTheDocument();
+
+      expect(fetchApplicationStatusHistory)
+        .toHaveBeenCalledTimes(1);
+
+      await user.selectOptions(
+        screen.getByRole('combobox', {
+          name: '지원 상태:',
+        }),
+        'INTERVIEWING',
+      );
+
+      await waitFor(() => {
+        expect(onApplicationStatusChange)
+          .toHaveBeenCalledWith(
+            1,
+            'INTERVIEWING',
+            1,
+          );
+      });
+
+      expect(fetchApplicationStatusHistory)
+        .toHaveBeenCalledTimes(1);
+    },
+  );
+
+  test(
+    '変更履歴が閉じている場合は応募状態変更成功後も履歴を再取得しない',
+    async () => {
+      const mockContent: JobPosting = {
+        id: 1,
+        companyName: '黄猿',
+        title: 'エンジニア求人',
+        sourceUrl: null,
+        originalText: 'AWSエンジニア求人',
+        createdAt: '2026-10-09T00:00:00Z',
+        applicationStatus: 'APPLIED',
+        salaryMin: null,
+        salaryMax: null,
+        applicationDeadline: null,
+        version: 1,
+      };
+
+      const onApplicationStatusChange =
+        vi.fn()
+          .mockResolvedValueOnce(true);
+
+      const user = userEvent.setup();
+
+      render(
+        <JobPostingListItem
+          jobPosting={mockContent}
+          isEditing={false}
+          isSaving={false}
+          isDeleting={false}
+          isUpdatingStatus={false}
+          onStartEdit={vi.fn()}
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          onDelete={vi.fn()}
+          onApplicationStatusChange={
+            onApplicationStatusChange
+          }
+        />,
+      );
+
+      await user.selectOptions(
+        screen.getByRole('combobox', {
+          name: '지원 상태:',
+        }),
+        'INTERVIEWING',
+      );
+
+      expect(onApplicationStatusChange)
+        .toHaveBeenCalledWith(
+          1,
+          'INTERVIEWING',
+          1,
+        );
+
+      // Promise解決後の処理まで完了させる。
+      await Promise.resolve();
+
+      expect(fetchApplicationStatusHistory)
+        .not.toHaveBeenCalled();
+    },
+  );
 })
