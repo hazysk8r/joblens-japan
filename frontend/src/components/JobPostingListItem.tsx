@@ -17,6 +17,7 @@ import { extractRequiredSkills, fetchApplicationStatusHistory } from '../api/job
 import { useJobPostingMemos } from '../hooks/useJobPostingMemos';
 import { ApiError } from '../api/apiError';
 
+// ApplicationStatusの全ての値に対応する画面表示用の日本語ラベルを定義する。
 const APPLICATION_STATUS_LABELS:
 	Record<ApplicationStatus, string> = {
 	SAVED: '保存',
