@@ -22,6 +22,7 @@ import {
   type SalaryFilter,
   type DeadlineFilter,
   type JobPostingSorting,
+  type PageResponse,
 } from '../types/jobPosting';
 
 
@@ -35,6 +36,25 @@ import { SALARY_OPTIONS } from '../constants/salaryOptions';
 
 // 求人情報一覧の初期取得に使用するデフォルトのソート条件
 const DEFAULT_SORTING: JobPostingSorting = 'createdAt,desc';
+
+type EditingSession = {
+  sessionId: number;
+  jobPostingId: number;
+  expectedVersion: number;
+  jobPosting: JobPosting;
+};
+
+type EditRecovery = {
+  pending: boolean;
+  error: string | null;
+};
+
+type ListLoadResult =
+  | { status: 'updated'; content: JobPosting[] }
+  | { status: 'failed'; message: string }
+  | { status: 'superseded' };
+
+type JobPostingListQuery = Parameters<typeof fetchJobPostings>;
 
 // URLのstatusを有効なStatusFilterに変換する。
 function parseStatusFilter(
@@ -92,6 +112,22 @@ function HomePage() {
 
   // 最新の一覧取得リクエストだけがStateを更新できるようにする。
   const latestListRequestIdRef = useRef(0);
+  const latestListQueryRef = useRef<JobPostingListQuery>([
+    keywordFromUrl, statusFromUrl, pageFromUrl,
+    DEFAULT_SORTING, null, null, null, null,
+  ]);
+  const nextEditingSessionIdRef = useRef(0);
+  // 非同期処理で最新の編集セッションを参照するために使用する。
+  const editingSessionRef = useRef<EditingSession | null>(null);
+  const nextRecoveryIdRef = useRef(0);
+  const recoveryRequestsRef = useRef(new Map<number, {
+
+    // Recovery要求の新旧を判定するID
+    recoveryId: number;
+    // Recovery完了と認める最小の一覧取得Request ID
+    minimumListRequestId: number;
+
+  }>());
 
   const [keyword, setKeyword] = useState(keywordFromUrl);
   const [appliedKeyword, setAppliedKeyword] = useState(keywordFromUrl);
@@ -107,8 +143,10 @@ function HomePage() {
   const [first, setFirst] = useState(true);
   const [last, setLast] = useState(true);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [savingId, setSavingId] = useState<number | null>(null);
+  // 編集フォームの表示など、UIの再描画に使用する。
+  const [editingSession, setEditingSession] = useState<EditingSession | null>(null);
+  const [savingSessionId, setSavingSessionId] = useState<number | null>(null);
+  const [editRecoveries, setEditRecoveries] = useState<Record<number, EditRecovery>>({});
   const [updatingStatusId, setUpdatingStatusId] = useState<number | null>(null);
   const [statusSummary, setStatusSummary] = useState<ApplicationStatusSummaryResponse | null>(null);
   const [status, setStatus] = useState<StatusFilter>(statusFromUrl);
@@ -141,6 +179,47 @@ function HomePage() {
     }
   }
 
+  // 競合検知より後に開始し、実際に反映した一覧だけが再編集制限を解除できる。
+  const applyListPage = useCallback((
+    page: PageResponse<JobPosting>,
+    requestId: number,
+  ) => {
+    if (requestId !== latestListRequestIdRef.current) {
+      return false;
+    }
+
+    setJobPostings(page.content);
+    setCurrentPage(page.page);
+    setTotalPages(page.totalPages);
+    setFirst(page.first);
+    setLast(page.last);
+    // 実際に表示されたページ番号を最新の一覧取得条件に反映する。
+    latestListQueryRef.current[2] = page.page;
+
+    const recoveredIds: number[] = [];
+    for (const [id, recovery] of recoveryRequestsRef.current) {
+      if (
+        requestId >= recovery.minimumListRequestId &&
+        page.content.some((posting) => posting.id === id)
+      ) {
+        recoveryRequestsRef.current.delete(id);
+        recoveredIds.push(id);
+      }
+    }
+
+    if (recoveredIds.length > 0) {
+      setEditRecoveries((previous) => {
+        const next = { ...previous };
+        for (const id of recoveredIds) {
+          delete next[id];
+        }
+        return next;
+      });
+    }
+
+    return true;
+  }, []);
+
   /**
      * 검색어를 받아 백엔드 API를 호출하고,
      * 응답의 content를 화면 상태에 저장한다.
@@ -154,9 +233,14 @@ function HomePage() {
     salaryMax: SalaryFilter,
     deadlineFrom: DeadlineFilter,
     deadlineTo: DeadlineFilter,
-  ) => {
+    background = false,
+  ): Promise<ListLoadResult> => {
     const requestId = 
       ++latestListRequestIdRef.current;
+    latestListQueryRef.current = [
+      searchKeyword, searchFilter, pageNumber, sort,
+      salaryMin, salaryMax, deadlineFrom, deadlineTo,
+    ];
 
     try {
       let page = await fetchJobPostings(
@@ -174,7 +258,7 @@ function HomePage() {
       if (
         requestId !== latestListRequestIdRef.current
       ) {
-        return;
+        return { status: 'superseded' };
       }
 
       // 現在のページが範囲外になった場合、最後の有効ページを再取得する。
@@ -199,24 +283,21 @@ function HomePage() {
         if (
           requestId !== latestListRequestIdRef.current
         ) {
-          return;
+          return { status: 'superseded' };
         }
       }
       /*
       * 공고 목록뿐 아니라 백엔드가 반환한 페이지 정보도
       * React 상태에 저장한다.
       */
-      setJobPostings(page.content);
-      setCurrentPage(page.page);
-      setTotalPages(page.totalPages);
-      setFirst(page.first);
-      setLast(page.last);
+      applyListPage(page, requestId);
+      return { status: 'updated', content: page.content };
       
     } catch (caughtError) {
       if (
         requestId !== latestListRequestIdRef.current
       ) {
-        return;
+        return { status: 'superseded' };
       }
 
       const message =
@@ -224,7 +305,11 @@ function HomePage() {
           ? caughtError.message
           : '채용공고를 불러오는 중 알 수 없는 오류가 발생했습니다.';
 
-      setError(message);
+      // 競合復旧の失敗では既存一覧と別セッションの入力を維持する。
+      if (!background) {
+        setError(message);
+      }
+      return { status: 'failed', message };
     } finally {
       if (
         requestId === latestListRequestIdRef.current
@@ -232,7 +317,7 @@ function HomePage() {
         setLoading(false);
       }
     }
-  }, []);
+  }, [applyListPage]);
 
   
   const didMountHistoryEffect = useRef(false);
@@ -251,6 +336,11 @@ function HomePage() {
 
     // Effectが無効になった後に返ってきた古いレスポンスをStateへ反映しないためのフラグ
     let ignore = false;
+    const requestId = ++latestListRequestIdRef.current;
+    latestListQueryRef.current = [
+      keywordFromUrl, statusFromUrl, pageFromUrl,
+      DEFAULT_SORTING, null, null, null, null,
+    ];
 
     const loadHistoryData = async () => {
       try {
@@ -285,18 +375,14 @@ function HomePage() {
           );
         }
 
-        if (ignore) {
+        if (ignore || requestId !== latestListRequestIdRef.current) {
           return;
         }
 
-        setJobPostings(page.content);
-        setCurrentPage(page.page);
-        setTotalPages(page.totalPages);
-        setFirst(page.first);
-        setLast(page.last);
+        applyListPage(page, requestId);
         setError(null);
       } catch (caughtError) {
-        if (ignore) {
+        if (ignore || requestId !== latestListRequestIdRef.current) {
           return;
         }
 
@@ -306,6 +392,10 @@ function HomePage() {
             : '채용공고를 불러오는 중 알 수 없는 오류가 발생했습니다.';
 
         setError(message);
+      } finally {
+        if (!ignore && requestId === latestListRequestIdRef.current) {
+          setLoading(false);
+        }
       }
     };
 
@@ -320,6 +410,7 @@ function HomePage() {
     keywordFromUrl,
     statusFromUrl,
     pageFromUrl,
+    applyListPage,
   ]);
 
   const loadApplicationStatusSummary = useCallback(async () => {
@@ -342,6 +433,7 @@ function HomePage() {
   */
   useEffect(() => {
     let ignore = false;
+    const requestId = ++latestListRequestIdRef.current;
 
     const {
       keyword: initialKeyword,
@@ -370,14 +462,11 @@ function HomePage() {
           return;
         }
 
-        setJobPostings(page.content);
-        setCurrentPage(page.page);
-        setTotalPages(page.totalPages);
-        setFirst(page.first);
-        setLast(page.last);
-        setStatusSummary(summary);
+        applyListPage(page, requestId);
+        // 一覧の新しい取得が開始されても、未取得のサマリーは初期応答から表示する。
+        setStatusSummary((currentSummary) => currentSummary ?? summary);
       } catch (caughtError) {
-        if (ignore) {
+        if (ignore || requestId !== latestListRequestIdRef.current) {
           return;
         }
 
@@ -388,7 +477,7 @@ function HomePage() {
 
         setError(message);
       } finally {
-        if (!ignore) {
+        if (!ignore && requestId === latestListRequestIdRef.current) {
           setLoading(false);
         }
       }
@@ -399,7 +488,7 @@ function HomePage() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [applyListPage]);
 
   const handleSubmit = (
     event: FormEvent<HTMLFormElement>,
@@ -574,64 +663,111 @@ function HomePage() {
   const handleStartEdit = (
     jobPosting: JobPosting,
   ) => {
-    setEditingId(jobPosting.id);
+    if (recoveryRequestsRef.current.has(jobPosting.id)) {
+      return;
+    }
+
+    const session: EditingSession = {
+      sessionId: ++nextEditingSessionIdRef.current,
+      jobPostingId: jobPosting.id,
+      expectedVersion: jobPosting.version,
+      jobPosting,
+    };
+    editingSessionRef.current = session;
+    setEditingSession(session);
     setError(null);
     setMutationError(null);
   };
 
   const handleCancelEdit = () => {
-    setEditingId(null);
+    editingSessionRef.current = null;
+    setEditingSession(null);
     setMutationError(null);
   };
 
+  // 古い非同期応答で新しい編集セッションを終了しないよう、
+  // Session IDが一致する場合だけ現在の編集セッションを終了する。
+  const finishEditingSession = (sessionId: number) => {
+    if (editingSessionRef.current?.sessionId !== sessionId) {
+      return false;
+    }
+    editingSessionRef.current = null;
+    setEditingSession(null);
+    return true;
+  };
+
+  const refreshEditRecovery = async (jobPostingId: number) => {
+    const recoveryId = ++nextRecoveryIdRef.current;
+    recoveryRequestsRef.current.set(jobPostingId, {
+      recoveryId,
+      minimumListRequestId: latestListRequestIdRef.current + 1,
+    });
+    setEditRecoveries((previous) => ({
+      ...previous,
+      [jobPostingId]: { pending: true, error: null },
+    }));
+
+    // 保存開始時の条件ではなく、現在の一覧条件を使用する。
+    const result = await loadJobPostings(...latestListQueryRef.current, true);
+
+    if (recoveryRequestsRef.current.get(jobPostingId)?.recoveryId !== recoveryId) {
+      return;
+    }
+
+    // 最新データが一覧に反映された場合、applyListPageが制限を解除する。
+    const message = result.status === 'updated'
+      ? '現在の一覧で最新の求人を確認できませんでした。検索条件を確認して再取得してください。'
+      : result.status === 'superseded'
+        ? '다른 조회가 진행되었습니다. 최신 공고를 다시 불러온 후 수정해 주세요.'
+        : '최신 공고를 불러오지 못했습니다. 다시 불러온 후 수정해 주세요.';
+
+    setEditRecoveries((previous) => ({
+      ...previous,
+      [jobPostingId]: { pending: false, error: message },
+    }));
+  };
+
   const handleSaveEdit = async (
-    id: number,
+    session: EditingSession,
     request: UpdateJobPostingRequest,
-    expectedVersion: number,
   ): Promise<void> => {
-    setSavingId(id);
+    if (editingSessionRef.current?.sessionId !== session.sessionId) {
+      return;
+    }
+
+    setSavingSessionId(session.sessionId);
     setMutationError(null);
 
     try {
-      await updateJobPosting(id, request, expectedVersion);
+      await updateJobPosting(session.jobPostingId, request, session.expectedVersion);
 
       /*
        * PUTリクエスト成功後、編集モードを終了する。
        */
-      setEditingId(null);
+      finishEditingSession(session.sessionId);
 
       /*
        * 現在の検索条件とページを維持したまま、
        * サーバーから最新の一覧を再取得する。
        */
-      await loadJobPostings(
-        appliedKeyword,
-        appliedStatus,
-        currentPage,
-        sorting,
-        appliedSalaryMin,
-        appliedSalaryMax,
-        appliedDeadlineFrom,
-        appliedDeadlineTo,
-      );
+      const result = await loadJobPostings(...latestListQueryRef.current, true);
+      if (
+        result.status === 'failed' &&
+        editingSessionRef.current === null &&
+        nextEditingSessionIdRef.current === session.sessionId
+      ) {
+        setMutationError(result.message);
+      }
     } catch (caughtError) {
       if (
         isJobPostingVersionConflict(caughtError)
       ) {
-        setMutationError(
-          '다른 화면에서 채용공고가 수정되었습니다.',
-        );
+        // 再取得が失敗しても、競合したセッションとDraftは再利用しない。
+        if (finishEditingSession(session.sessionId)) {
+          setMutationError('다른 화면에서 채용공고가 수정되었습니다.');
+        }
 
-        await loadJobPostings(
-          appliedKeyword,
-          appliedStatus,
-          currentPage,
-          sorting,
-          appliedSalaryMin,
-          appliedSalaryMax,
-          appliedDeadlineFrom,
-          appliedDeadlineTo,
-        );
+        await refreshEditRecovery(session.jobPostingId);
 
         return;
       }
@@ -640,10 +776,14 @@ function HomePage() {
         caughtError instanceof Error
           ? caughtError.message
           : '수정 중 알 수 없는 오류가 발생했습니다.';
-      setMutationError(message);
+      if (editingSessionRef.current?.sessionId === session.sessionId) {
+        setMutationError(message);
+      }
       
     } finally {
-      setSavingId(null);
+      setSavingSessionId((currentSessionId) =>
+        currentSessionId === session.sessionId ? null : currentSessionId,
+      );
     }
   };
 
@@ -733,6 +873,12 @@ function HomePage() {
     // Server Data
     await loadJobPostings('', '', 0, DEFAULT_SORTING, null, null, null, null);
   };
+
+  // 再取得で一覧から外れた場合も、現在編集中のカードとDraftを維持する。
+  const visibleJobPostings = editingSession &&
+    !jobPostings.some((posting) => posting.id === editingSession.jobPostingId)
+    ? [...jobPostings, editingSession.jobPosting]
+    : jobPostings;
 
   return (
     <main>
@@ -960,7 +1106,7 @@ function HomePage() {
         <p role="alert">
           {error}
         </p>
-      ) : jobPostings.length === 0 ? (
+      ) : visibleJobPostings.length === 0 ? (
         <p>검색 결과가 없습니다.</p>
       ) : (
         <>
@@ -971,21 +1117,35 @@ function HomePage() {
           )}
 
           <ul className="job-posting-list" role="list">
-            {jobPostings.map((jobPosting) => (
+            {visibleJobPostings.map((jobPosting) => (
               <JobPostingListItem
                 key={jobPosting.id}
                 jobPosting={jobPosting}
                 isEditing={
-                  editingId === jobPosting.id
+                  editingSession?.jobPostingId === jobPosting.id
                 }
                 isSaving={
-                  savingId === jobPosting.id
+                  editingSession?.jobPostingId === jobPosting.id &&
+                  savingSessionId === editingSession.sessionId
                 }
+                editSessionId={editingSession?.jobPostingId === jobPosting.id
+                  ? editingSession.sessionId : undefined}
+                expectedVersion={editingSession?.jobPostingId === jobPosting.id
+                  ? editingSession.expectedVersion : undefined}
+                editRecovery={editRecoveries[jobPosting.id]}
+                onRetryEditRecovery={() => {
+                  void refreshEditRecovery(jobPosting.id);
+                }}
                 isDeleting={
                   deletingId === jobPosting.id
                 }
                 onStartEdit={handleStartEdit}
-                onSave={handleSaveEdit}
+                onSave={(id, request) => {
+                  if (editingSession?.jobPostingId !== id) {
+                    return Promise.resolve();
+                  }
+                  return handleSaveEdit(editingSession, request);
+                }}
                 onCancel={handleCancelEdit}
                 onDelete={handleDelete}
                 isUpdatingStatus={

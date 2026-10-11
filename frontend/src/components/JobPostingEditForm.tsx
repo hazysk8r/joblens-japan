@@ -12,6 +12,7 @@ import { SALARY_OPTIONS } from '../constants/salaryOptions';
 interface JobPostingEditFormProps {
   jobPosting: JobPosting;
   saving: boolean;
+  expectedVersion?: number;
 
   onSave: (
     id: number,
@@ -35,9 +36,12 @@ interface EditFormState {
 function JobPostingEditForm({
   jobPosting,
   saving,
+  expectedVersion,
   onSave,
   onCancel,
 }: JobPostingEditFormProps) {
+  // 編集中にPropsが更新されても、開始時のVersionをDraftと一緒に保持する。
+  const [editVersion] = useState(expectedVersion ?? jobPosting.version);
   /*
    * 이 입력값들은 수정 폼에서만 사용하므로
    * App이 아니라 수정 폼 컴포넌트에서 관리한다.
@@ -105,7 +109,7 @@ function JobPostingEditForm({
      * 실제 API 호출은 부모인 App이 담당한다.
      * 자식은 정리된 입력 데이터를 부모에게 전달한다.
      */
-    await onSave(jobPosting.id, request, jobPosting.version);
+    await onSave(jobPosting.id, request, editVersion);
   };
 
   return (

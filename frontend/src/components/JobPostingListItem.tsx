@@ -33,6 +33,10 @@ interface JobPostingListItemProps {
 	isSaving: boolean;
 	isDeleting: boolean;
 	isUpdatingStatus: boolean;
+	editSessionId?: number;
+	expectedVersion?: number;
+	editRecovery?: { pending: boolean; error: string | null };
+	onRetryEditRecovery?: () => void;
 
 	onStartEdit: (jobPosting: JobPosting) => void;
 	onSave: (
@@ -55,6 +59,10 @@ function JobPostingListItem({
 	isSaving,
 	isDeleting,
 	isUpdatingStatus,
+	editSessionId,
+	expectedVersion,
+	editRecovery,
+	onRetryEditRecovery,
 	onStartEdit,
 	onSave,
 	onCancel,
@@ -277,8 +285,10 @@ function JobPostingListItem({
 			{isEditing ? (
 				<div className="job-posting-card__edit">
 					<JobPostingEditForm
+						key={editSessionId}
 						jobPosting={jobPosting}
 						saving={isSaving}
+						expectedVersion={expectedVersion}
 						onSave={onSave}
 						onCancel={onCancel}
 					/>
@@ -371,6 +381,21 @@ function JobPostingListItem({
 						)}
 					</div>
 				</>
+			)}
+
+			{editRecovery && (
+				<div className="job-posting-card__edit-recovery">
+					{editRecovery.pending ? (
+						<p role="status">최신 공고를 다시 불러오는 중...</p>
+					) : (
+						<>
+							<p role="alert">{editRecovery.error}</p>
+							<button type="button" onClick={onRetryEditRecovery}>
+								최신 공고 다시 불러오기
+							</button>
+						</>
+					)}
+				</div>
 			)}
 
 			<div className="job-posting-card__actions">
@@ -617,7 +642,7 @@ function JobPostingListItem({
 								jobPosting,
 							)
 						}
-						disabled={isDeleting}
+						disabled={isDeleting || editRecovery !== undefined}
 					>
 						수정
 					</button>

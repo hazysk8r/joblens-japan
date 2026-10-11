@@ -1636,7 +1636,7 @@ test('詳細条件 버튼을 누르면 상세 검색 조건이 표시된다', as
   ).toBeDefined();
 });
 
-test('version 불일치가 발생하면 안내 message를 표시하고, 최신 공고를 다시 조회한다', async () => {
+test('version 불일치 시 stale draft를 폐기하고 최신 데이터로 다시 편집한다', async () => {
   const staleJobPosting: JobPosting = {
     id: 1,
     companyName: '札幌クラウド',
@@ -1645,113 +1645,18 @@ test('version 불일치가 발생하면 안내 message를 표시하고, 최신 �
     originalText: 'AWS求人',
     createdAt: '2026-10-05T00:00:00Z',
     applicationStatus: 'SAVED',
-    salaryMin: null,
-    salaryMax: null,
+    salaryMin: 300000,
+    salaryMax: 500000,
     applicationDeadline: null,
     version: 3,
   };
-
   const latestJobPosting: JobPosting = {
     ...staleJobPosting,
     title: 'AWSクラウドエンジニア',
-    version: 5, 
-  };
-
-  const initialPage = {
-    ...mockPage,
-    content: [staleJobPosting],
-    totalElements: 1,
-    totalPages: 1,
-    first: true,
-    last: true,
-  };
-
-  const refreshedPage = {
-    ...initialPage,
-    content: [latestJobPosting],
-  };
-
-  vi.mocked(fetchJobPostings)
-    .mockResolvedValueOnce(initialPage)
-    .mockResolvedValueOnce(refreshedPage);
-
-  vi.mocked(updateJobPosting)
-    .mockRejectedValueOnce(
-      new ApiError(
-        'JobPosting version conflict',
-        412,
-        'JOB_POSTING_VERSION_CONFLICT',
-      ),
-    );
-
-  const user = userEvent.setup();
-
-  renderApp();
-
-  const editButton = 
-    await screen.findByRole('button', {
-      name: '수정',
-    });
-  
-  await user.click(editButton);
-
-  const titleInput =
-    screen.getByRole('textbox', {
-      name: '공고 제목',
-    });
-
-  await user.clear(titleInput);
-  await user.type(
-    titleInput,
-    '自分が修正したタイトル',
-  );
-
-  await user.click(
-    screen.getByRole('button', {
-      name: '저장',
-    }),
-  );
-
-  expect(
-    await screen.findByRole('alert'),
-  ).toHaveTextContent(
-    '다른 화면에서 채용공고가 수정되었습니다.',
-  );
-
-  await waitFor(() => {
-    expect(fetchJobPostings)
-      .toHaveBeenCalledTimes(2);
-  });
-
-  expect(
-    screen.getByRole('textbox', {
-      name: '공고 제목',
-    }),
-  ).toHaveValue('自分が修正したタイトル');
-
-});
-
-test('version 불일치가 발생하면 안내 message를 표시하고, 최신 공고를 다시 조회한다', async () => {
-  const staleJobPosting: JobPosting = {
-    id: 1,
-    companyName: '札幌クラウド',
-    title: 'AWSエンジニア',
-    sourceUrl: null,
-    originalText: 'AWS求人',
-    createdAt: '2026-10-05T00:00:00Z',
-    applicationStatus: 'SAVED',
-    salaryMin: null,
-    salaryMax: null,
-    applicationDeadline: null,
-    version: 3,
-  };
-
-  const latestJobPosting: JobPosting = {
-    ...staleJobPosting,
-    title: 'AWSクラウドエンジニア',
+    originalText: '最新のAWS求人',
+    salaryMin: 400000,
     version: 5,
   };
-
   const initialPage = {
     ...mockPage,
     content: [staleJobPosting],
@@ -1761,71 +1666,56 @@ test('version 불일치가 발생하면 안내 message를 표시하고, 최신 �
     last: true,
   };
 
-  const refreshedPage = {
-    ...initialPage,
-    content: [latestJobPosting],
-  };
-
   vi.mocked(fetchJobPostings)
     .mockResolvedValueOnce(initialPage)
-    .mockResolvedValueOnce(refreshedPage);
-
-  vi.mocked(updateJobPosting)
-    .mockRejectedValueOnce(
-      new ApiError(
-        'JobPosting version conflict',
-        412,
-        'JOB_POSTING_VERSION_CONFLICT',
-      ),
-    );
+    .mockResolvedValueOnce({
+      ...initialPage,
+      content: [latestJobPosting],
+    });
+  vi.mocked(updateJobPosting).mockRejectedValueOnce(
+    new ApiError(
+      'JobPosting version conflict',
+      412,
+      'JOB_POSTING_VERSION_CONFLICT',
+    ),
+  );
 
   const user = userEvent.setup();
-
   renderApp();
-
-  const editButton =
-    await screen.findByRole('button', {
-      name: '수정',
-    });
-
-  await user.click(editButton);
-
-  const titleInput =
-    screen.getByRole('textbox', {
-      name: '공고 제목',
-    });
-
+  await user.click(await screen.findByRole('button', { name: '수정' }));
+  const titleInput = screen.getByRole('textbox', { name: '공고 제목' });
   await user.clear(titleInput);
-  await user.type(
-    titleInput,
-    '自分が修正したタイトル',
-  );
+  await user.type(titleInput, '自分が修正したタイトル');
+  await user.click(screen.getByRole('button', { name: '저장' }));
 
-  await user.click(
-    screen.getByRole('button', {
-      name: '저장',
-    }),
-  );
-
-  expect(
-    await screen.findByRole('alert'),
-  ).toHaveTextContent(
+  expect(await screen.findByRole('alert')).toHaveTextContent(
     '다른 화면에서 채용공고가 수정되었습니다.',
   );
+  expect(await screen.findByRole('heading', {
+    name: latestJobPosting.title,
+    level: 2,
+  })).toBeInTheDocument();
+  expect(screen.queryByRole('textbox', { name: '공고 제목' })).not.toBeInTheDocument();
+  expect(updateJobPosting).toHaveBeenCalledTimes(1);
 
-  await waitFor(() => {
-    expect(fetchJobPostings)
-      .toHaveBeenCalledTimes(2);
-  });
-
-  expect(
-    screen.getByRole('textbox', {
-      name: '공고 제목',
+  await user.click(screen.getByRole('button', { name: '수정' }));
+  expect(screen.getByRole('textbox', { name: '공고 제목' }))
+    .toHaveValue(latestJobPosting.title);
+  expect(screen.getByRole('textbox', { name: '공고 원문' }))
+    .toHaveValue(latestJobPosting.originalText);
+  expect(screen.getByRole('combobox', { name: '최저 월급' }))
+    .toHaveValue(String(latestJobPosting.salaryMin));
+  await user.click(screen.getByRole('button', { name: '저장' }));
+  expect(updateJobPosting).toHaveBeenLastCalledWith(
+    1,
+    expect.objectContaining({
+      title: latestJobPosting.title,
+      originalText: latestJobPosting.originalText,
+      salaryMin: latestJobPosting.salaryMin,
     }),
-  ).toHaveValue('自分が修正したタイトル');
-
+    latestJobPosting.version,
+  );
 });
-
 test('Status 변경 도중에 version 불일치가 발생하면 안내 message를 표시하고, 최신 공고를 다시 조회한다', async () => {
   const staleJobPosting: JobPosting = {
     id: 1,
