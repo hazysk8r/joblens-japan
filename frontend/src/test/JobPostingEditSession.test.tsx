@@ -67,6 +67,7 @@ function conflict() {
   return new ApiError('JobPosting version conflict', 412, 'JOB_POSTING_VERSION_CONFLICT');
 }
 
+// 求人タイトルをもとに、該当する求人カードを取得する。
 function cardFor(title: string) {
   const card = screen.getByRole('heading', { name: title, level: 2 }).closest('li');
   if (!card) {

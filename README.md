@@ -48,6 +48,7 @@ DevOps
 - Required skills extraction
 - Job posting memo CRUD
 - Application deadline registration and editing
+- Application status change history with automatic refresh
 
 ### Search and Filtering
 
@@ -74,12 +75,14 @@ DevOps
 - URL query state for keyword, status, and page
 - Browser history restoration
 - Pagination boundary correction
+- Edit-session protection and recovery after version conflicts
 
 ### Testing and CI
 
 - Backend and frontend regression tests
 - PostgreSQL integration tests with Testcontainers
 - Optimistic locking integration tests
+- Regression tests for stale edit sessions and asynchronous responses
 - GitHub Actions CI
 
 ## Architecture
