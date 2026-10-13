@@ -23,6 +23,16 @@ public class DeadlineRangeValidator implements ConstraintValidator<ValidDeadline
       return true;
     }
 
-    return !from.isAfter(to);
+    if (!from.isAfter(to)) {
+      return true;
+    }
+
+    // デフォルトの制約違反を無効にする。
+    context.disableDefaultConstraintViolation();
+    // 既存のメッセージを使い、deadlineToに制約違反を追加する。
+    context.buildConstraintViolationWithTemplate(context.getDefaultConstraintMessageTemplate())
+        .addPropertyNode("deadlineTo")
+        .addConstraintViolation();
+    return false;
   }
 }

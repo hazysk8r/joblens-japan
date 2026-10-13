@@ -22,6 +22,21 @@ public class SalaryRangeValidator implements ConstraintValidator<ValidSalaryRang
       return true;
     }
 
-    return salaryMin <= salaryMax;
+    // 負の値は各フィールドの@PositiveOrZeroで検証し、範囲エラーとの競合を避ける。
+    if (salaryMin < 0 || salaryMax < 0) {
+      return true;
+    }
+
+    if (salaryMin <= salaryMax) {
+      return true;
+    }
+
+    // デフォルトの制約違反を無効にする。
+    context.disableDefaultConstraintViolation();
+    // 既存のメッセージを使い、deadlineToに制約違反を追加する。
+    context.buildConstraintViolationWithTemplate(context.getDefaultConstraintMessageTemplate())
+        .addPropertyNode("salaryMax")
+        .addConstraintViolation();
+    return false;
   }
 }

@@ -39,6 +39,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.aMapWithSize;
+import static org.hamcrest.Matchers.not;
 
 /**
  * 실제 Spring 애플리케이션 컨텍스트를 실행하고,
@@ -113,6 +115,80 @@ class JobPostingControllerTest {
                                 .andExpect(jsonPath("$.fieldErrors.originalText")
                                                 .value("공고 원문은 필수입니다."));
                 // mockMvc는 실제 브라우저나 curl.exe 없이 Spring MVC에 가짜 HTTP 요청을 보낸다.
+        }
+
+        @Test
+        void 생성시_급여_역범위_메시지를_salaryMax에_반환한다() throws Exception {
+                mockMvc.perform(post("/api/job-postings")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                        {
+                                          "title": "バックエンドエンジニア",
+                                          "originalText": "JavaとSpring Bootの開発業務",
+                                          "salaryMin": 500000,
+                                          "salaryMax": 300000
+                                        }
+                                        """))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.status").value(400))
+                                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                                .andExpect(jsonPath("$.fieldErrors", aMapWithSize(1)))
+                                .andExpect(jsonPath("$.fieldErrors.salaryMax")
+                                                .value("최소 급여는 최대 급여보다 클 수 없습니다."));
+
+                assertEquals(0L, jobPostingRepository.count());
+        }
+
+        @Test
+        void 수정시_급여_역범위_메시지를_반환하고_데이터와_version을_유지한다() throws Exception {
+                JobPosting saved = jobPostingRepository.saveAndFlush(
+                                new JobPosting("テスト株式会社", "既存タイトル", null,
+                                                "既存の求人原文", 300000, 500000, null));
+                Long version = saved.getVersion();
+
+                mockMvc.perform(put("/api/job-postings/{id}", saved.getId())
+                                .header(HttpHeaders.IF_MATCH, "\"" + version + "\"")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                        {
+                                          "title": "変更タイトル",
+                                          "originalText": "変更された求人原文",
+                                          "salaryMin": 500000,
+                                          "salaryMax": 300000
+                                        }
+                                        """))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                                .andExpect(jsonPath("$.fieldErrors", aMapWithSize(1)))
+                                .andExpect(jsonPath("$.fieldErrors.salaryMax")
+                                                .value("최소 급여는 최대 급여보다 클 수 없습니다."));
+
+                JobPosting unchanged = jobPostingRepository.findById(saved.getId()).orElseThrow();
+                assertEquals("既存タイトル", unchanged.getTitle());
+                assertEquals("既存の求人原文", unchanged.getOriginalText());
+                assertEquals(300000, unchanged.getSalaryMin());
+                assertEquals(500000, unchanged.getSalaryMax());
+                assertEquals(version, unchanged.getVersion());
+        }
+
+        @Test
+        void 제목_누락과_급여_역범위의_메시지를_함께_반환한다() throws Exception {
+                mockMvc.perform(post("/api/job-postings")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                        {
+                                          "title": "",
+                                          "originalText": "JavaとSpring Bootの開発業務",
+                                          "salaryMin": 500000,
+                                          "salaryMax": 300000
+                                        }
+                                        """))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                                .andExpect(jsonPath("$.fieldErrors", aMapWithSize(2)))
+                                .andExpect(jsonPath("$.fieldErrors.title").value("공고 제목은 필수입니다."))
+                                .andExpect(jsonPath("$.fieldErrors.salaryMax")
+                                                .value("최소 급여는 최대 급여보다 클 수 없습니다."));
         }
 
         @Test
@@ -743,7 +819,27 @@ class JobPostingControllerTest {
                                 .param("salaryMax", "300000"))
                                 .andExpect(status().isBadRequest())
                                 .andExpect(jsonPath("$.status").value(400))
-                                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+                                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                                .andExpect(jsonPath("$", aMapWithSize(6)))
+                                .andExpect(jsonPath("$.message").value("입력값이 올바르지 않습니다."))
+                                .andExpect(jsonPath("$.path").value("/api/job-postings"))
+                                .andExpect(jsonPath("$.timestamp").exists())
+                                .andExpect(jsonPath("$.fieldErrors", aMapWithSize(1)))
+                                .andExpect(jsonPath("$.fieldErrors.salaryMax")
+                                                .value("최소 급여는 최대 급여보다 클 수 없습니다."));
+        }
+
+        @Test
+        void 음수_최고급여에서는_범위오류보다_필드검증_메시지를_반환한다() throws Exception {
+                mockMvc.perform(get("/api/job-postings")
+                                .param("salaryMin", "0")
+                                .param("salaryMax", "-10"))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                                .andExpect(jsonPath("$.fieldErrors", aMapWithSize(1)))
+                                .andExpect(jsonPath("$.fieldErrors.salaryMax").isNotEmpty())
+                                .andExpect(jsonPath("$.fieldErrors.salaryMax",
+                                                not("최소 급여는 최대 급여보다 클 수 없습니다.")));
         }
 
         @Test
@@ -765,7 +861,10 @@ class JobPostingControllerTest {
                     .param("deadlineTo", "2026-10-01"))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.status").value(400))
-                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                    .andExpect(jsonPath("$.fieldErrors", aMapWithSize(1)))
+                    .andExpect(jsonPath("$.fieldErrors.deadlineTo")
+                            .value("시작일은 마감일보다 뒤의 날짜를 선택할 수 없습니다."));
         }
     }
 
