@@ -12,7 +12,7 @@ import type {
   DeadlineFilter,
 } from '../types/jobPosting';
 
-import { ApiError } from './apiError';
+import { parseApiError } from './apiError';
 
 /**
  * 백엔드의 채용공고 목록 API를 호출한다.
@@ -73,8 +73,9 @@ export async function fetchJobPostings(
   );
 
   if (!response.ok) {
-    throw new Error(
-      `채용공고 조회에 실패했습니다. status=${response.status}`,
+    throw await parseApiError(
+      response,
+      '채용공고 조회에 실패했습니다.',
     );
   }
 
@@ -100,11 +101,9 @@ export async function createJobPosting(
   });
 
   if (!response.ok) {
-    const errorBody = await response.text();
-
-    throw new Error(
-      `채용공고 등록에 실패했습니다. ` +
-        `status=${response.status}, body=${errorBody}`,
+    throw await parseApiError(
+      response,
+      '채용공고 등록에 실패했습니다.',
     );
   }
 
@@ -125,11 +124,9 @@ export async function deleteJobPosting(
   );
 
   if (!response.ok) {
-    const errorBody = await response.text();
-
-    throw new Error(
-      `채용공고 삭제에 실패했습니다.` + 
-        `status=${response.status}, body=${errorBody}`,
+    throw await parseApiError(
+      response,
+      '채용공고 삭제에 실패했습니다.',
     );
   }
 
@@ -157,18 +154,9 @@ export async function updateJobPosting(
   );
 
   if (!response.ok) {
-    const errorBody = await response
-      .json()
-      .catch(() => null) as {
-        code?: string;
-        message?: string;
-      } | null;
-
-    throw new ApiError(
-      errorBody?.message ??
-        '채용공고 수정에 실패했습니다.',
-      response.status,
-      errorBody?.code,
+    throw await parseApiError(
+      response,
+      '채용공고 수정에 실패했습니다.',
     );
   }
 
@@ -193,18 +181,9 @@ export async function updateApplicationStatus(
   );
 
   if (!response.ok) {
-    const errorBody = await response
-      .json()
-      .catch(() => null) as {
-        code?: string;
-        message?: string;
-      } | null;
-
-    throw new ApiError(
-      errorBody?.message ??
-        '지원 상태 변경에 실패하였습니다.',
-      response.status,
-      errorBody?.code,
+    throw await parseApiError(
+      response,
+      '지원 상태 변경에 실패하였습니다.',
     );
   }
 
@@ -218,11 +197,9 @@ export async function fetchApplicationStatusSummary(
   );
 
   if (!response.ok) {
-    const errorBody = await response.text();
-
-    throw new Error(
-      `지원 상태 요약을 불러오는 데 실패하였습니다. ` +
-        `status=${response.status}, body=${errorBody}`,
+    throw await parseApiError(
+      response,
+      '지원 상태 요약을 불러오는 데 실패하였습니다.',
     );
   }
 
@@ -237,12 +214,9 @@ export async function fetchApplicationStatusHistory(
   );
 
   if (!response.ok) {
-    const errorBody = await response.json();
-
-    throw new ApiError(
-      errorBody.message ?? "変更履歴の取得に失敗しました。",
-      response.status,
-      errorBody.codePointAt,
+    throw await parseApiError(
+      response,
+      '変更履歴の取得に失敗しました。',
     );
   }
 
@@ -261,8 +235,9 @@ export async function extractRequiredSkills(
   );
 
   if (!response.ok) {
-    throw new Error(
-      `기술 스택 조회에 실패하였습니다. status=${response.status}`,
+    throw await parseApiError(
+      response,
+      '기술 스택 조회에 실패하였습니다.',
     );
   }
 
