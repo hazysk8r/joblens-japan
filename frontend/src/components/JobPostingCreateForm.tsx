@@ -2,7 +2,8 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import './JobPostingCreateForm.css';
 import { createJobPosting } from '../api/jobPostingApi';
-import type { SalaryFilter } from '../types/jobPosting';
+import { ApiError } from '../api/apiError';
+import type { CreateJobPostingRequest, SalaryFilter } from '../types/jobPosting';
 import { SALARY_OPTIONS } from '../constants/salaryOptions';
 
 interface JobPostingCreateFormProps {
@@ -27,6 +28,29 @@ function JobPostingCreateForm({
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // フィールドのエラー状態に応じて、アクセシビリティ属性を設定する。
+  const getFieldErrorAttributes = (field: keyof CreateJobPostingRequest) => ({
+    'aria-invalid': fieldErrors[field] ? true : undefined,
+    'aria-describedby': fieldErrors[field]
+      ? `create-${field}-error`
+      : undefined,
+  });
+
+  // 該当フィールドにエラーがある場合、そのメッセージを表示する。
+  const renderFieldError = (field: keyof CreateJobPostingRequest) => {
+    const fieldError = fieldErrors[field];
+
+    return fieldError ? (
+      <p
+        id={`create-${field}-error`}
+        className="job-posting-create-form__error"
+      >
+        {fieldError}
+      </p>
+    ) : null;
+  };
 
   const handleSubmit = async (
     event: FormEvent<HTMLFormElement>,
@@ -36,6 +60,7 @@ function JobPostingCreateForm({
     setSubmitting(true);
     setMessage(null);
     setError(null);
+    setFieldErrors({});
 
     try {
       await createJobPosting({
@@ -60,6 +85,7 @@ function JobPostingCreateForm({
       setOriginalText('');
       setSalaryMin(null);
       setSalaryMax(null);
+      setApplicationDeadline('');
 
       setMessage('채용공고가 등록되었습니다.');
 
@@ -69,6 +95,10 @@ function JobPostingCreateForm({
        */
       await onCreated();
     } catch (caughtError) {
+      if (caughtError instanceof ApiError) {
+        setFieldErrors(caughtError.fieldErrors);
+      }
+
       const errorMessage =
         caughtError instanceof Error
           ? caughtError.message
@@ -89,18 +119,21 @@ function JobPostingCreateForm({
           <label htmlFor="companyName">회사명</label>
           <input
             id="companyName"
+            {...getFieldErrorAttributes('companyName')}
             type="text"
             value={companyName}
             onChange={(event) =>
               setCompanyName(event.target.value)
             }
           />
+          {renderFieldError('companyName')}
         </div>
 
         <div>
           <label htmlFor="title">공고 제목</label>
           <input
             id="title"
+            {...getFieldErrorAttributes('title')}
             type="text"
             value={title}
             onChange={(event) =>
@@ -108,36 +141,42 @@ function JobPostingCreateForm({
             }
             required
           />
+          {renderFieldError('title')}
         </div>
 
         <div>
           <label htmlFor="sourceUrl">공고 URL</label>
           <input
             id="sourceUrl"
+            {...getFieldErrorAttributes('sourceUrl')}
             type="url"
             value={sourceUrl}
             onChange={(event) =>
               setSourceUrl(event.target.value)
             }
           />
+          {renderFieldError('sourceUrl')}
         </div>
 
         <div>
           <label htmlFor="originalText">공고 원문</label>
           <textarea
             id="originalText"
+            {...getFieldErrorAttributes('originalText')}
             value={originalText}
             onChange={(event) =>
               setOriginalText(event.target.value)
             }
             required
           />
+          {renderFieldError('originalText')}
         </div>
 
         <div>
           <label htmlFor="create-salaryMin">최저 월급</label>
           <select
             id="create-salaryMin"
+            {...getFieldErrorAttributes('salaryMin')}
             value={salaryMin ?? ""}
             onChange={(event) => {
               const value = event.target.value;
@@ -162,12 +201,14 @@ function JobPostingCreateForm({
               </option>
             ))}
           </select>
+          {renderFieldError('salaryMin')}
         </div>
 
         <div>
           <label htmlFor="create-salaryMax">최고 월급</label>
           <select
             id="create-salaryMax"
+            {...getFieldErrorAttributes('salaryMax')}
             value={salaryMax ?? ""}
             onChange={(event) => {
               const value = event.target.value;
@@ -192,18 +233,21 @@ function JobPostingCreateForm({
               </option>
             ))}
           </select>
+          {renderFieldError('salaryMax')}
         </div>
 
         <div>
           <label htmlFor="applicationDeadline">応募締切日</label>
           <input
             id="applicationDeadline"
+            {...getFieldErrorAttributes('applicationDeadline')}
             type="date"
             value={applicationDeadline}
             onChange={(event) => 
               setApplicationDeadline(event.target.value)
             }
           />
+          {renderFieldError('applicationDeadline')}
         </div>
 
         <button type="submit" disabled={submitting}>
@@ -212,7 +256,11 @@ function JobPostingCreateForm({
       </form>
 
       {message && <p>{message}</p>}
-      {error && <p>{error}</p>}
+      {error && (
+        <p role="alert" className="job-posting-create-form__error">
+          {error}
+        </p>
+      )}
     </section>
   );
 }

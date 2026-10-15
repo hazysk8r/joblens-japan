@@ -1,6 +1,7 @@
 .job-posting-create-form {
   --create-muted-bg: #f7f8fa;
   --create-action: #334e68;
+  --create-error: #b42318;
 
   min-width: 0;
   padding: 1.5rem;
@@ -43,6 +44,16 @@
   font: inherit;
 }
 
+.job-posting-create-form__error {
+  margin-top: 0.4rem;
+  color: var(--create-error);
+  font-size: 0.85rem;
+}
+
+.job-posting-create-form [aria-invalid='true'] {
+  border-color: var(--create-error);
+}
+
 .job-posting-create-form textarea {
   display: block;
   min-height: 8rem;
@@ -80,5 +91,11 @@
 @media (max-width: 600px) {
   .job-posting-create-form {
     padding: 1rem;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .job-posting-create-form {
+    --create-error: #fda29b;
   }
 }
