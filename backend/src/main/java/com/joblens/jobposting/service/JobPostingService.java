@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -262,23 +263,19 @@ public class JobPostingService {
     }
 
     public ApplicationStatusSummaryResponse getApplicationStatusSummary() {
-        long saved = jobPostingRepository
-                .countByApplicationStatus(ApplicationStatus.SAVED);
-        long applied = jobPostingRepository
-                .countByApplicationStatus(ApplicationStatus.APPLIED);
-        long interviewing = jobPostingRepository
-                .countByApplicationStatus(ApplicationStatus.INTERVIEWING);
-        long offered = jobPostingRepository
-                .countByApplicationStatus(ApplicationStatus.OFFERED);
-        long rejected = jobPostingRepository
-                .countByApplicationStatus(ApplicationStatus.REJECTED);
+        // 集計結果の行順に依存せず参照できるよう、応募状況をキーに件数を保持する。
+        EnumMap<ApplicationStatus, Long> counts = new EnumMap<>(ApplicationStatus.class);
+        for (var result : jobPostingRepository.countGroupedByApplicationStatus()) {
+            counts.put(result.getApplicationStatus(), result.getPostingCount());
+        }
         
+        // 集計結果に含まれない応募状況は0件として返す。求人が0件の場合も全項目を0件とする。
         return new ApplicationStatusSummaryResponse(
-            saved,
-            applied,
-            interviewing,
-            offered,
-            rejected
+            counts.getOrDefault(ApplicationStatus.SAVED, 0L),
+            counts.getOrDefault(ApplicationStatus.APPLIED, 0L),
+            counts.getOrDefault(ApplicationStatus.INTERVIEWING, 0L),
+            counts.getOrDefault(ApplicationStatus.OFFERED, 0L),
+            counts.getOrDefault(ApplicationStatus.REJECTED, 0L)
         );
     }
 
