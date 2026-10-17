@@ -629,25 +629,8 @@ function HomePage() {
     try {
       await deleteJobPosting(jobPosting.id);
 
-      /*
-       * 현재 페이지에 공고가 한 개뿐이고
-       * 첫 페이지가 아니라면,
-       * 삭제 후 빈 페이지가 되므로 이전 페이지를 조회한다.
-       */
-      const pageAfterDelete =
-        jobPostings.length === 1 && currentPage > 0
-          ? currentPage - 1
-          : currentPage;
-      await loadJobPostings(
-        appliedKeyword,
-        appliedStatus,
-        pageAfterDelete,
-        sorting,
-        appliedSalaryMin,
-        appliedSalaryMax,
-        appliedDeadlineFrom,
-        appliedDeadlineTo,
-      );
+      // 最新の検索条件で再取得し、削除後のページ補正は共通処理に任せる。
+      await loadJobPostings(...latestListQueryRef.current);
       await loadApplicationStatusSummary();
     } catch (caughtError) {
       const message =
@@ -798,16 +781,7 @@ function HomePage() {
     try {
       await updateApplicationStatus(id, { status }, expectedVersion);
 
-      await loadJobPostings(
-        appliedKeyword,
-        appliedStatus,
-        currentPage,
-        sorting,
-        appliedSalaryMin,
-        appliedSalaryMax,
-        appliedDeadlineFrom,
-        appliedDeadlineTo,
-      );
+      await loadJobPostings(...latestListQueryRef.current);
 
       await loadApplicationStatusSummary();
 
@@ -825,16 +799,7 @@ function HomePage() {
           '다른 화면에서 채용공고가 수정되었습니다.',
         );
 
-        await loadJobPostings(
-          appliedKeyword,
-          appliedStatus,
-          currentPage,
-          sorting,
-          appliedSalaryMin,
-          appliedSalaryMax,
-          appliedDeadlineFrom,
-          appliedDeadlineTo,
-        );
+        await loadJobPostings(...latestListQueryRef.current);
 
         await loadApplicationStatusSummary();
 
