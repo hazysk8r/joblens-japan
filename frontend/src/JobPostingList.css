@@ -67,6 +67,48 @@
   line-height: 1.2;
 }
 
+.application-status-summary > .application-status-summary-message {
+  grid-column: 1 / -1;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+}
+
+.application-status-summary-error {
+  grid-column: 1 / -1;
+  overflow-wrap: anywhere;
+}
+
+.application-status-summary-error > p {
+  margin: 0 0 0.5rem;
+}
+
+.application-status-summary-retry {
+  grid-column: 1 / -1;
+  justify-self: start;
+  max-width: 100%;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+  cursor: pointer;
+}
+
+.application-status-summary-retry:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.application-status-summary-retry:focus-visible {
+  outline: 2px solid var(--text-h);
+  outline-offset: 3px;
+}
+
 .home-header > .create-job-posting-link {
   box-sizing: border-box;
   display: inline-flex;

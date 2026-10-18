@@ -129,6 +129,10 @@ function HomePage() {
 
   }>());
 
+  const latestSummaryRequestIdRef = useRef(0);
+  // アンマウント後にサマリーの再取得やState更新を行わないようにする。
+  const summaryMountedRef = useRef(false);
+
   const [keyword, setKeyword] = useState(keywordFromUrl);
   const [appliedKeyword, setAppliedKeyword] = useState(keywordFromUrl);
   const [jobPostings, setJobPostings] = useState<JobPosting[]>([]);
@@ -149,6 +153,8 @@ function HomePage() {
   const [editRecoveries, setEditRecoveries] = useState<Record<number, EditRecovery>>({});
   const [updatingStatusId, setUpdatingStatusId] = useState<number | null>(null);
   const [statusSummary, setStatusSummary] = useState<ApplicationStatusSummaryResponse | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
   const [status, setStatus] = useState<StatusFilter>(statusFromUrl);
   const [appliedStatus, setAppliedStatus] = useState<StatusFilter>(statusFromUrl);
   const [salaryMin, setSalaryMin] = useState<number | null>(null);
@@ -413,23 +419,47 @@ function HomePage() {
     applyListPage,
   ]);
 
-  const loadApplicationStatusSummary = useCallback(async () => {
+  // 初回取得と再取得で応答処理を共有し、最新の有効な要求だけを反映する。
+  const fetchAndApplyApplicationStatusSummary = useCallback(async (requestId: number) => {
     try {
       const summary = await fetchApplicationStatusSummary();
 
+      if (!summaryMountedRef.current || requestId !== latestSummaryRequestIdRef.current) {
+        return;
+      }
+
       setStatusSummary(summary);
     } catch (caughtError) {
+      if (!summaryMountedRef.current || requestId !== latestSummaryRequestIdRef.current) {
+        return;
+      }
+
       const message =
         caughtError instanceof Error
           ? caughtError.message
           : '지원 상태 요약을 불러오는 데 실패하였습니다.';
-      setError(message);
+      setSummaryError(message);
+    } finally {
+      if (summaryMountedRef.current && requestId === latestSummaryRequestIdRef.current) {
+        setSummaryLoading(false);
+      }
     }
   }, []);
 
+  const loadApplicationStatusSummary = useCallback(async () => {
+    if (!summaryMountedRef.current) {
+      return;
+    }
+
+    const requestId = ++latestSummaryRequestIdRef.current;
+    setSummaryLoading(true);
+    setSummaryError(null);
+    await fetchAndApplyApplicationStatusSummary(requestId);
+  }, [fetchAndApplyApplicationStatusSummary]);
+
   /*
   * 初回表示時はURLの検索条件をもとに
-  * 求人一覧と応募状況サマリーを取得する。
+  * 求人一覧を取得する。
   */
   useEffect(() => {
     let ignore = false;
@@ -443,28 +473,23 @@ function HomePage() {
 
     const loadInitialData = async () => {
       try {
-        const [page, summary] =
-          await Promise.all([
-            fetchJobPostings(
-              initialKeyword,
-              initialStatus,
-              initialPage,
-              DEFAULT_SORTING,
-              null,
-              null,
-              null,
-              null,
-            ),
-            fetchApplicationStatusSummary(),
-          ]);
+        const page =
+          await fetchJobPostings(
+            initialKeyword,
+            initialStatus,
+            initialPage,
+            DEFAULT_SORTING,
+            null,
+            null,
+            null,
+            null,
+          );
 
         if (ignore) {
           return;
         }
 
         applyListPage(page, requestId);
-        // 一覧の新しい取得が開始されても、未取得のサマリーは初期応答から表示する。
-        setStatusSummary((currentSummary) => currentSummary ?? summary);
       } catch (caughtError) {
         if (ignore || requestId !== latestListRequestIdRef.current) {
           return;
@@ -489,6 +514,18 @@ function HomePage() {
       ignore = true;
     };
   }, [applyListPage]);
+
+  useEffect(() => {
+    // 初期状態は取得中のため、Effectでは状態をリセットせず要求だけを開始する。
+    summaryMountedRef.current = true;
+    const requestId = ++latestSummaryRequestIdRef.current;
+    void fetchAndApplyApplicationStatusSummary(requestId);
+
+    return () => {
+      summaryMountedRef.current = false;
+      latestSummaryRequestIdRef.current += 1;
+    };
+  }, [fetchAndApplyApplicationStatusSummary]);
 
   const handleSubmit = (
     event: FormEvent<HTMLFormElement>,
@@ -866,11 +903,12 @@ function HomePage() {
         </Link>
       </header>
 
-      {statusSummary && (
-        <ApplicationStatusSummary
-          summary={statusSummary}
-        />
-      )}
+      <ApplicationStatusSummary
+        summary={statusSummary}
+        loading={summaryLoading}
+        error={summaryError}
+        onRetry={loadApplicationStatusSummary}
+      />
 
       <hr />
 
