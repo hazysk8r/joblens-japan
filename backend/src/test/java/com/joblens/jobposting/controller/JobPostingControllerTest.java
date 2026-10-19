@@ -730,6 +730,23 @@ class JobPostingControllerTest {
     @Nested
     class SkillsTests {
         @Test
+        void 句読点付きの技術名だけを既存の配列形式で返す() throws Exception {
+                JobPosting posting = jobPostingRepository.save(
+                                new JobPosting("テスト会社", "開発者", null,
+                                                "Java. AWS. Docker. C++. JavaScript C# Java.util AWS.Lambda",
+                                                null, null, null));
+
+                mockMvc.perform(get("/api/job-postings/{id}/skills", posting.getId()))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$").isArray())
+                                .andExpect(jsonPath("$", hasSize(4)))
+                                .andExpect(jsonPath("$[0]").value("Java"))
+                                .andExpect(jsonPath("$[1]").value("AWS"))
+                                .andExpect(jsonPath("$[2]").value("Docker"))
+                                .andExpect(jsonPath("$[3]").value("C++"));
+        }
+
+        @Test
         void 기술이_포함된_공고에서__해당_포스트의_기술_스택을_확인할_수_있다() throws Exception {
                 JobPosting charlie = jobPostingRepository.save(
                                 new JobPosting("Charlie Company", "AWS Engineer", "https://example.com/charlie", "JavaとSpring Bootを使ったバックエンド開発です", 

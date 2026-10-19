@@ -290,7 +290,8 @@ public class JobPostingService {
         String normalizedOriginalText = originalText.toLowerCase(Locale.ROOT);
         List<String> extractedSkills = new ArrayList<>();
         String lookbehind = "(?<![a-zA-Z0-9+#.])";
-        String lookahead = "(?![a-zA-Z0-9+#.])";
+        // 文末のピリオドは許可し、ドットで接続された識別子は除外する。
+        String lookahead = "(?![a-zA-Z0-9+#]|\\.+[a-zA-Z0-9_+$#])";
         for (String skill : SUPPORTED_SKILLS) {
             String normalizedSkill = skill.toLowerCase(Locale.ROOT);
             String escapedSkill = Pattern.quote(normalizedSkill);

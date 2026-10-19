@@ -11,7 +11,7 @@ import {
   updateJobPosting,
 } from '../api/jobPostingApi';
 
-import { isJobPostingVersionConflict } from '../api/apiError';
+import { ApiError, isJobPostingVersionConflict } from '../api/apiError';
 
 import {
   type ApplicationStatus,
@@ -42,6 +42,11 @@ type EditingSession = {
   jobPostingId: number;
   expectedVersion: number;
   jobPosting: JobPosting;
+};
+
+type EditFieldErrors = {
+  sessionId: number;
+  fieldErrors: Record<string, string>;
 };
 
 type EditRecovery = {
@@ -149,6 +154,7 @@ function HomePage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   // 編集フォームの表示など、UIの再描画に使用する。
   const [editingSession, setEditingSession] = useState<EditingSession | null>(null);
+  const [editFieldErrors, setEditFieldErrors] = useState<EditFieldErrors | null>(null);
   const [savingSessionId, setSavingSessionId] = useState<number | null>(null);
   const [editRecoveries, setEditRecoveries] = useState<Record<number, EditRecovery>>({});
   const [updatingStatusId, setUpdatingStatusId] = useState<number | null>(null);
@@ -695,6 +701,7 @@ function HomePage() {
     };
     editingSessionRef.current = session;
     setEditingSession(session);
+    setEditFieldErrors(null);
     setError(null);
     setMutationError(null);
   };
@@ -702,6 +709,7 @@ function HomePage() {
   const handleCancelEdit = () => {
     editingSessionRef.current = null;
     setEditingSession(null);
+    setEditFieldErrors(null);
     setMutationError(null);
   };
 
@@ -713,6 +721,8 @@ function HomePage() {
     }
     editingSessionRef.current = null;
     setEditingSession(null);
+    // 現在のセッションを終了した場合だけ、そのフィールドエラーを消去する。
+    setEditFieldErrors(null);
     return true;
   };
 
@@ -757,6 +767,7 @@ function HomePage() {
 
     setSavingSessionId(session.sessionId);
     setMutationError(null);
+    setEditFieldErrors(null);
 
     try {
       await updateJobPosting(session.jobPostingId, request, session.expectedVersion);
@@ -798,6 +809,9 @@ function HomePage() {
           : '수정 중 알 수 없는 오류가 발생했습니다.';
       if (editingSessionRef.current?.sessionId === session.sessionId) {
         setMutationError(message);
+        setEditFieldErrors(caughtError instanceof ApiError
+          ? { sessionId: session.sessionId, fieldErrors: caughtError.fieldErrors }
+          : null);
       }
       
     } finally {
@@ -1135,6 +1149,9 @@ function HomePage() {
                   ? editingSession.sessionId : undefined}
                 expectedVersion={editingSession?.jobPostingId === jobPosting.id
                   ? editingSession.expectedVersion : undefined}
+                editFieldErrors={editingSession?.jobPostingId === jobPosting.id &&
+                  editFieldErrors?.sessionId === editingSession.sessionId
+                  ? editFieldErrors.fieldErrors : undefined}
                 editRecovery={editRecoveries[jobPosting.id]}
                 onRetryEditRecovery={() => {
                   void refreshEditRecovery(jobPosting.id);

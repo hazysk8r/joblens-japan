@@ -205,6 +205,17 @@
   resize: vertical;
 }
 
+/* 編集フォームのフィールドエラーだけに適用する。 */
+.job-posting-card .job-posting-edit-form .job-posting-edit-form__error {
+  margin: 0.4rem 0 0;
+  color: var(--card-danger);
+  font-size: 0.85rem;
+}
+
+.job-posting-card .job-posting-edit-form [aria-invalid='true'] {
+  border-color: var(--card-danger);
+}
+
 .job-posting-card button {
   max-width: 100%;
   min-height: 2.5rem;

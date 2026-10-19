@@ -35,6 +35,7 @@ interface JobPostingListItemProps {
 	isUpdatingStatus: boolean;
 	editSessionId?: number;
 	expectedVersion?: number;
+	editFieldErrors?: Record<string, string>;
 	editRecovery?: { pending: boolean; error: string | null };
 	onRetryEditRecovery?: () => void;
 
@@ -61,6 +62,7 @@ function JobPostingListItem({
 	isUpdatingStatus,
 	editSessionId,
 	expectedVersion,
+	editFieldErrors,
 	editRecovery,
 	onRetryEditRecovery,
 	onStartEdit,
@@ -289,6 +291,7 @@ function JobPostingListItem({
 						jobPosting={jobPosting}
 						saving={isSaving}
 						expectedVersion={expectedVersion}
+						fieldErrors={editFieldErrors}
 						onSave={onSave}
 						onCancel={onCancel}
 					/>

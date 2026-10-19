@@ -13,6 +13,7 @@ interface JobPostingEditFormProps {
   jobPosting: JobPosting;
   saving: boolean;
   expectedVersion?: number;
+  fieldErrors?: Record<string, string>;
 
   onSave: (
     id: number,
@@ -37,6 +38,7 @@ function JobPostingEditForm({
   jobPosting,
   saving,
   expectedVersion,
+  fieldErrors = {},
   onSave,
   onCancel,
 }: JobPostingEditFormProps) {
@@ -67,6 +69,27 @@ function JobPostingEditForm({
     validationError,
     setValidationError,
   ] = useState<string | null>(null);
+
+  // 求人ごとに一意なIDで、各入力欄とサーバーの検証メッセージを関連付ける。
+  const getFieldErrorAttributes = (field: keyof UpdateJobPostingRequest) => ({
+    'aria-invalid': fieldErrors[field] ? true : undefined,
+    'aria-describedby': fieldErrors[field]
+      ? `edit-${jobPosting.id}-${field}-error`
+      : undefined,
+  });
+
+  const renderFieldError = (field: keyof UpdateJobPostingRequest) => {
+    const fieldError = fieldErrors[field];
+
+    return fieldError ? (
+      <p
+        id={`edit-${jobPosting.id}-${field}-error`}
+        className="job-posting-edit-form__error"
+      >
+        {fieldError}
+      </p>
+    ) : null;
+  };
 
   const handleSubmit = async (
     event: FormEvent<HTMLFormElement>,
@@ -113,7 +136,7 @@ function JobPostingEditForm({
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form className="job-posting-edit-form" onSubmit={handleSubmit}>
       <div>
         <label
           htmlFor={`edit-company-${jobPosting.id}`}
@@ -123,6 +146,7 @@ function JobPostingEditForm({
 
         <input
           id={`edit-company-${jobPosting.id}`}
+          {...getFieldErrorAttributes('companyName')}
           type="text"
           value={editForm.companyName}
           disabled={saving}
@@ -134,6 +158,7 @@ function JobPostingEditForm({
             }));
           }}
         />
+        {renderFieldError('companyName')}
       </div>
 
       <div>
@@ -145,6 +170,7 @@ function JobPostingEditForm({
 
         <input
           id={`edit-title-${jobPosting.id}`}
+          {...getFieldErrorAttributes('title')}
           type="text"
           value={editForm.title}
           disabled={saving}
@@ -156,6 +182,7 @@ function JobPostingEditForm({
             }));
           }}
         />
+        {renderFieldError('title')}
       </div>
 
       <div>
@@ -167,6 +194,7 @@ function JobPostingEditForm({
 
         <input
           id={`edit-url-${jobPosting.id}`}
+          {...getFieldErrorAttributes('sourceUrl')}
           type="url"
           value={editForm.sourceUrl}
           disabled={saving}
@@ -178,6 +206,7 @@ function JobPostingEditForm({
             }));
           }}
         />
+        {renderFieldError('sourceUrl')}
       </div>
 
       <div>
@@ -189,6 +218,7 @@ function JobPostingEditForm({
 
         <textarea
           id={`edit-text-${jobPosting.id}`}
+          {...getFieldErrorAttributes('originalText')}
           value={editForm.originalText}
           disabled={saving}
           required
@@ -200,12 +230,14 @@ function JobPostingEditForm({
             }));
           }}
         />
+        {renderFieldError('originalText')}
       </div>
 
       <div>
         <label htmlFor={`edit-salaryMin-${jobPosting.id}`}>최저 월급</label>
         <select
           id={`edit-salaryMin-${jobPosting.id}`}
+          {...getFieldErrorAttributes('salaryMin')}
           value={editForm.salaryMin ?? ""}
           onChange={(event) => {
             const value = event.target.value;
@@ -233,12 +265,14 @@ function JobPostingEditForm({
             </option>
           ))}
         </select>
+        {renderFieldError('salaryMin')}
       </div>
 
       <div>
         <label htmlFor={`edit-salaryMax-${jobPosting.id}`}>최고 월급</label>
         <select
           id={`edit-salaryMax-${jobPosting.id}`}
+          {...getFieldErrorAttributes('salaryMax')}
           value={editForm.salaryMax ?? ""}
           onChange={(event) => {
             const value = event.target.value;
@@ -266,12 +300,14 @@ function JobPostingEditForm({
             </option>
           ))}
         </select>
+        {renderFieldError('salaryMax')}
       </div>
 
       <div>
         <label htmlFor={`edit-applicationDeadline-${jobPosting.id}`}>締切日</label>
           <input 
             id={`edit-applicationDeadline-${jobPosting.id}`}
+            {...getFieldErrorAttributes('applicationDeadline')}
             type="date"
             value={editForm.applicationDeadline}
             disabled={saving}
@@ -282,6 +318,7 @@ function JobPostingEditForm({
               }));
             }}
           />
+        {renderFieldError('applicationDeadline')}
       </div>
 
       {validationError && (
