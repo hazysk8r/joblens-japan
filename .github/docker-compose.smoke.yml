@@ -1,0 +1,5 @@
+services:
+  postgres:
+    # 既存のローカルDBとコンテナー名・公開ポートを共有しない。
+    container_name: ${COMPOSE_PROJECT_NAME:?A CI-only Compose project name is required}-postgres
+    ports: !reset []

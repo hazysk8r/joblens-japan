@@ -66,3 +66,47 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+
+  docker-smoke:
+    name: Docker Smoke Test
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        shell: bash
+
+    env:
+      COMPOSE_PROJECT_NAME: joblens-ci-${{ github.run_id }}-${{ github.run_attempt }}
+      DB_NAME: joblens_ci
+      DB_USERNAME: joblens_ci
+      DB_PASSWORD: joblens-ci-password
+      FRONTEND_PORT: '0'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Build images and wait for healthy services
+        run: bash scripts/ci/docker-smoke.sh start
+
+      - name: Check frontend and API connections
+        run: bash scripts/ci/docker-smoke.sh check
+
+      - name: Collect Docker failure diagnostics
+        if: failure()
+        run: bash scripts/ci/docker-smoke.sh diagnostics
+
+      - name: Clean up CI Docker resources
+        if: always()
+        run: bash scripts/ci/docker-smoke.sh cleanup
+
+      - name: Upload Docker failure logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: docker-smoke-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/docker-smoke
+          if-no-files-found: warn
+          retention-days: 7
