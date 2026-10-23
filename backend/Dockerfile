@@ -1,4 +1,4 @@
-FROM amazoncorretto:21-alpine-jdk AS build
+FROM amazoncorretto:24-alpine-jdk AS build
 
 WORKDIR /workspace
 
@@ -14,7 +14,7 @@ COPY src ./src
 RUN sh ./gradlew --no-daemon bootJar \
     && mv build/libs/*.jar /app.jar
 
-FROM amazoncorretto:21-alpine-jdk AS runtime
+FROM amazoncorretto:24-alpine-jdk AS runtime
 
 RUN apk add --no-cache curl \
     && addgroup -S joblens \
