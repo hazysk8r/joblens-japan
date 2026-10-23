@@ -6,13 +6,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.joblens.jobposting.domain.JobPosting;
-import com.joblens.jobposting.exception.JobPostingMemoNotFoundException;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
 import com.joblens.jobposting.repository.JobPostingRepository;
 import com.joblens.note.domain.JobPostingMemo;
 import com.joblens.note.dto.CreateJobPostingMemoRequest;
 import com.joblens.note.dto.JobPostingMemoResponse;
 import com.joblens.note.dto.UpdateJobPostingMemoRequest;
+import com.joblens.note.exception.JobPostingMemoNotFoundException;
 import com.joblens.note.repository.JobPostingMemoRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -40,12 +40,10 @@ public class JobPostingMemoService {
   }
 
   public List<JobPostingMemoResponse> getMemos(Long jobPostingId) {
-
-    jobPostingRepository.findById(jobPostingId)
-        .orElseThrow(() -> new JobPostingNotFoundException(jobPostingId));
+    validateJobPostingExists(jobPostingId);
 
     List<JobPostingMemo> jobPostingMemos = jobPostingMemoRepository.findByJobPosting_IdOrderByUpdatedAtDescIdDesc(jobPostingId);
-    
+
     // List 변환은 stream() 활용
     return jobPostingMemos.stream()
           .map(JobPostingMemoResponse::from)
@@ -54,24 +52,16 @@ public class JobPostingMemoService {
 
   @Transactional
   public void delete(Long jobPostingId, Long memoId) {
-    jobPostingRepository.findById(jobPostingId)
-        .orElseThrow(() -> new JobPostingNotFoundException(jobPostingId));
-
-    JobPostingMemo jobPostingMemo = jobPostingMemoRepository.findByIdAndJobPosting_Id(memoId, jobPostingId)
-        .orElseThrow(() -> new JobPostingMemoNotFoundException(memoId, jobPostingId));
+    JobPostingMemo jobPostingMemo = findMemo(jobPostingId, memoId);
     jobPostingMemoRepository.delete(jobPostingMemo);
   }
 
   @Transactional
   public JobPostingMemoResponse update(
-    Long jobPostingId, 
-    Long memoId, 
+    Long jobPostingId,
+    Long memoId,
     UpdateJobPostingMemoRequest request) {
-      jobPostingRepository.findById(jobPostingId)
-        .orElseThrow(() -> new JobPostingNotFoundException(jobPostingId));
-
-      JobPostingMemo jobPostingMemo = jobPostingMemoRepository.findByIdAndJobPosting_Id(memoId, jobPostingId)
-        .orElseThrow(() -> new JobPostingMemoNotFoundException(memoId, jobPostingId));
+      JobPostingMemo jobPostingMemo = findMemo(jobPostingId, memoId);
 
       jobPostingMemo.update(
         request.content()
@@ -84,6 +74,21 @@ public class JobPostingMemoService {
       jobPostingMemoRepository.flush();
 
       return JobPostingMemoResponse.from(jobPostingMemo);
+  }
+
+  // 求人情報の存在確認のみが目的のため、エンティティを読み込まずに確認する。
+  private void validateJobPostingExists(Long jobPostingId) {
+    if (!jobPostingRepository.existsById(jobPostingId)) {
+      throw new JobPostingNotFoundException(jobPostingId);
+    }
+  }
+
+  // 求人情報が存在しない場合は404の求人エラーを優先し、その後にメモを取得する。
+  private JobPostingMemo findMemo(Long jobPostingId, Long memoId) {
+    validateJobPostingExists(jobPostingId);
+
+    return jobPostingMemoRepository.findByIdAndJobPosting_Id(memoId, jobPostingId)
+        .orElseThrow(() -> new JobPostingMemoNotFoundException(memoId, jobPostingId));
   }
 
 }

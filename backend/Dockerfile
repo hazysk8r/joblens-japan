@@ -4,6 +4,10 @@ WORKDIR /workspace
 
 COPY gradlew build.gradle settings.gradle gradle.properties ./
 COPY gradle ./gradle
+
+# ソースより先にGradle本体と依存関係の情報を取得し、ソース変更時もこのレイヤーを再利用する。
+RUN sh ./gradlew --no-daemon dependencies > /dev/null
+
 COPY src ./src
 
 # テストは別途実行し、クリーンなソースから実行用JARだけを生成する。

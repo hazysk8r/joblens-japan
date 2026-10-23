@@ -1,4 +1,4 @@
-package com.joblens.jobposting.exception;
+package com.joblens.note.exception;
 
 public class JobPostingMemoNotFoundException extends RuntimeException {
 

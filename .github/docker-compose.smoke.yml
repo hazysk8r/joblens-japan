@@ -3,3 +3,18 @@ services:
     # 既存のローカルDBとコンテナー名・公開ポートを共有しない。
     container_name: ${COMPOSE_PROJECT_NAME:?A CI-only Compose project name is required}-postgres
     ports: !reset []
+
+  # ビルドレイヤーをGitHub Actionsキャッシュで再利用する。保存に失敗してもビルドは止めない。
+  backend:
+    build:
+      cache_from:
+        - type=gha,scope=joblens-backend
+      cache_to:
+        - type=gha,mode=max,scope=joblens-backend,ignore-error=true
+
+  frontend:
+    build:
+      cache_from:
+        - type=gha,scope=joblens-frontend
+      cache_to:
+        - type=gha,mode=max,scope=joblens-frontend,ignore-error=true

@@ -3,6 +3,7 @@ package com.joblens.jobposting.specification;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.data.jpa.domain.Specification;
 
@@ -35,7 +36,7 @@ public class JobPostingSpecifications {
     }
 
     return (root, query, cb) -> {
-      String escapedKeyword = escapeLikeKeyword(keyword.toLowerCase());
+      String escapedKeyword = escapeLikeKeyword(keyword.toLowerCase(Locale.ROOT));
       String pattern = "%" + escapedKeyword + "%";
 
       Predicate titleLike = cb.like(cb.lower(root.get("title")), pattern, '!');

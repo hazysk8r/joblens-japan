@@ -1,0 +1,40 @@
+version: 2
+
+# 週1回だけ確認し、マイナー・パッチ更新は1つのPRにまとめる。
+# メジャー更新は動作が変わる可能性があるため、個別のPRで確認する。
+updates:
+  # ワークフローのSHA固定と、バージョンコメントを合わせて更新する。
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        update-types: [minor, patch]
+
+  - package-ecosystem: gradle
+    directory: /backend
+    schedule:
+      interval: weekly
+    groups:
+      backend-dependencies:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    groups:
+      frontend-dependencies:
+        update-types: [minor, patch]
+
+  # Dockerfileのベースイメージを更新する。
+  - package-ecosystem: docker
+    directories:
+      - /backend
+      - /frontend
+    schedule:
+      interval: weekly
+    groups:
+      docker-images:
+        update-types: [minor, patch]

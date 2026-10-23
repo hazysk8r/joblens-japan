@@ -2,10 +2,10 @@ package com.joblens.common.error;
 
 import com.joblens.jobposting.exception.IfMatchRequiredException;
 import com.joblens.jobposting.exception.InvalidSortFieldException;
-import com.joblens.jobposting.exception.JobPostingMemoNotFoundException;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
 import com.joblens.jobposting.exception.JobPostingVersionConflictException;
 import com.joblens.jobposting.exception.MalformedIfMatchHeaderException;
+import com.joblens.note.exception.JobPostingMemoNotFoundException;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
