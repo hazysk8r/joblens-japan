@@ -24,6 +24,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 
+import com.joblens.AuthenticatedMockMvcConfiguration;
+import com.joblens.TestUsers;
 import com.joblens.TestcontainersConfiguration;
 import com.joblens.jobposting.domain.JobPosting;
 import com.joblens.jobposting.repository.JobPostingRepository;
@@ -35,7 +37,7 @@ import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, AuthenticatedMockMvcConfiguration.class})
 public class JobPostingMemoControllerTest {
   
   @Autowired
@@ -46,6 +48,9 @@ public class JobPostingMemoControllerTest {
 
   @Autowired
   private JobPostingRepository jobPostingRepository;
+
+  @Autowired
+  private TestUsers testUsers;
 
   @Autowired
   ObjectMapper objectMapper;
@@ -63,6 +68,7 @@ public class JobPostingMemoControllerTest {
   void 정상적으로_생성된_메모는_201_created_를_보여준다() throws Exception {
     JobPosting savedJobPosting = jobPostingRepository.save(
         new JobPosting(
+            testUsers.defaultUserId(),
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
@@ -104,6 +110,7 @@ public class JobPostingMemoControllerTest {
   void 공백만_있는_메모를_작성하면_400_bad_request를_반환한다() throws Exception {
     JobPosting savedJobPosting = jobPostingRepository.save(
         new JobPosting(
+            testUsers.defaultUserId(),
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
@@ -130,6 +137,7 @@ public class JobPostingMemoControllerTest {
   void 메모를_글자수_250자_이상으로_작성하면_400_bad_request를_반환한다() throws Exception {
     JobPosting savedJobPosting = jobPostingRepository.save(
         new JobPosting(
+            testUsers.defaultUserId(),
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
@@ -157,6 +165,7 @@ public class JobPostingMemoControllerTest {
   void 저장된_메모_목록을_조회할_수_있다() throws Exception {
     JobPosting savedJobPosting = jobPostingRepository.save(
         new JobPosting(
+            testUsers.defaultUserId(),
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
@@ -188,6 +197,7 @@ public class JobPostingMemoControllerTest {
   void 메모를_삭제하면_204를_반환하고_DB에서_제거된다() throws Exception {
     JobPosting savedJobPosting = jobPostingRepository.save(
         new JobPosting(
+            testUsers.defaultUserId(),
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
@@ -220,6 +230,7 @@ public class JobPostingMemoControllerTest {
   void 존재하지_않는_메모를_삭제할려고_하면_404_코드를_보여준다() throws Exception {
     JobPosting savedJobPostingA = jobPostingRepository.save(
         new JobPosting(
+            testUsers.defaultUserId(),
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
@@ -240,6 +251,7 @@ public class JobPostingMemoControllerTest {
   void 다른_채용공고에_속한_메모를_삭제하려고_하면_404를_반환하고_메모를_유지한다() throws Exception {
     JobPosting savedJobPostingA = jobPostingRepository.save(
         new JobPosting(
+            testUsers.defaultUserId(),
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
@@ -250,6 +262,7 @@ public class JobPostingMemoControllerTest {
         ));
     JobPosting savedJobPostingB = jobPostingRepository.save(
         new JobPosting(
+            testUsers.defaultUserId(),
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
@@ -276,6 +289,7 @@ public class JobPostingMemoControllerTest {
   void 메모를_수정하면_변경된_내용을_반환한다() throws Exception {
     JobPosting savedJobPosting = jobPostingRepository.save(
         new JobPosting(
+            testUsers.defaultUserId(),
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
@@ -314,6 +328,7 @@ public class JobPostingMemoControllerTest {
   void 다른_공고의_메모를_수정하려고_하면_404코드를_반환한다() throws Exception {
     JobPosting savedJobPostingA = jobPostingRepository.save(
         new JobPosting(
+            testUsers.defaultUserId(),
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
@@ -324,6 +339,7 @@ public class JobPostingMemoControllerTest {
         ));
     JobPosting savedJobPostingB = jobPostingRepository.save(
         new JobPosting(
+            testUsers.defaultUserId(),
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
@@ -362,6 +378,7 @@ public class JobPostingMemoControllerTest {
   void 업데이트_된_메모가_가장_최신의_메모로_정렬된다() throws Exception {
     JobPosting savedJobPostingA = jobPostingRepository.save(
         new JobPosting(
+            testUsers.defaultUserId(),
             "テスト会社",
             "メモテスト情報",
             "https://example.com/memotest",
@@ -409,6 +426,7 @@ public class JobPostingMemoControllerTest {
   void 수정_응답의_updatedAt과_이후_조회한_updatedAt이_같다() throws Exception {
       JobPosting savedJobPosting = jobPostingRepository.save(
               new JobPosting(
+                      testUsers.defaultUserId(),
                       "テスト会社",
                       "メモテスト情報",
                       "https://example.com/memotest",

@@ -18,3 +18,13 @@ spring:
   flyway:
     enabled: true
 
+  session:
+    jdbc:
+      # セッション用テーブルはFlywayのマイグレーションで作成する。
+      initialize-schema: never
+
+server:
+  servlet:
+    session:
+      # Cookieのセキュリティ属性はSessionCookieConfigで設定する。
+      timeout: 30m

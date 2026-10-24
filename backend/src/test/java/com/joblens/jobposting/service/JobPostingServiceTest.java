@@ -51,9 +51,11 @@ class JobPostingServiceTest {
   @InjectMocks
   private JobPostingService service;
 
+  private static final Long USER_ID = 10L;
+
   @BeforeEach
   void setUp() {
-    when(repository.findById(1L)).thenReturn(Optional.of(jobPosting));
+    when(repository.findByIdAndUserId(1L, USER_ID)).thenReturn(Optional.of(jobPosting));
     when(jobPosting.getVersion()).thenReturn(0L);
   }
 
@@ -64,7 +66,7 @@ class JobPostingServiceTest {
 
     var exception = assertThrows(
         JobPostingVersionConflictException.class,
-        () -> service.update(1L, 0L, updateRequest()));
+        () -> service.update(USER_ID, 1L, 0L, updateRequest()));
 
     assertSame(cause, exception.getCause());
     verify(repository).flush();
@@ -78,7 +80,7 @@ class JobPostingServiceTest {
     var exception = assertThrows(
         JobPostingVersionConflictException.class,
         () -> service.updateApplicationStatus(
-            1L, 0L, new UpdateApplicationStatusRequest(ApplicationStatus.APPLIED)));
+            USER_ID, 1L, 0L, new UpdateApplicationStatusRequest(ApplicationStatus.APPLIED)));
 
     assertSame(cause, exception.getCause());
     verify(repository).flush();
@@ -94,7 +96,7 @@ class JobPostingServiceTest {
 
     var exception = assertThrows(
         DataIntegrityViolationException.class,
-        () -> service.update(1L, 0L, updateRequest()));
+        () -> service.update(USER_ID, 1L, 0L, updateRequest()));
 
     assertSame(cause, exception);
   }
@@ -114,6 +116,7 @@ class JobPostingServiceTest {
       new UpdateApplicationStatusRequest(ApplicationStatus.APPLIED);
 
     service.updateApplicationStatus(
+      USER_ID,
       1L,
       0L, 
       request
@@ -146,6 +149,7 @@ class JobPostingServiceTest {
       new UpdateApplicationStatusRequest(ApplicationStatus.SAVED);
 
     service.updateApplicationStatus(
+      USER_ID,
       1L, 
       0L, 
       request

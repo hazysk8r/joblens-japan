@@ -22,6 +22,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class JobPostingStatusSummaryServiceTest {
 
+    private static final Long USER_ID = 10L;
+
     @Mock
     private JobPostingRepository repository;
 
@@ -36,9 +38,9 @@ class JobPostingStatusSummaryServiceTest {
 
     @Test
     void returnsZeroForEveryStatusWhenTheAggregateIsEmpty() {
-        when(repository.countGroupedByApplicationStatus()).thenReturn(List.of());
+        when(repository.countGroupedByApplicationStatus(USER_ID)).thenReturn(List.of());
 
-        var response = service.getApplicationStatusSummary();
+        var response = service.getApplicationStatusSummary(USER_ID);
 
         assertThat(response).isEqualTo(new ApplicationStatusSummaryResponse(0L, 0L, 0L, 0L, 0L));
         verifySingleAggregateQuery();
@@ -46,10 +48,10 @@ class JobPostingStatusSummaryServiceTest {
 
     @Test
     void returnsZeroForStatusesMissingFromTheAggregate() {
-        when(repository.countGroupedByApplicationStatus()).thenReturn(List.of(
+        when(repository.countGroupedByApplicationStatus(USER_ID)).thenReturn(List.of(
                 countRow(ApplicationStatus.REJECTED, 7L)));
 
-        var response = service.getApplicationStatusSummary();
+        var response = service.getApplicationStatusSummary(USER_ID);
 
         assertThat(response).isEqualTo(new ApplicationStatusSummaryResponse(0L, 0L, 0L, 0L, 7L));
         verifySingleAggregateQuery();
@@ -57,14 +59,14 @@ class JobPostingStatusSummaryServiceTest {
 
     @Test
     void mapsCountsByStatusRegardlessOfAggregateRowOrder() {
-        when(repository.countGroupedByApplicationStatus()).thenReturn(List.of(
+        when(repository.countGroupedByApplicationStatus(USER_ID)).thenReturn(List.of(
                 countRow(ApplicationStatus.OFFERED, 13L),
                 countRow(ApplicationStatus.APPLIED, 5L),
                 countRow(ApplicationStatus.REJECTED, 17L),
                 countRow(ApplicationStatus.SAVED, 2L),
                 countRow(ApplicationStatus.INTERVIEWING, 11L)));
 
-        var response = service.getApplicationStatusSummary();
+        var response = service.getApplicationStatusSummary(USER_ID);
 
         assertThat(response).isEqualTo(new ApplicationStatusSummaryResponse(2L, 5L, 11L, 13L, 17L));
         verifySingleAggregateQuery();
@@ -73,17 +75,17 @@ class JobPostingStatusSummaryServiceTest {
     @Test
     void preservesCountsLargerThanTheIntegerMaximum() {
         long count = (long) Integer.MAX_VALUE + 1L;
-        when(repository.countGroupedByApplicationStatus()).thenReturn(List.of(
+        when(repository.countGroupedByApplicationStatus(USER_ID)).thenReturn(List.of(
                 countRow(ApplicationStatus.APPLIED, count)));
 
-        var response = service.getApplicationStatusSummary();
+        var response = service.getApplicationStatusSummary(USER_ID);
 
         assertThat(response).isEqualTo(new ApplicationStatusSummaryResponse(0L, count, 0L, 0L, 0L));
         verifySingleAggregateQuery();
     }
 
     private void verifySingleAggregateQuery() {
-        verify(repository).countGroupedByApplicationStatus();
+        verify(repository).countGroupedByApplicationStatus(USER_ID);
         verifyNoMoreInteractions(repository);
     }
 

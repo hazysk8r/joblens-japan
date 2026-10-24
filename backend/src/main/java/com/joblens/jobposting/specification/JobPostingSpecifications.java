@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 import org.springframework.data.jpa.domain.Specification;
 
@@ -13,6 +14,12 @@ import com.joblens.jobposting.domain.JobPosting;
 import jakarta.persistence.criteria.Predicate;
 
 public class JobPostingSpecifications {
+  // 所有者で絞り込む。他の条件と違い省略できないため、nullは受け付けない。
+  public static Specification<JobPosting> ownedBy(Long userId) {
+    Objects.requireNonNull(userId, "userId must not be null");
+    return (root, query, cb) -> cb.equal(root.get("userId"), userId);
+  }
+
   // status 필터링
   public static Specification<JobPosting> hasStatus(ApplicationStatus applicationStatus) {
     if (applicationStatus == null) {

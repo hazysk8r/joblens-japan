@@ -1,5 +1,7 @@
 package com.joblens.common.error;
 
+import com.joblens.AuthenticatedMockMvcConfiguration;
+import com.joblens.TestUsers;
 import com.joblens.TestcontainersConfiguration;
 import com.joblens.jobposting.domain.ApplicationStatus;
 import com.joblens.jobposting.domain.JobPosting;
@@ -40,7 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, AuthenticatedMockMvcConfiguration.class})
 class RequestErrorResponseTest {
 
     @Autowired
@@ -48,6 +50,9 @@ class RequestErrorResponseTest {
 
     @Autowired
     private JobPostingRepository jobPostingRepository;
+
+    @Autowired
+    private TestUsers testUsers;
 
     @Autowired
     private JobPostingStatusHistoryRepository statusHistoryRepository;
@@ -181,6 +186,7 @@ class RequestErrorResponseTest {
 
     private JobPosting saveJobPosting() {
         return jobPostingRepository.saveAndFlush(new JobPosting(
+                testUsers.defaultUserId(),
                 "テスト株式会社", "既存タイトル", null, "Javaの開発", 300000, 500000, null));
     }
 

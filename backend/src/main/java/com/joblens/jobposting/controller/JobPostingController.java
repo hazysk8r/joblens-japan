@@ -1,5 +1,6 @@
 package com.joblens.jobposting.controller;
 
+import com.joblens.auth.security.AuthenticatedUser;
 import com.joblens.common.response.PageResponse;
 import com.joblens.jobposting.dto.ApplicationStatusSummaryResponse;
 import com.joblens.jobposting.dto.CreateJobPostingRequest;
@@ -19,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -48,9 +50,10 @@ public class JobPostingController {
 
     @PostMapping
     public ResponseEntity<JobPostingResponse> create(
+            @AuthenticationPrincipal AuthenticatedUser user,
             @Valid @RequestBody CreateJobPostingRequest request
     ) {
-        JobPostingResponse response = jobPostingService.create(request);
+        JobPostingResponse response = jobPostingService.create(user.getId(), request);
 
         return ResponseEntity
                 .created(URI.create("/api/job-postings/" + response.id()))
@@ -65,12 +68,13 @@ public class JobPostingController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<JobPostingResponse> update(
+            @AuthenticationPrincipal AuthenticatedUser user,
             @PathVariable Long id,
             @RequestHeader(value="If-Match", required = false) String ifMatch,
             @Valid @RequestBody UpdateJobPostingRequest request
     ) {
         Long expectedVersion = parseIfMatch(ifMatch);
-        JobPostingResponse response = jobPostingService.update(id, expectedVersion, request);
+        JobPostingResponse response = jobPostingService.update(user.getId(), id, expectedVersion, request);
 
         return okWithETag(response);
     }
@@ -82,8 +86,11 @@ public class JobPostingController {
      * HTTP 204 No Contentを返却する。
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        jobPostingService.delete(id);
+    public ResponseEntity<Void> delete(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @PathVariable Long id
+    ) {
+        jobPostingService.delete(user.getId(), id);
 
         return ResponseEntity.noContent().build();
     }
@@ -96,6 +103,7 @@ public class JobPostingController {
      */
     @GetMapping
     public PageResponse<JobPostingResponse> findAll(
+            @AuthenticationPrincipal AuthenticatedUser user,
             @RequestParam(required = false) String keyword,
 
             /*
@@ -120,13 +128,16 @@ public class JobPostingController {
 
             @Valid @ModelAttribute JobPostingDeadlineFilterRequest deadlineFilter
     ) {
-        return jobPostingService.findAll(keyword, pageable, applicationStatus, salaryFilter.salaryMin(), 
+        return jobPostingService.findAll(user.getId(), keyword, pageable, applicationStatus, salaryFilter.salaryMin(), 
                 salaryFilter.salaryMax(), deadlineFilter.deadlineFrom(), deadlineFilter.deadlineTo());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<JobPostingResponse> findById(@PathVariable Long id) {
-        JobPostingResponse response = jobPostingService.findById(id);
+    public ResponseEntity<JobPostingResponse> findById(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @PathVariable Long id
+    ) {
+        JobPostingResponse response = jobPostingService.findById(user.getId(), id);
 
         return okWithETag(response);
     }
@@ -134,12 +145,13 @@ public class JobPostingController {
     // ETagヘッダーをレスポンスに含めるため、ResponseEntityに変更した。
     @PatchMapping("/{id}/status")
     public ResponseEntity<JobPostingResponse> updateApplicationResponse(
+        @AuthenticationPrincipal AuthenticatedUser user,
         @PathVariable Long id,
         @RequestHeader(value = "If-Match", required = false) String ifMatch,
         @Valid @RequestBody UpdateApplicationStatusRequest request
     ) {
         Long expectedVersion = parseIfMatch(ifMatch);
-        JobPostingResponse response = jobPostingService.updateApplicationStatus(id, expectedVersion, request);
+        JobPostingResponse response = jobPostingService.updateApplicationStatus(user.getId(), id, expectedVersion, request);
 
         return okWithETag(response);
     }
@@ -171,19 +183,26 @@ public class JobPostingController {
 
     @GetMapping("/status-summary")
     public ApplicationStatusSummaryResponse getApplicationStatusSummaryResponse(
+            @AuthenticationPrincipal AuthenticatedUser user
     ) {
-        return jobPostingService.getApplicationStatusSummary();
+        return jobPostingService.getApplicationStatusSummary(user.getId());
     }
     
     @GetMapping("/{id}/skills")
-    public List<String> getExtractedSkills(@PathVariable Long id) {
-        return jobPostingService.extractSkills(id);
+    public List<String> getExtractedSkills(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @PathVariable Long id
+    ) {
+        return jobPostingService.extractSkills(user.getId(), id);
     }
 
     @GetMapping("/{id}/status-history")
     public ResponseEntity<List<JobPostingStatusHistoryResponse>> 
-        getApplicationStatusHistory(@PathVariable Long id) {
-            return ResponseEntity.ok(jobPostingService.getApplicationStatusHistory(id)
+        getApplicationStatusHistory(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @PathVariable Long id
+        ) {
+            return ResponseEntity.ok(jobPostingService.getApplicationStatusHistory(user.getId(), id)
         );
     }
     

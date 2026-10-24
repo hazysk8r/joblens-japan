@@ -25,8 +25,8 @@ public class JobPostingMemoService {
   private final JobPostingRepository jobPostingRepository;
 
   @Transactional
-  public JobPostingMemoResponse create(Long jobPostingId, CreateJobPostingMemoRequest request) {
-    JobPosting jobPosting = jobPostingRepository.findById(jobPostingId)
+  public JobPostingMemoResponse create(Long userId, Long jobPostingId, CreateJobPostingMemoRequest request) {
+    JobPosting jobPosting = jobPostingRepository.findByIdAndUserId(jobPostingId, userId)
     .orElseThrow(() -> new JobPostingNotFoundException(jobPostingId));
 
     JobPostingMemo jobPostingMemo = new JobPostingMemo(
@@ -39,8 +39,8 @@ public class JobPostingMemoService {
     return JobPostingMemoResponse.from(savedJobPostingMemo);
   }
 
-  public List<JobPostingMemoResponse> getMemos(Long jobPostingId) {
-    validateJobPostingExists(jobPostingId);
+  public List<JobPostingMemoResponse> getMemos(Long userId, Long jobPostingId) {
+    validateJobPostingExists(userId, jobPostingId);
 
     List<JobPostingMemo> jobPostingMemos = jobPostingMemoRepository.findByJobPosting_IdOrderByUpdatedAtDescIdDesc(jobPostingId);
 
@@ -51,17 +51,18 @@ public class JobPostingMemoService {
   }
 
   @Transactional
-  public void delete(Long jobPostingId, Long memoId) {
-    JobPostingMemo jobPostingMemo = findMemo(jobPostingId, memoId);
+  public void delete(Long userId, Long jobPostingId, Long memoId) {
+    JobPostingMemo jobPostingMemo = findMemo(userId, jobPostingId, memoId);
     jobPostingMemoRepository.delete(jobPostingMemo);
   }
 
   @Transactional
   public JobPostingMemoResponse update(
+    Long userId,
     Long jobPostingId,
     Long memoId,
     UpdateJobPostingMemoRequest request) {
-      JobPostingMemo jobPostingMemo = findMemo(jobPostingId, memoId);
+      JobPostingMemo jobPostingMemo = findMemo(userId, jobPostingId, memoId);
 
       jobPostingMemo.update(
         request.content()
@@ -76,16 +77,20 @@ public class JobPostingMemoService {
       return JobPostingMemoResponse.from(jobPostingMemo);
   }
 
-  // 求人情報の存在確認のみが目的のため、エンティティを読み込まずに確認する。
-  private void validateJobPostingExists(Long jobPostingId) {
-    if (!jobPostingRepository.existsById(jobPostingId)) {
+  // 求人情報の存在と所有者の確認のみが目的のため、エンティティを読み込まずに確認する。
+  private void validateJobPostingExists(Long userId, Long jobPostingId) {
+    if (!jobPostingRepository.existsByIdAndUserId(jobPostingId, userId)) {
       throw new JobPostingNotFoundException(jobPostingId);
     }
   }
 
-  // 求人情報が存在しない場合は404の求人エラーを優先し、その後にメモを取得する。
-  private JobPostingMemo findMemo(Long jobPostingId, Long memoId) {
-    validateJobPostingExists(jobPostingId);
+  /*
+   * メモは求人を通して所有者が決まるため、2段階で確認する。
+   * 1. 求人がログイン中のユーザーのものか(違えば404の求人エラー)
+   * 2. メモがその求人に属しているか(違えば404のメモエラー)
+   */
+  private JobPostingMemo findMemo(Long userId, Long jobPostingId, Long memoId) {
+    validateJobPostingExists(userId, jobPostingId);
 
     return jobPostingMemoRepository.findByIdAndJobPosting_Id(memoId, jobPostingId)
         .orElseThrow(() -> new JobPostingMemoNotFoundException(memoId, jobPostingId));

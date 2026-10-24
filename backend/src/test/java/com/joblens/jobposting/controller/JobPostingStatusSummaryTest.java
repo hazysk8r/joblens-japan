@@ -1,5 +1,7 @@
 package com.joblens.jobposting.controller;
 
+import com.joblens.AuthenticatedMockMvcConfiguration;
+import com.joblens.TestUsers;
 import com.joblens.TestcontainersConfiguration;
 import com.joblens.jobposting.domain.ApplicationStatus;
 import com.joblens.jobposting.domain.JobPosting;
@@ -34,7 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = "spring.jpa.properties.hibernate.generate_statistics=true")
 @AutoConfigureMockMvc
-@Import({TestcontainersConfiguration.class, JobPostingStatusSummaryTest.SqlCaptureConfiguration.class})
+@Import({TestcontainersConfiguration.class, AuthenticatedMockMvcConfiguration.class, JobPostingStatusSummaryTest.SqlCaptureConfiguration.class})
 @Execution(ExecutionMode.SAME_THREAD)
 class JobPostingStatusSummaryTest {
 
@@ -43,6 +45,9 @@ class JobPostingStatusSummaryTest {
 
     @Autowired
     private JobPostingRepository jobPostingRepository;
+
+    @Autowired
+    private TestUsers testUsers;
 
     @Autowired
     private EntityManagerFactory entityManagerFactory;
@@ -113,6 +118,7 @@ class JobPostingStatusSummaryTest {
     private void addPostings(List<JobPosting> postings, ApplicationStatus status, int count) {
         for (int index = 0; index < count; index++) {
             JobPosting posting = new JobPosting(
+                    testUsers.defaultUserId(),
                     "テスト会社", status + "-" + index, null, "求人原文", null, null, null);
             posting.changeApplicationStatus(status);
             postings.add(posting);

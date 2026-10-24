@@ -26,6 +26,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class JobPostingSkillExtractionTest {
 
+    private static final Long USER_ID = 10L;
+
     @Mock
     private JobPostingRepository repository;
 
@@ -43,7 +45,7 @@ class JobPostingSkillExtractionTest {
 
     @BeforeEach
     void 求人情報を取得できるようにする() {
-        when(repository.findById(1L)).thenReturn(Optional.of(jobPosting));
+        when(repository.findByIdAndUserId(1L, USER_ID)).thenReturn(Optional.of(jobPosting));
     }
 
     @ParameterizedTest
@@ -51,7 +53,7 @@ class JobPostingSkillExtractionTest {
     void 句読点が付いた技術名を正確に抽出する(String originalText, List<String> expectedSkills) {
         when(jobPosting.getOriginalText()).thenReturn(originalText);
 
-        assertThat(service.extractSkills(1L)).containsExactlyElementsOf(expectedSkills);
+        assertThat(service.extractSkills(USER_ID, 1L)).containsExactlyElementsOf(expectedSkills);
     }
 
     private static Stream<Arguments> 句読点を含む原文() {
@@ -90,7 +92,7 @@ class JobPostingSkillExtractionTest {
     void 別の技術名やドットで接続された識別子の一部を抽出しない(String originalText) {
         when(jobPosting.getOriginalText()).thenReturn(originalText);
 
-        assertThat(service.extractSkills(1L)).isEmpty();
+        assertThat(service.extractSkills(USER_ID, 1L)).isEmpty();
     }
 
     @Test
@@ -98,7 +100,7 @@ class JobPostingSkillExtractionTest {
         when(jobPosting.getOriginalText()).thenReturn(
                 "c++ c typescript react postgresql docker aws spring boot java JAVA AWS c++");
 
-        assertThat(service.extractSkills(1L)).containsExactly(
+        assertThat(service.extractSkills(USER_ID, 1L)).containsExactly(
                 "Java", "Spring Boot", "AWS", "Docker", "PostgreSQL", "React", "TypeScript", "C", "C++");
     }
 
@@ -108,6 +110,6 @@ class JobPostingSkillExtractionTest {
     void 原文が未設定か技術名を含まない場合は空配列を返す(String originalText) {
         when(jobPosting.getOriginalText()).thenReturn(originalText);
 
-        assertThat(service.extractSkills(1L)).isEmpty();
+        assertThat(service.extractSkills(USER_ID, 1L)).isEmpty();
     }
 }

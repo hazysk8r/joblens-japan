@@ -1,18 +1,27 @@
 #!/usr/bin/env python3
-"""Check the Compose frontend and proxied API without changing stored data."""
+"""Check the Compose frontend and proxied API.
+
+The API check signs up a throwaway user, so run it only against the CI-only database.
+"""
 
 import argparse
 from http.client import HTTPException
+from http.cookiejar import CookieJar
 from html.parser import HTMLParser
 import json
 import sys
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urljoin, urlsplit
-from urllib.request import urlopen
+from urllib.request import HTTPCookieProcessor, Request, build_opener
 
 
 class SmokeFailure(Exception):
     pass
+
+
+# セッションとCSRFトークンのCookieを、ブラウザと同じようにリクエスト間で引き継ぐ。
+COOKIES = CookieJar()
+OPENER = build_opener(HTTPCookieProcessor(COOKIES))
 
 
 def require(condition, message):
@@ -36,10 +45,11 @@ class FrontendHTML(HTMLParser):
             self.styles.append(attrs["href"])
 
 
-def fetch(url, expected_status=200):
+def fetch(url, expected_status=200, data=None, headers=None):
     path = urlsplit(url).path
+    request = Request(url, data=data, headers=headers or {}, method="POST" if data is not None else "GET")
     try:
-        response = urlopen(url, timeout=10)
+        response = OPENER.open(request, timeout=10)
     except HTTPError as error:
         response = error
     except (URLError, HTTPException, TimeoutError, OSError) as error:
@@ -102,6 +112,25 @@ def main():
     require(route.scripts == root.scripts and route.styles == root.styles,
             "Direct SPA route does not serve the same frontend entry point")
     print("PASS: direct /job-postings/new navigation serves the SPA")
+
+    content_type, body = fetch(urljoin(base, "/api/auth/me"), expected_status=401)
+    require(content_type == "application/json", "Unauthenticated API call must return JSON, not frontend HTML")
+    try:
+        error = json.loads(body)
+    except (UnicodeError, ValueError):
+        raise SmokeFailure("Unauthenticated API call returned invalid JSON") from None
+    require(isinstance(error, dict) and error.get("code") == "UNAUTHORIZED",
+            "Unauthenticated API call must return the UNAUTHORIZED error code")
+    csrf_token = next((cookie.value for cookie in COOKIES if cookie.name == "XSRF-TOKEN"), None)
+    require(csrf_token, "API must issue an XSRF-TOKEN cookie before login")
+    print("PASS: proxied API rejects unauthenticated requests and issues a CSRF token")
+
+    signup_body = json.dumps({"email": "smoke-test@example.com", "password": "smoke-test-password"}).encode()
+    content_type, body = fetch(urljoin(base, "/api/auth/signup"), expected_status=201, data=signup_body,
+                               headers={"Content-Type": "application/json", "X-XSRF-TOKEN": csrf_token})
+    require(content_type == "application/json", "Signup API must return JSON")
+    require(any(cookie.name == "SESSION" for cookie in COOKIES), "Signup must start a login session")
+    print("PASS: proxied POST with the CSRF header signs up and starts a session")
 
     query = urlencode({"page": 0, "size": 3})
     content_type, body = fetch(urljoin(base, "/api/job-postings") + "?" + query)

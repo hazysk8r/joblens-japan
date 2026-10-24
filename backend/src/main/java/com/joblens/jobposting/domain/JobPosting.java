@@ -30,6 +30,10 @@ public class JobPosting {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // 所有者の確認にだけ使うため、Userエンティティとの関連ではなくIDで保持する。
+    @Column(name = "user_id", nullable = false, updatable = false)
+    private Long userId;
+
     @Column(name = "company_name", length = 200)
     private String companyName;
 
@@ -67,6 +71,7 @@ public class JobPosting {
     private Long version;
 
     public JobPosting(
+            Long userId,
             String companyName,
             String title,
             String sourceUrl,
@@ -75,6 +80,7 @@ public class JobPosting {
             Integer salaryMax,
             LocalDate applicationDeadline
     ) {
+        this.userId = userId;
         this.companyName = companyName;
         this.title = title;
         this.sourceUrl = sourceUrl;

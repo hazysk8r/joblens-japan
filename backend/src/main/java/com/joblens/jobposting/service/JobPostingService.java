@@ -57,8 +57,10 @@ public class JobPostingService {
 
 
     @Transactional
-    public JobPostingResponse create(CreateJobPostingRequest request) {
+    public JobPostingResponse create(Long userId, CreateJobPostingRequest request) {
+        // 所有者は必ずログイン中のユーザーにする。リクエスト本文からは受け取らない。
         JobPosting jobPosting = new JobPosting(
+                userId,
                 request.companyName(),
                 request.title(),
                 request.sourceUrl(),
@@ -95,11 +97,13 @@ public class JobPostingService {
      */
     @Transactional
     public JobPostingResponse update(
+            Long userId,
             Long id,
             Long expectedVersion,
             UpdateJobPostingRequest request
     ) {
-        JobPosting jobPosting = findEntityById(id);
+        // 所有者の確認(404)をversionの確認(412)より先に行い、他人の求人の存在やversionを漏らさない。
+        JobPosting jobPosting = findEntityById(userId, id);
         validateVersion(jobPosting, expectedVersion);
 
         jobPosting.update(
@@ -125,8 +129,8 @@ public class JobPostingService {
      * 조용히 성공 처리하지 않고 404를 반환하기 위해서다.
      */
     @Transactional
-    public void delete(Long id) {
-        JobPosting jobPosting = findEntityById(id);
+    public void delete(Long userId, Long id) {
+        JobPosting jobPosting = findEntityById(userId, id);
         jobPostingRepository.delete(jobPosting);
     }
 
@@ -135,8 +139,12 @@ public class JobPostingService {
      *
      * 수정, 삭제, 단건 조회에서 같은 조회 코드를 반복하지 않도록 한다.
      */
-    private JobPosting findEntityById(Long id) {
-        return jobPostingRepository.findById(id)
+    /*
+     * 他のユーザーの求人は、存在しない求人と同じ404にする。
+     * 403にすると、そのIDの求人が存在することが分かってしまうため。
+     */
+    private JobPosting findEntityById(Long userId, Long id) {
+        return jobPostingRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new JobPostingNotFoundException(id));
     }
 
@@ -161,6 +169,7 @@ public class JobPostingService {
      * keyword가 있으면 제목·회사명·원문에서 검색한다.
      */
     public PageResponse<JobPostingResponse> findAll(
+            Long userId,
             String keyword,
             Pageable pageable,
             ApplicationStatus applicationStatus,
@@ -190,6 +199,7 @@ public class JobPostingService {
         String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword.strip();
 
         Specification<JobPosting> spec = Specification.allOf(
+            JobPostingSpecifications.ownedBy(userId),
             JobPostingSpecifications.hasKeyword(normalizedKeyword),
             JobPostingSpecifications.hasStatus(applicationStatus),
             JobPostingSpecifications.salaryOverlaps(
@@ -216,20 +226,21 @@ public class JobPostingService {
      * 데이터 없음 → JobPostingNotFoundException 발생
      * 공통 메서드 사용하도록 수정함
      */
-    public JobPostingResponse findById(Long id) {
-        JobPosting jobPosting = findEntityById(id);
+    public JobPostingResponse findById(Long userId, Long id) {
+        JobPosting jobPosting = findEntityById(userId, id);
         return JobPostingResponse.from(jobPosting);
     }
 
 
     @Transactional
     public JobPostingResponse updateApplicationStatus(
+        Long userId,
         Long id,
         Long expectedVersion,
         UpdateApplicationStatusRequest request
     ) {
         // 1. 既存の求人情報を取得し、共有versionを検証する。
-        JobPosting jobPosting = findEntityById(id);
+        JobPosting jobPosting = findEntityById(userId, id);
         validateVersion(jobPosting, expectedVersion);
 
         // 2. 履歴保存のため、変更前後の応募状態を取得する。
@@ -262,10 +273,10 @@ public class JobPostingService {
         return JobPostingResponse.from(jobPosting);
     }
 
-    public ApplicationStatusSummaryResponse getApplicationStatusSummary() {
+    public ApplicationStatusSummaryResponse getApplicationStatusSummary(Long userId) {
         // 集計結果の行順に依存せず参照できるよう、応募状況をキーに件数を保持する。
         EnumMap<ApplicationStatus, Long> counts = new EnumMap<>(ApplicationStatus.class);
-        for (var result : jobPostingRepository.countGroupedByApplicationStatus()) {
+        for (var result : jobPostingRepository.countGroupedByApplicationStatus(userId)) {
             counts.put(result.getApplicationStatus(), result.getPostingCount());
         }
         
@@ -279,9 +290,8 @@ public class JobPostingService {
         );
     }
 
-    public List<String> extractSkills(Long id) {
-        // 
-        JobPosting jobPosting = findEntityById(id);
+    public List<String> extractSkills(Long userId, Long id) {
+        JobPosting jobPosting = findEntityById(userId, id);
         String originalText = jobPosting.getOriginalText();
         
         if (originalText == null || originalText.isBlank()) {
@@ -307,9 +317,9 @@ public class JobPostingService {
     }   
 
     public List<JobPostingStatusHistoryResponse>
-        getApplicationStatusHistory(Long jobPostingId) {
+        getApplicationStatusHistory(Long userId, Long jobPostingId) {
     
-    findEntityById(jobPostingId);
+    findEntityById(userId, jobPostingId);
 
     List<JobPostingStatusHistory> histories = jobPostingStatusHistoryRepository.findByJobPosting_IdOrderByChangedAtDescIdDesc(jobPostingId);
 
