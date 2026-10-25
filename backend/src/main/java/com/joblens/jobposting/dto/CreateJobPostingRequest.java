@@ -20,9 +20,13 @@ public record CreateJobPostingRequest(
         @Size(max = 200)
         String title,
 
+        // 一般的なブラウザ・サーバーが扱えるURLの長さに合わせる。
+        @Size(max = 2048)
         String sourceUrl,
 
+        // 求人原文として十分な長さを確保しつつ、極端に大きなデータの保存を防ぐ。
         @NotBlank(message = "공고 원문은 필수입니다.")
+        @Size(max = 20000)
         String originalText,
 
         @PositiveOrZero

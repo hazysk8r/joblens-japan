@@ -18,6 +18,12 @@ spring:
   flyway:
     enabled: true
 
+  data:
+    web:
+      pageable:
+        # sizeに大きな値を指定されても、1回の一覧取得で返す件数をこの値までに抑える。
+        max-page-size: 100
+
   session:
     jdbc:
       # セッション用テーブルはFlywayのマイグレーションで作成する。

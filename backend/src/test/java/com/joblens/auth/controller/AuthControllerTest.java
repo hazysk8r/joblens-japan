@@ -180,6 +180,49 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.fieldErrors.password").exists());
     }
 
+    @Test
+    void 한글_비밀번호가_72바이트_이하면_가입하고_로그인할_수_있다() throws Exception {
+        // ハングル1文字はUTF-8で3バイトのため、24文字でちょうど72バイトになる。
+        String password = "가".repeat(24);
+
+        assertEquals(201, signup("user@example.com", password).getResponse().getStatus());
+        assertEquals(200, login("user@example.com", password).getResponse().getStatus());
+    }
+
+    @Test
+    void 비밀번호가_64자_이하라도_72바이트를_넘으면_400을_반환하고_가입하지_않는다() throws Exception {
+        // 25文字(75バイト)は文字数の上限内だが、BCryptが扱えるバイト数を超える。
+        mockMvc.perform(post("/api/auth/signup")
+                        .with(doubleSubmitCsrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(credentials("user@example.com", "가".repeat(25))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.fieldErrors.password").exists());
+
+        Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM users", Integer.class);
+        assertEquals(0, count);
+    }
+
+    @Test
+    void 세션_컬럼의_이전_길이_100자를_넘는_이메일로_가입하고_로그인할_수_있다() throws Exception {
+        // ローカル部64文字・ドメイン131文字の、形式として正しい196文字のメールアドレス。
+        String longEmail = "a".repeat(64) + "@" + "b".repeat(63) + "." + "c".repeat(63) + ".com";
+        assertTrue(longEmail.length() > 100);
+
+        MvcResult signupResult = signup(longEmail, PASSWORD);
+        assertEquals(201, signupResult.getResponse().getStatus());
+        mockMvc.perform(get("/api/auth/me").cookie(sessionCookie(signupResult)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(longEmail));
+
+        MvcResult loginResult = login(longEmail, PASSWORD);
+        assertEquals(200, loginResult.getResponse().getStatus());
+        mockMvc.perform(get("/api/auth/me").cookie(sessionCookie(loginResult)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(longEmail));
+    }
+
     // ---- ログイン ----
 
     @Test
@@ -193,6 +236,8 @@ class AuthControllerTest {
         Cookie session = sessionCookie(result);
         assertTrue(session.isHttpOnly(), "セッションCookieにHttpOnlyが設定されていない");
         assertEquals("Lax", ((MockCookie) session).getSameSite(), "セッションCookieにSameSite=Laxが設定されていない");
+        // SESSION_COOKIE_SECUREを指定しない場合は、HTTPのリクエストでもSecureが付く。
+        assertTrue(session.getSecure(), "セッションCookieにSecureが設定されていない");
     }
 
     @Test

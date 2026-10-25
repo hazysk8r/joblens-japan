@@ -17,8 +17,10 @@ public class SessionCookieConfig {
 
     @Bean
     DefaultCookieSerializerCustomizer sessionCookieSecurityCustomizer(
-            // HTTPSで公開する環境ではtrueにする。
-            @Value("${SESSION_COOKIE_SECURE:false}") boolean secure
+            // 設定し忘れても安全側になるよう、既定でSecureを付ける。
+            // HTTPで動かすローカル開発環境でのみ、明示的にfalseを指定する。
+            // (HTTPSの自動判定に任せると、プロキシの後ろでは常にHTTPと判断されてSecureが付かない場合がある。)
+            @Value("${SESSION_COOKIE_SECURE:true}") boolean secure
     ) {
         return serializer -> {
             serializer.setUseHttpOnlyCookie(true);

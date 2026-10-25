@@ -48,3 +48,9 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+// bootRunはHTTPのローカル開発専用のため、セッションCookieのSecureを外す。
+// 環境変数で指定されている場合はその値を優先する。
+tasks.named('bootRun') {
+	environment 'SESSION_COOKIE_SECURE', System.getenv('SESSION_COOKIE_SECURE') ?: 'false'
+}

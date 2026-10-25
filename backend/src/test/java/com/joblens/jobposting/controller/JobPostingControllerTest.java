@@ -33,6 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -358,6 +359,105 @@ class JobPostingControllerTest {
                 assertEquals(
                                 ApplicationStatus.SAVED,
                                 savedJobPosting.getApplicationStatus());
+        }
+    }
+
+    /**
+     * 1件のサイズと1回の一覧取得件数に上限があり、
+     * 大きなデータの保存や一覧取得でサーバーの資源を使い切れないことを確認する。
+     */
+    @Nested
+    class InputAndPageSizeLimitTests {
+        private static final int MAX_SOURCE_URL_LENGTH = 2048;
+        private static final int MAX_ORIGINAL_TEXT_LENGTH = 20000;
+
+        private String requestBody(String sourceUrl, String originalText) {
+                return """
+                                {
+                                  "title": "上限確認用の求人",
+                                  "sourceUrl": "%s",
+                                  "originalText": "%s"
+                                }
+                                """.formatted(sourceUrl, originalText);
+        }
+
+        // 指定した長さちょうどのURLを作る。
+        private String urlOfLength(int length) {
+                String prefix = "https://example.com/";
+                return prefix + "a".repeat(length - prefix.length());
+        }
+
+        @Test
+        void 생성시_URL과_원문이_상한과_같은_길이면_201을_반환한다() throws Exception {
+                mockMvc.perform(post("/api/job-postings")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody(
+                                                urlOfLength(MAX_SOURCE_URL_LENGTH),
+                                                "あ".repeat(MAX_ORIGINAL_TEXT_LENGTH))))
+                                .andExpect(status().isCreated());
+        }
+
+        @Test
+        void 생성시_URL이_상한을_넘으면_400을_반환하고_저장하지_않는다() throws Exception {
+                mockMvc.perform(post("/api/job-postings")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody(urlOfLength(MAX_SOURCE_URL_LENGTH + 1), "原文")))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                                .andExpect(jsonPath("$.fieldErrors.sourceUrl").exists());
+
+                assertEquals(0, jobPostingRepository.count());
+        }
+
+        @Test
+        void 생성시_원문이_상한을_넘으면_400을_반환하고_저장하지_않는다() throws Exception {
+                mockMvc.perform(post("/api/job-postings")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody(
+                                                "https://example.com/jobs/1",
+                                                "あ".repeat(MAX_ORIGINAL_TEXT_LENGTH + 1))))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                                .andExpect(jsonPath("$.fieldErrors.originalText").exists());
+
+                assertEquals(0, jobPostingRepository.count());
+        }
+
+        @Test
+        void 수정시_URL과_원문이_상한을_넘으면_400을_반환하고_데이터를_유지한다() throws Exception {
+                JobPosting saved = jobPostingRepository.saveAndFlush(
+                                new JobPosting(testUsers.defaultUserId(), null, "既存タイトル",
+                                                "https://example.com/old", "既存の原文", null, null, null));
+
+                mockMvc.perform(put("/api/job-postings/{id}", saved.getId())
+                                .header(HttpHeaders.IF_MATCH, "\"" + saved.getVersion() + "\"")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody(
+                                                urlOfLength(MAX_SOURCE_URL_LENGTH + 1),
+                                                "あ".repeat(MAX_ORIGINAL_TEXT_LENGTH + 1))))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.fieldErrors.sourceUrl").exists())
+                                .andExpect(jsonPath("$.fieldErrors.originalText").exists());
+
+                JobPosting unchanged = jobPostingRepository.findById(saved.getId()).orElseThrow();
+                assertEquals("https://example.com/old", unchanged.getSourceUrl());
+                assertEquals("既存の原文", unchanged.getOriginalText());
+        }
+
+        @Test
+        void 페이지_크기를_상한보다_크게_요청해도_100건까지만_반환한다() throws Exception {
+                List<JobPosting> postings = IntStream.rangeClosed(1, 101)
+                                .mapToObj(i -> new JobPosting(testUsers.defaultUserId(), null, "求人" + i,
+                                                null, "原文" + i, null, null, null))
+                                .toList();
+                jobPostingRepository.saveAll(postings);
+
+                mockMvc.perform(get("/api/job-postings").param("size", "2000"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.content.length()").value(100))
+                                .andExpect(jsonPath("$.size").value(100))
+                                .andExpect(jsonPath("$.totalElements").value(101))
+                                .andExpect(jsonPath("$.totalPages").value(2));
         }
     }
 
