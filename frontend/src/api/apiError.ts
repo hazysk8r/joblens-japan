@@ -65,6 +65,23 @@ export async function parseApiError(
   );
 }
 
+/**
+ * 画面に表示するエラーメッセージを選ぶ。
+ *
+ * 入力欄が1つのフォームでは、全体の「입력값이 올바르지 않습니다.」より
+ * その項目の検証メッセージの方が具体的なため、項目のメッセージを優先する。
+ */
+export function errorMessageOf(
+  error: unknown,
+  field: string,
+  fallbackMessage: string,
+): string {
+  if (error instanceof ApiError && error.fieldErrors[field]) {
+    return error.fieldErrors[field];
+  }
+  return error instanceof Error ? error.message : fallbackMessage;
+}
+
 export const isJobPostingVersionConflict = (
   error: unknown,
 ): boolean => {

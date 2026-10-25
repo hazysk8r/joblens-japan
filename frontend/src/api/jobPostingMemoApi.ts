@@ -4,11 +4,14 @@ import type {
   UpdateJobPostingMemoRequest,
 } from '../types/jobPostingMemo'
 
+import { apiFetch } from './apiClient';
+import { parseApiError } from './apiError';
+
 export async function createJobPostingMemo(
   jobPostingId: number,
   request: CreateJobPostingMemoRequest,
 ): Promise<JobPostingMemo>  {
-  const response = await fetch(`/api/job-postings/${jobPostingId}/notes`, {
+  const response = await apiFetch(`/api/job-postings/${jobPostingId}/notes`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -16,12 +19,10 @@ export async function createJobPostingMemo(
     body: JSON.stringify(request),
   });
 
-  if(!response.ok) {
-    const errorBody = await response.text();
-
-    throw new Error(
-      `메모 등록에 실패했습니다. ` +
-        `status=${response.status}, body=${errorBody}`,
+  if (!response.ok) {
+    throw await parseApiError(
+      response,
+      '메모 등록에 실패했습니다.',
     );
   }
 
@@ -33,13 +34,14 @@ export async function getJobPostingMemos(
 ): Promise<JobPostingMemo[]> {
 
 
-  const response = await fetch(
+  const response = await apiFetch(
     `/api/job-postings/${jobPostingId}/notes`,
   );
 
   if (!response.ok) {
-    throw new Error(
-      `메모 내용 조회에 실패하였습니다. status = ${response.status}`,
+    throw await parseApiError(
+      response,
+      '메모 내용 조회에 실패하였습니다.',
     );
   }
 
@@ -50,7 +52,7 @@ export async function deleteJobPostingMemo(
   jobPostingId: number,
   memoId: number,
 ): Promise<void> {
-  const response = await fetch(
+  const response = await apiFetch(
     `/api/job-postings/${jobPostingId}/notes/${memoId}`,
     {
       method: 'DELETE'
@@ -58,11 +60,9 @@ export async function deleteJobPostingMemo(
   );
 
   if (!response.ok) {
-    const errorBody = await response.text();
-
-    throw new Error(
-      `메모 삭제에 실패하였습니다. ` + 
-        `status=${response.status}, body=${errorBody}`,
+    throw await parseApiError(
+      response,
+      '메모 삭제에 실패하였습니다.',
     );
   }
 }
@@ -72,7 +72,7 @@ export async function updateJobPostingMemo(
   memoId: number,
   request: UpdateJobPostingMemoRequest,
 ): Promise<JobPostingMemo> {
-  const response = await fetch(
+  const response = await apiFetch(
     `/api/job-postings/${jobPostingId}/notes/${memoId}`,
     {
       method: 'PUT',
@@ -84,11 +84,9 @@ export async function updateJobPostingMemo(
   );
 
   if (!response.ok) {
-    const errorBody = await response.text();
-
-    throw new Error(
-      `메모 수정에 실패하였습니다. ` + 
-        `status=${response.status}, body=${errorBody}`,
+    throw await parseApiError(
+      response,
+      '메모 수정에 실패하였습니다.',
     );
   }
 

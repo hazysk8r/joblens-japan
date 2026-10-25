@@ -12,6 +12,7 @@ import type {
   DeadlineFilter,
 } from '../types/jobPosting';
 
+import { apiFetch } from './apiClient';
 import { parseApiError } from './apiError';
 
 /**
@@ -68,7 +69,7 @@ export async function fetchJobPostings(
   }
 
 
-  const response = await fetch(
+  const response = await apiFetch(
     `/api/job-postings?${params.toString()}`,
   );
 
@@ -88,7 +89,7 @@ export async function fetchJobPostings(
 export async function createJobPosting(
   request:CreateJobPostingRequest,
 ): Promise<JobPosting> {
-  const response = await fetch('/api/job-postings', {
+  const response = await apiFetch('/api/job-postings', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -116,7 +117,7 @@ export async function createJobPosting(
 export async function deleteJobPosting(
   id: number,
 ): Promise<void> {
-  const response = await fetch(
+  const response = await apiFetch(
     `/api/job-postings/${id}`,
     {
       method: 'DELETE',
@@ -141,7 +142,7 @@ export async function updateJobPosting(
   request: UpdateJobPostingRequest,
   expectedVersion: number
 ): Promise<JobPosting> {
-  const response = await fetch(
+  const response = await apiFetch(
     `/api/job-postings/${id}`,
     {
       method: 'PUT',
@@ -168,7 +169,7 @@ export async function updateApplicationStatus(
   request: UpdateApplicationStatusRequest,
   expectedVersion: number
 ): Promise<JobPosting> {
-  const response = await fetch(
+  const response = await apiFetch(
     `/api/job-postings/${id}/status`,
     {
       method: 'PATCH',
@@ -192,7 +193,7 @@ export async function updateApplicationStatus(
 
 export async function fetchApplicationStatusSummary(
 ): Promise<ApplicationStatusSummaryResponse> {
-  const response = await fetch(
+  const response = await apiFetch(
     `/api/job-postings/status-summary`,
   );
 
@@ -209,7 +210,7 @@ export async function fetchApplicationStatusSummary(
 export async function fetchApplicationStatusHistory(
   id: number,
 ): Promise<JobPostingStatusHistory[]> {
-  const response = await fetch(
+  const response = await apiFetch(
     `/api/job-postings/${id}/status-history`
   );
 
@@ -227,7 +228,7 @@ export async function extractRequiredSkills(
   id: number,
   signal: AbortSignal,
 ): Promise<string[]> {
-  const response = await fetch(
+  const response = await apiFetch(
     `/api/job-postings/${id}/skills`,
     {
       signal,

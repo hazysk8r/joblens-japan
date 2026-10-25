@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 
 import { createJobPostingMemo } from "../api/jobPostingMemoApi";
+import { errorMessageOf } from "../api/apiError";
 
 interface CreateJobPostingMemoProps {
   onCreated: () => Promise<void> | void;
@@ -38,11 +39,11 @@ function JobPostingMemoCreateForm({
       setMessage('메모가 성공적으로 등록되었습니다')
       await onCreated();
     } catch (caughtError) {
-      const errorMessage = 
-        caughtError instanceof Error
-          ? caughtError.message
-          : '알 수 없는 오류가 발생하였습니다';
-      setError(errorMessage);
+      setError(errorMessageOf(
+        caughtError,
+        'content',
+        '알 수 없는 오류가 발생하였습니다',
+      ));
     } finally {
       setSubmitting(false);
     }

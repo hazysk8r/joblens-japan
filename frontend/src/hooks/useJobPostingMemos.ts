@@ -5,6 +5,7 @@ import {
   getJobPostingMemos,
   updateJobPostingMemo,
 } from '../api/jobPostingMemoApi';
+import { errorMessageOf } from '../api/apiError';
 
 import type {
   JobPostingMemo,
@@ -130,11 +131,11 @@ export function useJobPostingMemos(jobPostingId: number) {
 
       await loadMemos(true);
     } catch (error) {
-      setMemoUpdateError(
-        error instanceof Error
-          ? error.message
-          : '수정 중 알 수 없는 오류가 발생하였습니다.',
-      );
+      setMemoUpdateError(errorMessageOf(
+        error,
+        'content',
+        '수정 중 알 수 없는 오류가 발생하였습니다.',
+      ));
     } finally {
       // 別のMemoが保存中の場合、その保存状態を解除しない。
       setSavingMemoId((currentSavingMemoId) =>
