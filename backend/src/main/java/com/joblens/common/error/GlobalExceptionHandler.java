@@ -1,6 +1,7 @@
 package com.joblens.common.error;
 
 import com.joblens.auth.exception.EmailAlreadyExistsException;
+import com.joblens.common.web.AuthContextChangedException;
 import com.joblens.jobposting.exception.IfMatchRequiredException;
 import com.joblens.jobposting.exception.InvalidSortFieldException;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
@@ -219,6 +220,26 @@ public class GlobalExceptionHandler {
                 Instant.now(),
                 HttpStatus.CONFLICT.value(),
                 "EMAIL_ALREADY_EXISTS",
+                exception.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(response);
+    }
+
+    // 画面のユーザーとセッションのユーザーが異なるため、変更を行わなかったことを返す。
+    @ExceptionHandler(AuthContextChangedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAuthContextChanged(
+            AuthContextChangedException exception,
+            HttpServletRequest request
+    ) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                Instant.now(),
+                HttpStatus.CONFLICT.value(),
+                "AUTH_CONTEXT_CHANGED",
                 exception.getMessage(),
                 request.getRequestURI(),
                 Map.of()
