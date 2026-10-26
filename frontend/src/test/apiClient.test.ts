@@ -182,6 +182,23 @@ describe('CSRFトークンが無効な場合', () => {
 });
 
 describe('ログインが必要な応答(401)の通知', () => {
+  test('notifyUnauthorized가 false인 요청의 401은 핸들러를 호출하지 않고, 이 옵션은 fetch에 넘기지 않는다', async () => {
+    const handler = vi.fn();
+    const unregister = setUnauthorizedHandler(handler);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(401, { code: 'UNAUTHORIZED' })));
+
+    try {
+      // ログイン状態の確認のように、401が想定内のリクエスト。
+      const response = await apiFetch('/api/auth/me', { notifyUnauthorized: false });
+
+      expect(response.status).toBe(401);
+      expect(handler).not.toHaveBeenCalled();
+      expect(vi.mocked(fetch).mock.calls[0][1]).not.toHaveProperty('notifyUnauthorized');
+    } finally {
+      unregister();
+    }
+  });
+
   test('401 UNAUTHORIZED이면 등록된 핸들러를 호출하고 응답 본문은 그대로 읽을 수 있다', async () => {
     const handler = vi.fn();
     const unregister = setUnauthorizedHandler(handler);

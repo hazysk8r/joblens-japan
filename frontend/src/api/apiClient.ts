@@ -26,7 +26,13 @@ const CSRF_REFRESH_URL = '/api/auth/me';
 // ヘッダーにトークンを追加しやすいよう、オブジェクト形式のヘッダーだけを受け付ける。
 export type ApiRequestInit = Omit<RequestInit, 'headers'> & {
   headers?: Record<string, string>;
+  // falseにすると、401 UNAUTHORIZEDでもハンドラーに知らせない。
+  // ログイン状態の確認のように、401が「未ログイン」という想定内の結果である場合に使う。
+  notifyUnauthorized?: boolean;
 };
+
+// fetchに渡すリクエストの設定(apiFetch独自のオプションを除いたもの)。
+type FetchRequestInit = Omit<ApiRequestInit, 'notifyUnauthorized'>;
 
 /**
  * リクエストの送信後に認証状態が変わったため、そのリクエストを中断したことを表す。
@@ -47,9 +53,16 @@ type AuthContext = {
   readonly controller: AbortController;
 };
 
+// 認証状態ごとに重ならない値を作る。他のタブとも比較するため、時刻と乱数を組み合わせる。
+// crypto.randomUUIDはHTTPS・localhost以外では使えないため、HTTPでも使えるgetRandomValuesを使う。
+function createEpoch(): string {
+  const [high, low] = crypto.getRandomValues(new Uint32Array(2));
+  return `${Date.now().toString(36)}-${high.toString(36)}${low.toString(36)}`;
+}
+
 function createAuthContext(userId: number | null): AuthContext {
   return {
-    epoch: crypto.randomUUID(),
+    epoch: createEpoch(),
     userId,
     controller: new AbortController(),
   };
@@ -100,7 +113,7 @@ function readCookie(name: string): string | null {
   return null;
 }
 
-function buildRequest(init: ApiRequestInit, auth: AuthContext): RequestInit {
+function buildRequest(init: FetchRequestInit, auth: AuthContext): RequestInit {
   // 呼び出し元の中断と、認証状態の変更による中断のどちらでも止まるようにする。
   const signal = init.signal
     ? AbortSignal.any([init.signal, auth.controller.signal])
@@ -128,10 +141,6 @@ function buildRequest(init: ApiRequestInit, auth: AuthContext): RequestInit {
 
 // エラー応答のcodeを、呼び出し元が本文を読めるよう複製から読み取る。
 async function readErrorCode(response: Response): Promise<string | undefined> {
-  if (typeof response.clone !== 'function') {
-    return undefined;
-  }
-
   try {
     const body: unknown = await response.clone().json();
 
@@ -153,13 +162,16 @@ export async function apiFetch(
   url: string,
   init: ApiRequestInit = {},
 ): Promise<Response> {
+  // 独自のオプションはfetchに渡さない。
+  const { notifyUnauthorized = true, ...requestInit } = init;
+
   // 送信時点の認証状態に、このリクエストを結び付ける。
   const auth = currentAuth;
   const isStale = () => auth.epoch !== currentAuth.epoch;
 
   let response: Response;
   try {
-    response = await fetch(url, buildRequest(init, auth));
+    response = await fetch(url, buildRequest(requestInit, auth));
   } catch (error) {
     // 認証状態の変更による中断は、呼び出し元の中断やネットワークエラーと区別する。
     if (isStale()) {
@@ -192,7 +204,7 @@ export async function apiFetch(
     throw new AuthContextChangedError();
   }
 
-  if (isUnauthorized) {
+  if (isUnauthorized && notifyUnauthorized) {
     unauthorizedHandler?.();
   }
 

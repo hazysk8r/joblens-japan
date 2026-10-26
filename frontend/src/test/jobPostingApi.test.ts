@@ -29,21 +29,18 @@ describe('jobPostingApi If-Match', () => {
     // グローバルのfetchをVitestのMock関数に置き換える。
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async() => ({
-          id: 1,
-          companyName: 'Test Company',
-          title: 'Engineer',
-          sourceUrl: null,
-          originalText: 'Java AWS',
-          createdAt: '2026-09-17T00:00:00Z',
-          applicationStatus: 'SAVED',
-          salaryMin: null,
-          salaryMax: null,
-          version: 4,
-        }),
-      }),
+      vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
+        id: 1,
+        companyName: 'Test Company',
+        title: 'Engineer',
+        sourceUrl: null,
+        originalText: 'Java AWS',
+        createdAt: '2026-09-17T00:00:00Z',
+        applicationStatus: 'SAVED',
+        salaryMin: null,
+        salaryMax: null,
+        version: 4,
+      }), { status: 200 })),
     );
   });
 
