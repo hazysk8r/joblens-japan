@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-import App from '../App';
+import { AuthenticatedApp } from './testAuth';
 import { ApiError } from '../api/apiError';
 import {
   fetchApplicationStatusSummary,
@@ -79,7 +79,7 @@ function cardFor(title: string) {
 
 async function renderPostings(...postings: JobPosting[]) {
   vi.mocked(fetchJobPostings).mockResolvedValue(pageOf(...postings));
-  render(<MemoryRouter><App /></MemoryRouter>);
+  render(<MemoryRouter><AuthenticatedApp /></MemoryRouter>);
   await screen.findByRole('heading', { name: postings[0].title, level: 2 });
 }
 

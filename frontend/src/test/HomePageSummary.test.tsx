@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-import App from '../App';
+import { AuthenticatedApp } from './testAuth';
 import { ApiError } from '../api/apiError';
 import {
   deleteJobPosting,
@@ -73,7 +73,7 @@ const refreshedSummary: ApplicationStatusSummaryResponse = {
 function renderHome(strict = false) {
   const app = (
     <MemoryRouter>
-      <App />
+      <AuthenticatedApp />
     </MemoryRouter>
   );
   render(strict ? <StrictMode>{app}</StrictMode> : app);

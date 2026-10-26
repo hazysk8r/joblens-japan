@@ -14,6 +14,9 @@
 .vscode/
 **/.vscode/
 
+# Claude Codeのローカル実行設定
+.claude/launch.json
+
 # IntelliJ IDEA
 .idea/
 **/.idea/

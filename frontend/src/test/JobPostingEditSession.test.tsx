@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useNavigate } from 'react-router';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-import App from '../App';
+import { AuthenticatedApp } from './testAuth';
 import JobPostingEditForm from '../components/JobPostingEditForm';
 import { ApiError } from '../api/apiError';
 import {
@@ -80,7 +80,7 @@ async function renderPostings(...postings: JobPosting[]) {
   vi.mocked(fetchJobPostings).mockResolvedValue(pageOf(...postings));
   render(
     <MemoryRouter>
-      <App />
+      <AuthenticatedApp />
     </MemoryRouter>,
   );
   await screen.findByRole('heading', { name: postings[0].title, level: 2 });
@@ -387,7 +387,7 @@ describe('목록 조회 경로의 응답 순서', () => {
       .mockReturnValueOnce(history.promise);
     render(
       <MemoryRouter initialEntries={['/?keyword=AWS', '/?keyword=Java']} initialIndex={1}>
-        <App />
+        <AuthenticatedApp />
         <HistoryControl />
       </MemoryRouter>,
     );
@@ -409,7 +409,7 @@ describe('목록 조회 경로의 응답 순서', () => {
     const sorted = deferred<PageResponse<JobPosting>>();
     const user = userEvent.setup();
     vi.mocked(fetchJobPostings).mockReturnValueOnce(initial.promise).mockReturnValueOnce(sorted.promise);
-    render(<MemoryRouter><App /></MemoryRouter>);
+    render(<MemoryRouter><AuthenticatedApp /></MemoryRouter>);
     await user.click(screen.getByRole('button', { name: '＋ 詳細条件' }));
     await user.selectOptions(screen.getByRole('combobox', { name: '정렬' }), 'companyName,asc');
     await act(async () => sorted.resolve(pageOf(posting({ title: '最新の並べ替え結果' }))));
@@ -434,7 +434,7 @@ describe('목록 조회 경로의 응답 순서', () => {
       .mockReturnValueOnce(sorted.promise);
     render(
       <MemoryRouter initialEntries={['/?keyword=AWS', '/?keyword=Java']} initialIndex={1}>
-        <App />
+        <AuthenticatedApp />
         <HistoryControl />
       </MemoryRouter>,
     );

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-import App from '../App';
+import { AuthenticatedApp } from './testAuth';
 import JobPostingCreateForm from '../components/JobPostingCreateForm';
 import { ApiError } from '../api/apiError';
 import {
@@ -242,7 +242,7 @@ test('등록 페이지에서 등록 성공 후 기존 홈 경로로 이동한다
   });
   render(
     <MemoryRouter initialEntries={['/job-postings/new']}>
-      <App />
+      <AuthenticatedApp />
       <LocationDisplay />
     </MemoryRouter>,
   );

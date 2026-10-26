@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router';
 import { afterEach, beforeEach, vi, test, expect, describe, } from 'vitest';
 
-import App from '../App';
+import { AuthenticatedApp } from './testAuth';
 import { ApiError } from '../api/apiError';
 import { fetchApplicationStatusSummary, fetchJobPostings, deleteJobPosting, updateJobPosting, createJobPosting, extractRequiredSkills, updateApplicationStatus } from '../api/jobPostingApi';
 import type { JobPosting, PageResponse } from '../types/jobPosting';
@@ -24,7 +24,7 @@ vi.mock('../api/jobPostingApi');
 const renderApp = (initialEntry = '/') => {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
-      <App />
+      <AuthenticatedApp />
     </MemoryRouter>
   );
 };
@@ -1147,7 +1147,7 @@ describe('URL Query State', () => {
   ) => {
     return render(
       <MemoryRouter initialEntries={[initialEntry]}>
-        <App />
+        <AuthenticatedApp />
         <LocationDisplay />
         <HistoryControls />
       </MemoryRouter>,
@@ -1815,7 +1815,7 @@ describe('NotFoundPage', () => {
   test('정의되지 않은 경로로 접근하면 Not Found 페이지를 표시한다', async () => {
     render(
       <MemoryRouter initialEntries={['/unknown-page']}>
-        <App />
+        <AuthenticatedApp />
       </MemoryRouter>,
     );
 
@@ -1838,7 +1838,7 @@ describe('NotFoundPage', () => {
 
     render(
       <MemoryRouter initialEntries={['/invalid-route']}>
-        <App />
+        <AuthenticatedApp />
         <LocationDisplay />
       </MemoryRouter>
     );

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-import App from '../App';
+import { AuthenticatedApp } from './testAuth';
 import { ApiError } from '../api/apiError';
 import {
   deleteJobPosting,
@@ -74,7 +74,7 @@ function cardFor(title: string) {
 async function renderJava(initialEntry = '/?keyword=Java') {
   render(
     <MemoryRouter initialEntries={[initialEntry]}>
-      <App />
+      <AuthenticatedApp />
     </MemoryRouter>,
   );
   await screen.findByRole('heading', { name: javaPosting.title, level: 2 });

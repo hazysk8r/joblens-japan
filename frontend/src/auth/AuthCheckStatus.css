@@ -1,0 +1,12 @@
+.auth-check-status {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 4rem 2rem;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.auth-check-status button {
+  margin-top: 16px;
+}

@@ -1,0 +1,41 @@
+.login-page {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 2rem;
+  box-sizing: border-box;
+}
+
+.login-page-header h1 {
+  margin: 0 0 8px;
+}
+
+.login-page-content {
+  margin-top: 32px;
+}
+
+.login-page-content h2 {
+  margin-bottom: 20px;
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.login-page-notice,
+.login-page-error {
+  margin: 0 0 16px;
+}
+
+.login-page-error {
+  color: #c0392b;
+}
+
+@media (max-width: 640px) {
+  .login-page {
+    padding: 24px 16px;
+  }
+}
