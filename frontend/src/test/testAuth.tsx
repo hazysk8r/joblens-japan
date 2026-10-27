@@ -21,6 +21,7 @@ export function TestAuthProvider({
   const value: AuthContextValue = {
     state,
     login: async () => {},
+    signup: async () => {},
     retry: () => {},
   };
 

@@ -15,6 +15,8 @@ export interface AuthContextValue {
   state: AuthState;
   // 失敗時はエラーを投げる。より新しい認証作業に置き換えられた場合はAuthContextChangedErrorを投げる。
   login: (email: string, password: string) => Promise<void>;
+  // 登録に成功するとログイン状態になる。失敗時の扱いはloginと同じ。
+  signup: (email: string, password: string) => Promise<void>;
   // ログイン状態の確認をやり直す。
   retry: () => void;
 }

@@ -54,11 +54,14 @@ export async function fetchMe(): Promise<User | null> {
   return readUser(response);
 }
 
-export async function login(
+// ログイン・会員登録の共通処理。成功するとサーバーでログイン状態(セッション)が作られる。
+async function authenticate(
+  url: string,
   email: string,
   password: string,
+  fallbackMessage: string,
 ): Promise<User> {
-  const response = await apiFetch('/api/auth/login', {
+  const response = await apiFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -67,11 +70,23 @@ export async function login(
   });
 
   if (!response.ok) {
-    throw await parseApiError(
-      response,
-      '로그인에 실패했습니다.',
-    );
+    throw await parseApiError(response, fallbackMessage);
   }
 
   return readUser(response);
+}
+
+export async function login(
+  email: string,
+  password: string,
+): Promise<User> {
+  return authenticate('/api/auth/login', email, password, '로그인에 실패했습니다.');
+}
+
+// 登録に成功すると、そのままログイン状態になる。
+export async function signup(
+  email: string,
+  password: string,
+): Promise<User> {
+  return authenticate('/api/auth/signup', email, password, '会員登録に失敗しました。');
 }

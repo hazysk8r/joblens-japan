@@ -7,7 +7,7 @@ import {
   switchAuthContext,
 } from '../api/apiClient';
 import { ApiError } from '../api/apiError';
-import { fetchMe, login as loginRequest } from '../api/authApi';
+import { fetchMe, login as loginRequest, signup as signupRequest } from '../api/authApi';
 import type { User } from '../types/auth';
 
 import { AuthContext } from './authContext';
@@ -78,25 +78,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void loadCurrentUser(isLatest);
   }, [loadCurrentUser, startOperation]);
 
-  const login = useCallback(async (email: string, password: string) => {
+  // ログインと会員登録の共通の流れ。どちらも成功するとサーバーでログイン状態が作られる。
+  const authenticate = useCallback(async (request: () => Promise<User>) => {
     const isLatest = startOperation();
-    // ログイン前の状態で送ったリクエストを中断し、新しいユーザーの画面に結果を渡さない。
+    // 認証前の状態で送ったリクエストを中断し、新しいユーザーの画面に結果を渡さない。
     switchAuthContext(null);
 
     let user: User;
     try {
-      user = await loginRequest(email, password);
+      user = await request();
     } catch (error) {
       if (!isLatest()) {
         throw new AuthContextChangedError();
       }
-      // パスワード不一致など、サーバーが失敗を返した場合はログインされていない。
+      // パスワード不一致や登録済みのメールアドレスなど、サーバーが失敗を返した場合は処理されていない。
       if (error instanceof ApiError) {
         throw error;
       }
 
-      // 応答を受け取れなかった場合は、サーバーでログインが完了している可能性がある。
-      // ログインを再送せず、現在のログイン状態を確認して決める。
+      // 応答を受け取れなかった場合は、サーバーで処理が完了している可能性がある。
+      // 会員登録を再送すると重複エラーになるため、再送せずに現在のログイン状態を確認して決める。
       const verifiedUser = await fetchMe().catch(() => null);
       if (!isLatest()) {
         throw new AuthContextChangedError();
@@ -113,9 +114,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     applyUser(user);
   }, [applyUser, startOperation]);
 
+  const login = useCallback(
+    (email: string, password: string) => authenticate(() => loginRequest(email, password)),
+    [authenticate],
+  );
+
+  const signup = useCallback(
+    (email: string, password: string) => authenticate(() => signupRequest(email, password)),
+    [authenticate],
+  );
+
   const value = useMemo<AuthContextValue>(
-    () => ({ state, login, retry }),
-    [state, login, retry],
+    () => ({ state, login, signup, retry }),
+    [state, login, signup, retry],
   );
 
   return (

@@ -13,17 +13,27 @@ function RequireAuth() {
   const { state, retry } = useAuth();
   const location = useLocation();
 
-  // 確認中に移動すると、再読み込みのたびにログイン画面が一瞬表示されてしまう。
-  if (state.status === 'loading' || state.status === 'error') {
-    return <AuthCheckStatus status={state.status} onRetry={retry} />;
-  }
+  // ログイン済みと確定した場合だけ画面を表示する。
+  // 状態をすべて明示し、該当しない状態を既定で表示してしまわないようにする。
+  switch (state.status) {
+    case 'loading':
+    case 'error':
+      // 確認中に移動すると、再読み込みのたびにログイン画面が一瞬表示されてしまう。
+      return <AuthCheckStatus status={state.status} onRetry={retry} />;
 
-  if (state.status === 'anonymous') {
-    // ログイン後に戻れるよう、今の画面の経路を渡す。履歴に残さないようreplaceする。
-    return <Navigate to="/login" replace state={loginRedirectState(location)} />;
-  }
+    case 'anonymous':
+      // ログイン後に戻れるよう、今の画面の経路を渡す。履歴に残さないようreplaceする。
+      return <Navigate to="/login" replace state={loginRedirectState(location)} />;
 
-  return <Outlet />;
+    case 'authenticated':
+      return <Outlet />;
+
+    default: {
+      // 状態を追加して、ここでの処理を書き忘れた場合に型エラーになる。
+      const unhandled: never = state;
+      return unhandled;
+    }
+  }
 }
 
 export default RequireAuth;

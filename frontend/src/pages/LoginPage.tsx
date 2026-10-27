@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Navigate, useLocation } from 'react-router';
+import { Link, Navigate, useLocation } from 'react-router';
 
 import { AuthContextChangedError } from '../api/apiClient';
 import { ApiError } from '../api/apiError';
@@ -100,6 +100,12 @@ function LoginPage() {
             {submitting ? 'ログイン中…' : 'ログイン'}
           </button>
         </form>
+
+        <p className="login-page-switch">
+          アカウントをお持ちでない方は
+          {/* 登録後の戻り先を引き継ぐ。 */}
+          <Link to="/signup" state={location.state}>会員登録</Link>
+        </p>
       </section>
     </main>
   );

@@ -10,6 +10,7 @@ import {
 import { ApiError } from '../api/apiError';
 import { AuthProvider } from '../auth/AuthProvider';
 import { useAuth } from '../auth/useAuth';
+import type { AuthContextValue } from '../auth/authContext';
 
 /**
  * 実際のAuthProviderと実際のapiClientを組み合わせ、fetchだけを差し替えて検証する。
@@ -143,35 +144,65 @@ describe('起動時のログイン状態の確認', () => {
   });
 });
 
-describe('ログイン', () => {
-  test('로그인을 시작하면 진행 중이던 요청이 취소되고, 성공 후의 변경 요청에는 새 사용자 ID가 붙는다', async () => {
-    stubFetch((url, init) => {
-      if (url === '/api/auth/me') return meUnauthorized();
-      if (url === '/api/auth/login') return jsonResponse(200, user(3));
-      if (url === '/api/job-postings/status-summary') return pendingUntilAborted(init);
+// ログインと会員登録は同じ認証の流れ(AuthProviderのauthenticate)を通るため、同じ観点で両方を検証する。
+const authOperations: {
+  name: string;
+  url: string;
+  run: (auth: AuthContextValue, email: string, password: string) => Promise<void>;
+  successResponse: (id: number) => Response;
+  // サーバーが失敗を返した(処理されていないことが確実な)応答。
+  certainFailure: () => Response;
+  certainFailureCode: string;
+}[] = [
+  {
+    name: 'ログイン',
+    url: '/api/auth/login',
+    run: (auth, email, password) => auth.login(email, password),
+    successResponse: (id) => jsonResponse(200, user(id)),
+    certainFailure: () => jsonResponse(401, { code: 'INVALID_CREDENTIALS', message: '이메일 또는 비밀번호가 올바르지 않습니다.' }),
+    certainFailureCode: 'INVALID_CREDENTIALS',
+  },
+  {
+    name: '会員登録',
+    url: '/api/auth/signup',
+    run: (auth, email, password) => auth.signup(email, password),
+    successResponse: (id) => jsonResponse(201, user(id)),
+    certainFailure: () => jsonResponse(409, { code: 'EMAIL_ALREADY_EXISTS', message: '이미 가입된 이메일입니다.' }),
+    certainFailureCode: 'EMAIL_ALREADY_EXISTS',
+  },
+];
+
+describe.each(authOperations)('$name', ({ url, run, successResponse, certainFailure, certainFailureCode }) => {
+  test('시작하면 진행 중이던 요청이 취소되고, 성공 후의 변경 요청에는 새 사용자 ID가 붙는다', async () => {
+    stubFetch((requestUrl, init) => {
+      if (requestUrl === '/api/auth/me') return meUnauthorized();
+      if (requestUrl === url) return successResponse(3);
+      if (requestUrl === '/api/job-postings/status-summary') return pendingUntilAborted(init);
       return jsonResponse(201, {});
     });
     const { result } = renderAuth();
     await waitFor(() => expect(result.current.state.status).toBe('anonymous'));
 
-    // ログイン前の状態で送り、まだ応答が届いていないリクエスト。
-    // ログイン中に中断されるため、結果を先に受け取っておく(未処理の拒否にしない)。
+    // 認証前の状態で送り、まだ応答が届いていないリクエスト。
+    // 認証中に中断されるため、結果を先に受け取っておく(未処理の拒否にしない)。
     const previousRequest = apiFetch('/api/job-postings/status-summary')
       .catch((error: unknown) => error);
     await act(async () => {
-      await result.current.login('user3@example.com', 'password123');
+      await run(result.current, 'user3@example.com', 'password123');
     });
 
     await expect(previousRequest).resolves.toBeInstanceOf(AuthContextChangedError);
     expect(result.current.state).toEqual({ status: 'authenticated', user: user(3) });
+    // 別の認証APIに送っていないことも確認する。
+    expect(fetchedUrls()).toContain(url);
     await expect(expectedUserOfNextMutation()).resolves.toBe('3');
   });
 
-  test('이전 요청은 로그인 응답을 기다리지 않고 로그인을 시작한 시점에 취소된다', async () => {
-    const loginResponse = deferred<Response>();
-    stubFetch((url, init) => {
-      if (url === '/api/auth/me') return meUnauthorized();
-      if (url === '/api/auth/login') return loginResponse.promise;
+  test('이전 요청은 응답을 기다리지 않고 시작한 시점에 취소된다', async () => {
+    const authResponse = deferred<Response>();
+    stubFetch((requestUrl, init) => {
+      if (requestUrl === '/api/auth/me') return meUnauthorized();
+      if (requestUrl === url) return authResponse.promise;
       return pendingUntilAborted(init);
     });
     const { result } = renderAuth();
@@ -179,88 +210,87 @@ describe('ログイン', () => {
 
     const previousRequest = apiFetch('/api/job-postings/status-summary')
       .catch((error: unknown) => error);
-    let loginDone!: Promise<void>;
+    let done!: Promise<void>;
     act(() => {
-      loginDone = result.current.login('user3@example.com', 'password123');
+      done = run(result.current, 'user3@example.com', 'password123');
     });
 
-    // ログインの応答が届く前に、すでに中断されている。
+    // 認証の応答が届く前に、すでに中断されている。
     await expect(previousRequest).resolves.toBeInstanceOf(AuthContextChangedError);
 
     await act(async () => {
-      loginResponse.resolve(jsonResponse(200, user(3)));
-      await loginDone;
+      authResponse.resolve(successResponse(3));
+      await done;
     });
   });
 
-  test('로그인 중에 401로 만료 처리되면 로그인은 AuthContextChangedError로 끝나고 /me 확인을 하지 않는다', async () => {
-    stubFetch((url, init) => {
-      if (url === '/api/auth/me') return meUnauthorized();
-      if (url === '/api/auth/login') return pendingUntilAborted(init);
+  test('진행 중에 401로 만료 처리되면 AuthContextChangedError로 끝나고 /me 확인을 하지 않는다', async () => {
+    stubFetch((requestUrl, init) => {
+      if (requestUrl === '/api/auth/me') return meUnauthorized();
+      if (requestUrl === url) return pendingUntilAborted(init);
       return meUnauthorized();
     });
     const { result } = renderAuth();
     await waitFor(() => expect(result.current.state.status).toBe('anonymous'));
 
-    let loginDone!: Promise<unknown>;
+    let done!: Promise<unknown>;
     act(() => {
-      loginDone = result.current.login('user@example.com', 'password123')
+      done = run(result.current, 'user@example.com', 'password123')
         .catch((error: unknown) => error);
     });
-    // ログイン開始後の同じ認証状態で送ったリクエストが401を受け、セッション切れとして処理される。
+    // 認証開始後の同じ認証状態で送ったリクエストが401を受け、セッション切れとして処理される。
     await act(async () => {
       await apiFetch('/api/job-postings');
     });
 
-    await expect(loginDone).resolves.toBeInstanceOf(AuthContextChangedError);
-    // 応答のないログインとして扱われると、ログイン状態の確認(/me)が追加で送られる。
-    expect(fetchedUrls()).toEqual(['/api/auth/me', '/api/auth/login', '/api/job-postings']);
+    await expect(done).resolves.toBeInstanceOf(AuthContextChangedError);
+    // 応答のない認証として扱われると、ログイン状態の確認(/me)が追加で送られる。
+    expect(fetchedUrls()).toEqual(['/api/auth/me', url, '/api/job-postings']);
     expect(result.current.state).toEqual({ status: 'anonymous', sessionExpired: true });
   });
 
-  test('비밀번호가 틀리면 anonymous를 유지하고 오류를 전달하며, 만료 처리는 하지 않는다', async () => {
-    stubFetch((url) => (url === '/api/auth/me'
-      ? meUnauthorized()
-      : jsonResponse(401, { code: 'INVALID_CREDENTIALS', message: '이메일 또는 비밀번호가 올바르지 않습니다.' })));
+  test('서버가 실패를 반환하면 anonymous를 유지하고 오류를 전달하며, /me 확인과 만료 처리는 하지 않는다', async () => {
+    stubFetch((requestUrl) => (requestUrl === '/api/auth/me' ? meUnauthorized() : certainFailure()));
     const { result } = renderAuth();
     await waitFor(() => expect(result.current.state.status).toBe('anonymous'));
 
     let error: unknown;
     await act(async () => {
-      error = await result.current.login('user@example.com', 'wrong').catch((cause: unknown) => cause);
+      error = await run(result.current, 'user@example.com', 'password123').catch((cause: unknown) => cause);
     });
 
     expect(error).toBeInstanceOf(ApiError);
-    expect(error).toMatchObject({ status: 401, code: 'INVALID_CREDENTIALS' });
+    expect(error).toMatchObject({ code: certainFailureCode });
+    expect(fetchedUrls()).toEqual(['/api/auth/me', url]);
     expect(result.current.state).toEqual({ status: 'anonymous', sessionExpired: false });
   });
 
-  test('로그인 응답을 받지 못하면 로그인 요청을 다시 보내지 않고 /me로 확인해 상태를 정한다', async () => {
+  test('응답을 받지 못하면 요청을 다시 보내지 않고 /me로 확인해 상태를 정한다', async () => {
     const meResponses = [meUnauthorized(), jsonResponse(200, user(5))];
-    stubFetch((url) => (url === '/api/auth/me'
+    stubFetch((requestUrl) => (requestUrl === '/api/auth/me'
       ? meResponses.shift()!
-      // サーバーではログインが完了したが、応答が届く前に通信が切れた場合。
+      // サーバーでは処理が完了したが、応答が届く前に通信が切れた場合。
       : Promise.reject(new TypeError('Failed to fetch'))));
     const { result } = renderAuth();
     await waitFor(() => expect(result.current.state.status).toBe('anonymous'));
 
     await act(async () => {
-      await result.current.login('user5@example.com', 'password123');
+      await run(result.current, 'user5@example.com', 'password123');
     });
 
-    expect(fetchedUrls()).toEqual(['/api/auth/me', '/api/auth/login', '/api/auth/me']);
+    expect(fetchedUrls()).toEqual(['/api/auth/me', url, '/api/auth/me']);
     expect(result.current.state).toEqual({ status: 'authenticated', user: user(5) });
   });
 
-  test('로그인 응답을 받지 못했고 /me도 로그인 전이면 원래 오류를 전달하고 anonymous를 유지한다', async () => {
+  test('응답을 받지 못했고 /me도 로그인 전이면 원래 오류를 전달하고 anonymous를 유지한다', async () => {
     const networkError = new TypeError('Failed to fetch');
-    stubFetch((url) => (url === '/api/auth/me' ? meUnauthorized() : Promise.reject(networkError)));
+    stubFetch((requestUrl) => (requestUrl === '/api/auth/me' ? meUnauthorized() : Promise.reject(networkError)));
     const { result } = renderAuth();
     await waitFor(() => expect(result.current.state.status).toBe('anonymous'));
 
     let error: unknown;
     await act(async () => {
-      error = await result.current.login('user@example.com', 'password123').catch((cause: unknown) => cause);
+      error = await run(result.current, 'user@example.com', 'password123').catch((cause: unknown) => cause);
     });
 
     expect(error).toBe(networkError);
