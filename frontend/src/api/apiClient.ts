@@ -113,6 +113,26 @@ export function setUnauthorizedHandler(
   };
 }
 
+type AuthContextMismatchHandler = () => void;
+
+let authContextMismatchHandler: AuthContextMismatchHandler | null = null;
+
+/**
+ * 409 AUTH_CONTEXT_CHANGED(画面のユーザーとセッションのユーザーが違う)を受けたときに呼ぶハンドラーを登録する。
+ * 別のタブでのアカウント切り替えの通知が届く前に変更リクエストを送った場合に、サーバーが返す。
+ */
+export function setAuthContextMismatchHandler(
+  handler: AuthContextMismatchHandler,
+): () => void {
+  authContextMismatchHandler = handler;
+
+  return () => {
+    if (authContextMismatchHandler === handler) {
+      authContextMismatchHandler = null;
+    }
+  };
+}
+
 function readCookie(name: string): string | null {
   for (const cookie of document.cookie.split(';')) {
     const [rawName, ...rawValue] = cookie.trim().split('=');
@@ -222,6 +242,10 @@ export async function apiFetch(
   const isUnauthorized =
     response.status === 401 &&
     (await readErrorCode(response)) === 'UNAUTHORIZED';
+  // 登録済みのメールアドレス(EMAIL_ALREADY_EXISTS)なども409のため、codeで区別する。
+  const isAuthContextMismatch =
+    response.status === 409 &&
+    (await readErrorCode(response)) === 'AUTH_CONTEXT_CHANGED';
 
   // 中断に応じずに届いた応答や、上の非同期処理の間に認証状態が変わった応答は、
   // 前の認証状態のものなので呼び出し元に渡さない。
@@ -232,6 +256,10 @@ export async function apiFetch(
 
   if (isUnauthorized && notifyUnauthorized) {
     unauthorizedHandler?.();
+  }
+
+  if (isAuthContextMismatch) {
+    authContextMismatchHandler?.();
   }
 
   return response;

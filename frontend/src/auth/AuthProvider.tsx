@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import {
   AuthContextChangedError,
   CsrfTokenUnavailableError,
+  setAuthContextMismatchHandler,
   setUnauthorizedHandler,
   switchAuthContext,
 } from '../api/apiClient';
@@ -16,6 +17,7 @@ import {
 } from '../api/authApi';
 import type { User } from '../types/auth';
 
+import { notifyAuthChanged, subscribeAuthChanged } from './authSync';
 import { AuthContext } from './authContext';
 import type { AuthContextValue, AuthState } from './authContext';
 
@@ -90,25 +92,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   ), [applyUser]);
 
+  /**
+   * 画面とサーバーのセッションが食い違った可能性があるときに、/meで現在のログイン状態を確認し直す。
+   * (他のタブでのログイン・ログアウト、401、409 AUTH_CONTEXT_CHANGED)
+   *
+   * 確認中は保護画面を隠す。世代を切り替えた後に前のユーザーの画面で操作すると、
+   * そのリクエストが現在のセッションの別のユーザーとして処理されるおそれがあるため。
+   * 確認の結果は他のタブに通知しない(タブ同士が通知し合い続けないようにする)。
+   */
+  const recheck = useCallback((cause: 'otherTab' | 'serverRejected') => {
+    const isLatest = startOperation();
+    switchAuthContext(null);
+    userRef.current = null;
+    setState({ status: 'loading' });
+
+    void fetchMe().then(
+      (user) => {
+        if (!isLatest()) {
+          return;
+        }
+        if (user) {
+          applyUser(user);
+        } else {
+          applyAnonymous(cause === 'otherTab' ? 'loggedOutElsewhere' : 'expired');
+        }
+      },
+      (error: unknown) => {
+        if (isLatest() && !(error instanceof AuthContextChangedError)) {
+          setState({ status: 'error' });
+        }
+      },
+    );
+  }, [applyAnonymous, applyUser, startOperation]);
+
   useEffect(() => {
     void loadCurrentUser(startOperation());
 
-    const unregister = setUnauthorizedHandler(() => {
+    const unregisterUnauthorized = setUnauthorizedHandler(() => {
       // ログアウトの応答より先に、サーバーでログアウト済みのリクエストの401が届くことがある。
       // その場合はセッション切れではなく、利用者が自分でログアウトした結果として扱う。
-      const reason = isLoggingOutRef.current() ? 'loggedOut' : 'expired';
-      // 進行中の認証作業の結果を無効にしてから、未ログインに切り替える。
-      // 世代を切り替えることで、後から届く古いリクエストの401も通知されなくなる。
-      startOperation();
-      applyAnonymous(reason);
+      if (isLoggingOutRef.current()) {
+        startOperation();
+        applyAnonymous('loggedOut');
+        return;
+      }
+      // ログインしていない状態の401は、新しいことを示さない(「ログアウトしました」などの案内を上書きしない)。
+      if (userRef.current === null) {
+        return;
+      }
+      // 別のタブで別のユーザーがログインした場合も401になり得るため、すぐにセッション切れとはしない。
+      recheck('serverRejected');
     });
+    const unregisterMismatch = setAuthContextMismatchHandler(() => recheck('serverRejected'));
+    const unsubscribeOtherTabs = subscribeAuthChanged(() => recheck('otherTab'));
 
     return () => {
-      unregister();
+      unregisterUnauthorized();
+      unregisterMismatch();
+      unsubscribeOtherTabs();
       // 解除後に届いた認証作業の結果を反映しない。
       startOperation();
     };
-  }, [applyAnonymous, loadCurrentUser, startOperation]);
+  }, [applyAnonymous, loadCurrentUser, recheck, startOperation]);
 
   const retry = useCallback(() => {
     const isLatest = startOperation();
@@ -150,6 +195,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new AuthContextChangedError();
     }
     applyUser(user);
+    // このタブでログイン状態を変えたことを、他のタブに知らせる。
+    notifyAuthChanged();
   }, [applyUser, startOperation]);
 
   const login = useCallback(
@@ -165,63 +212,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     const isLatest = startOperation();
     isLoggingOutRef.current = isLatest;
-    const loggingOutUser = userRef.current;
-
-    // ログアウトは失敗することがあり、失敗したらログイン状態のままにするため、
-    // 開始時には世代を切り替えない(サーバーが終了を返した時点で切り替える)。
-    let confirmed = false;
-    let requestError: unknown = null;
+    // ログアウトが終わったら(失敗も含む)、「ログアウト中」の判定を解除する。
+    // 残したままだと、ログアウトに失敗した後の本当のセッション切れまでログアウト扱いになる。
     try {
-      await logoutRequest();
-      confirmed = true;
-    } catch (error) {
+      const loggingOutUser = userRef.current;
+
+      // ログアウトは失敗することがあり、失敗したらログイン状態のままにするため、
+      // 開始時には世代を切り替えない(サーバーが終了を返した時点で切り替える)。
+      let confirmed = false;
+      let requestError: unknown = null;
+      try {
+        await logoutRequest();
+        confirmed = true;
+      } catch (error) {
+        if (!isLatest()) {
+          throw new AuthContextChangedError();
+        }
+        // 4xxなど、処理されていないことが確実な失敗はログイン状態のまま。
+        if (isCertainFailure(error)) {
+          throw error;
+        }
+        // 5xxや応答なしは、サーバーでログアウトが終わった可能性がある。
+        requestError = error;
+      }
       if (!isLatest()) {
         throw new AuthContextChangedError();
       }
-      // 4xxなど、処理されていないことが確実な失敗はログイン状態のまま。
-      if (isCertainFailure(error)) {
-        throw error;
+
+      if (confirmed) {
+        // サーバーでセッションは終わったので、残っているリクエストをここで中断する。
+        // (その401がセッション切れとして扱われないようにする。)
+        switchAuthContext(null);
       }
-      // 5xxや応答なしは、サーバーでログアウトが終わった可能性がある。
-      requestError = error;
-    }
-    if (!isLatest()) {
-      throw new AuthContextChangedError();
-    }
 
-    if (confirmed) {
-      // サーバーでセッションは終わったので、残っているリクエストをここで中断する。
-      // (その401がセッション切れとして扱われないようにする。)
-      switchAuthContext(null);
-    }
+      // 現在のログイン状態を確認する。ログアウトでCSRFトークンのCookieが削除されるため、
+      // この照会で新しいトークンも受け取り、次のログインを1回目から成功させる。
+      let current: User | null | undefined;
+      try {
+        current = await fetchMe();
+      } catch {
+        // 確認できなかった(undefined)。
+      }
+      if (!isLatest()) {
+        throw new AuthContextChangedError();
+      }
 
-    // 現在のログイン状態を確認する。ログアウトでCSRFトークンのCookieが削除されるため、
-    // この照会で新しいトークンも受け取り、次のログインを1回目から成功させる。
-    let current: User | null | undefined;
-    try {
-      current = await fetchMe();
-    } catch {
-      // 確認できなかった(undefined)。
-    }
-    if (!isLatest()) {
-      throw new AuthContextChangedError();
-    }
-
-    if (current === null || (current === undefined && confirmed)) {
-      applyAnonymous('loggedOut');
-      return;
-    }
-    if (current === undefined) {
-      // ログアウトできたか分からないため、ログイン状態のままにする。
-      throw requestError;
-    }
-    if (current.id === loggingOutUser?.id) {
-      // ログアウトされていない。開始前のユーザーに戻す。
+      if (current === null || (current === undefined && confirmed)) {
+        applyAnonymous('loggedOut');
+        // このタブでログアウトしたことを、他のタブに知らせる。
+        notifyAuthChanged();
+        return;
+      }
+      if (current === undefined) {
+        // ログアウトできたか分からないため、ログイン状態のままにする。
+        throw requestError;
+      }
+      if (current.id === loggingOutUser?.id) {
+        // ログアウトされていない。開始前のユーザーに戻す。
+        applyUser(current);
+        throw requestError ?? new Error('ログアウトできませんでした。');
+      }
+      // 別のタブなどで別のユーザーがログインしている。その状態に合わせ、前のユーザーの画面を残さない。
       applyUser(current);
-      throw requestError ?? new Error('ログアウトできませんでした。');
+    } finally {
+      if (isLoggingOutRef.current === isLatest) {
+        isLoggingOutRef.current = () => false;
+      }
     }
-    // 別のタブなどで別のユーザーがログインしている。その状態に合わせ、前のユーザーの画面を残さない。
-    applyUser(current);
   }, [applyAnonymous, applyUser, startOperation]);
 
   const value = useMemo<AuthContextValue>(

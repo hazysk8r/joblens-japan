@@ -4,7 +4,30 @@ import { loginRedirectState } from '../utils/safeRedirect';
 
 import AuthCheckStatus from './AuthCheckStatus';
 import AuthenticatedLayout from './AuthenticatedLayout';
+import type { AuthState } from './authContext';
 import { useAuth } from './useAuth';
+
+type AnonymousReason = Extract<AuthState, { status: 'anonymous' }>['reason'];
+
+/**
+ * 未ログインになった理由ごとに、ログイン後に今の画面へ戻すかを決める。
+ * 理由を追加したときに判断を書き忘れると、型エラーになる。
+ */
+function keepsReturnPath(reason: AnonymousReason): boolean {
+  switch (reason) {
+    case 'initial':
+    case 'expired':
+      return true;
+    // 自分でログアウトした場合(別のタブを含む)は、次の利用者を前の画面に戻さない。
+    case 'loggedOut':
+    case 'loggedOutElsewhere':
+      return false;
+    default: {
+      const unhandled: never = reason;
+      return unhandled;
+    }
+  }
+}
 
 /**
  * ログインが必要な画面の入口。
@@ -23,8 +46,7 @@ function RequireAuth() {
       return <AuthCheckStatus status={state.status} onRetry={retry} />;
 
     case 'anonymous':
-      // 自分でログアウトした場合は、次の利用者を前の画面に戻さないよう、戻り先を渡さない。
-      if (state.reason === 'loggedOut') {
+      if (!keepsReturnPath(state.reason)) {
         return <Navigate to="/login" replace />;
       }
       // ログイン後に戻れるよう、今の画面の経路を渡す。履歴に残さないようreplaceする。

@@ -2,6 +2,7 @@ import {
   AuthContextChangedError,
   CsrfTokenUnavailableError,
   apiFetch,
+  setAuthContextMismatchHandler,
   setUnauthorizedHandler,
   switchAuthContext,
 } from '../api/apiClient';
@@ -213,6 +214,62 @@ describe('CSRFトークンが無効な場合', () => {
 
     expect(response.status).toBe(403);
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('別のユーザーへの切り替わり(409 AUTH_CONTEXT_CHANGED)の通知', () => {
+  // サーバーが「画面のユーザーとセッションのユーザーが違う」と判断した応答。
+  const mismatch = () => jsonResponse(409, { code: 'AUTH_CONTEXT_CHANGED', message: '다른 탭에서 로그인 계정이 바뀌었습니다.' });
+
+  test('409 AUTH_CONTEXT_CHANGED이면 등록된 핸들러를 호출하고 응답은 그대로 반환한다', async () => {
+    const handler = vi.fn();
+    const unregister = setAuthContextMismatchHandler(handler);
+    switchAuthContext(1);
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => mismatch()));
+
+    try {
+      const response = await apiFetch('/api/job-postings', { method: 'POST', body: '{}' });
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      await expect(response.json()).resolves.toMatchObject({ code: 'AUTH_CONTEXT_CHANGED' });
+    } finally {
+      unregister();
+    }
+  });
+
+  test('다른 409(이미 가입된 이메일)는 핸들러를 호출하지 않는다', async () => {
+    const handler = vi.fn();
+    const unregister = setAuthContextMismatchHandler(handler);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(409, { code: 'EMAIL_ALREADY_EXISTS' })));
+
+    try {
+      await apiFetch('/api/auth/signup', { method: 'POST', body: '{}' });
+
+      expect(handler).not.toHaveBeenCalled();
+    } finally {
+      unregister();
+    }
+  });
+
+  test('인증 상태가 바뀐 뒤 늦게 도착한 409는 핸들러를 호출하지 않는다', async () => {
+    const handler = vi.fn();
+    const unregister = setAuthContextMismatchHandler(handler);
+    switchAuthContext(1);
+    let respond!: (response: Response) => void;
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise<Response>((done) => {
+      respond = done;
+    })));
+
+    try {
+      const request = apiFetch('/api/job-postings', { method: 'POST', body: '{}' });
+      switchAuthContext(2);
+      respond(mismatch());
+
+      await expect(request).rejects.toBeInstanceOf(AuthContextChangedError);
+      expect(handler).not.toHaveBeenCalled();
+    } finally {
+      unregister();
+    }
   });
 });
 

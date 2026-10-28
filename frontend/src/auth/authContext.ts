@@ -8,8 +8,9 @@ export type AuthState =
   | { status: 'authenticated'; user: User }
   // reason: 未ログインになった理由。ログイン画面の案内と、ログイン後の戻り先の扱いが変わる。
   //   initial: 起動時の確認で未ログインだった / expired: ログイン中にセッションが切れた /
-  //   loggedOut: 利用者が自分でログアウトした(次の利用者を前の画面に戻さない)
-  | { status: 'anonymous'; reason: 'initial' | 'expired' | 'loggedOut' }
+  //   loggedOut: 利用者が自分でログアウトした(次の利用者を前の画面に戻さない) /
+  //   loggedOutElsewhere: 同じブラウザの別のタブでログアウトした
+  | { status: 'anonymous'; reason: 'initial' | 'expired' | 'loggedOut' | 'loggedOutElsewhere' }
   // ログイン状態を確認できなかった(サーバー障害・オフラインなど)。未ログインとは区別する。
   | { status: 'error' };
 

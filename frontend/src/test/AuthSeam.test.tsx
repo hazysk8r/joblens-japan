@@ -214,3 +214,36 @@ describe('ログアウトから次のログインまでのつながり', () => {
     expect(loginRequests[0].headers).toMatchObject({ [CSRF_HEADER]: 'token-2' });
   });
 });
+
+describe('サーバーが別のユーザーへの切り替わりを検出した場合', () => {
+  /*
+   * 他のタブの通知が届く前に、前のユーザーの画面から変更リクエストを送った状況。
+   * サーバーは画面のユーザー(X-Expected-User-Id)とセッションのユーザーが違うため409を返す。
+   * (サーバー側の動作はバックエンドのExpectedUserCheckTestで確認している。)
+   */
+  test('변경 요청이 409 AUTH_CONTEXT_CHANGED를 받으면 /me로 확인해 B로 바뀌고 URL을 초기화한다', async () => {
+    let sessionUser = { id: 1, email: 'user-a@example.com' };
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === '/api/auth/me') return jsonResponse(200, sessionUser);
+      if (url.startsWith('/api/job-postings/status-summary')) return jsonResponse(200, emptySummary);
+      if (url.startsWith('/api/job-postings?')) return jsonResponse(200, emptyPage);
+      const headers = (init?.headers ?? {}) as Record<string, string>;
+      if (init?.method === 'POST' && headers[EXPECTED_USER_HEADER] !== String(sessionUser.id)) {
+        return jsonResponse(409, { code: 'AUTH_CONTEXT_CHANGED', message: '다른 탭에서 로그인 계정이 바뀌어 요청을 처리하지 않았습니다.' });
+      }
+      return jsonResponse(201, {});
+    }));
+
+    renderApp('/?keyword=A-private');
+    expect(await screen.findByText('user-a@example.com')).toBeInTheDocument();
+
+    // 別のタブでBがログインし、セッションCookieがBに変わった(このタブには通知がまだ届いていない)。
+    sessionUser = { id: 2, email: 'user-b@example.com' };
+    const response = await apiFetch('/api/job-postings', { method: 'POST', body: '{}' });
+
+    expect(response.status).toBe(409);
+    expect(await screen.findByText('user-b@example.com')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/'));
+    await expect(expectedUserOfNextMutation()).resolves.toBe('2');
+  });
+});

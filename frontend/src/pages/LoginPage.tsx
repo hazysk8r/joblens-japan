@@ -70,6 +70,9 @@ function LoginPage() {
         {state.reason === 'loggedOut' && (
           <p className="login-page-notice">ログアウトしました。</p>
         )}
+        {state.reason === 'loggedOutElsewhere' && (
+          <p className="login-page-notice">別のタブでログアウトしました。</p>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div className="login-field">

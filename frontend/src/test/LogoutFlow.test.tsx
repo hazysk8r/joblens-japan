@@ -68,7 +68,9 @@ async function submitLogin(email: string) {
 }
 
 // 保護APIが401を返し、セッション切れとして扱われる状況を再現する(apiClientは実物)。
+// 401の後の再確認(/me)でも、ログインしていない結果を返す。
 async function expireSession() {
+  vi.mocked(fetchMe).mockResolvedValueOnce(null);
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
     new Response(JSON.stringify({ code: 'UNAUTHORIZED' }), { status: 401 }),
   ));
@@ -257,5 +259,51 @@ describe('ユーザーの切り替わり', () => {
     await submitLogin(userA.email);
 
     await waitFor(() => expect(currentLocation()).toBe('/job-postings/new?source=a'));
+  });
+});
+
+describe('他のタブでの変更', () => {
+  // 他のタブがログイン・ログアウトしたときに届くstorageイベントを再現する。
+  function signalFromOtherTab() {
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'joblens.auth-changed',
+        newValue: `other-tab-${Math.random()}`,
+        storageArea: localStorage,
+      }));
+    });
+  }
+
+  test('다른 탭에서 로그아웃하면, 확인하는 동안 화면을 가리고 돌아갈 경로 없이 로그인 화면으로 간다', async () => {
+    const me = deferred<null>();
+    vi.mocked(fetchMe).mockResolvedValueOnce(userA).mockReturnValueOnce(me.promise);
+
+    renderApp('/job-postings/new?source=a');
+    await screen.findByText('user-a@example.com');
+    signalFromOtherTab();
+
+    // 確認が終わるまで、前のユーザーの画面では操作できない。
+    expect(screen.getByRole('status')).toHaveTextContent('ログイン状態を確認しています');
+    expect(screen.queryByRole('heading', { name: '求人登録' })).not.toBeInTheDocument();
+
+    await act(async () => {
+      me.resolve(null);
+    });
+    await waitFor(() => expect(currentLocation()).toBe('/login'));
+    expect(screen.getByTestId('location-state').textContent).toBe('null');
+    expect(screen.getByText('別のタブでログアウトしました。')).toBeInTheDocument();
+  });
+
+  test('다른 탭에서 B로 로그인하면, A의 URL을 초기화하고 B의 화면으로 바뀐다', async () => {
+    vi.mocked(fetchMe).mockResolvedValueOnce(userA).mockResolvedValue(userB);
+
+    renderApp('/?keyword=A-private');
+    await screen.findByText('user-a@example.com');
+    signalFromOtherTab();
+
+    await waitFor(() => expect(currentLocation()).toBe('/'));
+    expect(await screen.findByText('user-b@example.com')).toBeInTheDocument();
+    expect(screen.queryByText('user-a@example.com')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('검색어')).toHaveValue('');
   });
 });
