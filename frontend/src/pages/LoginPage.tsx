@@ -64,8 +64,11 @@ function LoginPage() {
       <section className="login-page-content">
         <h2>ログイン</h2>
 
-        {state.sessionExpired && (
+        {state.reason === 'expired' && (
           <p className="login-page-notice">세션이 만료되었습니다. 다시 로그인해주세요.</p>
+        )}
+        {state.reason === 'loggedOut' && (
+          <p className="login-page-notice">ログアウトしました。</p>
         )}
 
         <form onSubmit={handleSubmit}>

@@ -1,0 +1,21 @@
+.account-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.account-bar-email {
+  overflow-wrap: anywhere;
+}
+
+.account-bar-error {
+  flex-basis: 100%;
+  margin: 0;
+  text-align: right;
+  color: #c0392b;
+}

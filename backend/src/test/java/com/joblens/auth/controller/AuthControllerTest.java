@@ -24,6 +24,7 @@ import org.springframework.mock.web.MockCookie;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import com.joblens.CsrfTestSupport;
 import com.joblens.TestcontainersConfiguration;
 
 import jakarta.servlet.http.Cookie;
@@ -303,5 +304,31 @@ class AuthControllerTest {
 
         mockMvc.perform(get("/api/auth/me").cookie(session))
                 .andExpect(status().isUnauthorized());
+    }
+
+    /*
+     * フロントエンドは、ログアウト後にCSRFトークンのCookieが消えることを前提に、
+     * 次のログインの前にトークンを取り直す。その前提となるサーバーの動作を固定する。
+     */
+    @Test
+    void 로그아웃하면_CSRF_토큰_쿠키를_지우고_이후_요청에서_새_토큰을_발급한다() throws Exception {
+        signup("user@example.com", PASSWORD);
+        Cookie session = sessionCookie(login("user@example.com", PASSWORD));
+
+        MvcResult logout = mockMvc.perform(post("/api/auth/logout").with(doubleSubmitCsrf()).cookie(session))
+                .andExpect(status().isNoContent())
+                .andReturn();
+
+        Cookie clearedCsrf = logout.getResponse().getCookie(CsrfTestSupport.CSRF_COOKIE);
+        assertNotNull(clearedCsrf, "ログアウトの応答でCSRFトークンのCookieが削除されていない");
+        assertEquals(0, clearedCsrf.getMaxAge());
+
+        // ログインしていない状態の照会でも、新しいトークンが発行される。
+        MvcResult me = mockMvc.perform(get("/api/auth/me"))
+                .andExpect(status().isUnauthorized())
+                .andReturn();
+        Cookie newCsrf = me.getResponse().getCookie(CsrfTestSupport.CSRF_COOKIE);
+        assertNotNull(newCsrf, "新しいCSRFトークンのCookieが発行されていない");
+        assertTrue(!newCsrf.getValue().isEmpty() && newCsrf.getMaxAge() != 0);
     }
 }

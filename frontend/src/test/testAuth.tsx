@@ -22,6 +22,7 @@ export function TestAuthProvider({
     state,
     login: async () => {},
     signup: async () => {},
+    logout: async () => {},
     retry: () => {},
   };
 

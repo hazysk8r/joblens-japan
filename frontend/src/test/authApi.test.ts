@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { switchAuthContext } from '../api/apiClient';
 import { ApiError } from '../api/apiError';
-import { login, signup } from '../api/authApi';
+import { login, logout, signup } from '../api/authApi';
 
 /**
  * 認証APIが送るリクエストの形式と、応答の分類を検証する。
@@ -92,5 +92,28 @@ describe.each(operations)('$name', ({ run, url, successStatus }) => {
 
     expect(error).toBeInstanceOf(Error);
     expect(error).not.toBeInstanceOf(ApiError);
+  });
+});
+
+describe('ログアウト', () => {
+  test('POST /api/auth/logout를 CSRF 토큰과 함께 보내고, 204면 정상 종료한다', async () => {
+    document.cookie = 'XSRF-TOKEN=token-1; path=/';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
+
+    await expect(logout()).resolves.toBeUndefined();
+
+    const { url, init } = lastRequest();
+    expect(url).toBe('/api/auth/logout');
+    expect(init.method).toBe('POST');
+    expect(init.headers).toMatchObject({ [CSRF_HEADER]: 'token-1' });
+  });
+
+  test.each([403, 500])('서버가 %i 응답을 반환하면 상태 코드를 가진 ApiError를 던진다', async (status) => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => jsonResponse(status, { message: '실패' })));
+
+    const error = await logout().catch((cause: unknown) => cause);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({ status });
   });
 });

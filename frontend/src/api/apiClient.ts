@@ -35,6 +35,17 @@ export type ApiRequestInit = Omit<RequestInit, 'headers'> & {
 type FetchRequestInit = Omit<ApiRequestInit, 'notifyUnauthorized'>;
 
 /**
+ * CSRFトークンを取得できなかったため、状態を変更するリクエストを送らなかったことを表す。
+ * リクエストは送っていないので、サーバーで処理されていないことは確実。
+ */
+export class CsrfTokenUnavailableError extends Error {
+  constructor() {
+    super('サーバーに接続できませんでした。しばらくしてから再度お試しください。');
+    this.name = 'CsrfTokenUnavailableError';
+  }
+}
+
+/**
  * リクエストの送信後に認証状態が変わったため、そのリクエストを中断したことを表す。
  * 新しい認証状態の画面ではエラーとして表示する必要はない。
  */
@@ -168,6 +179,21 @@ export async function apiFetch(
   // 送信時点の認証状態に、このリクエストを結び付ける。
   const auth = currentAuth;
   const isStale = () => auth.epoch !== currentAuth.epoch;
+
+  // ログアウト直後などトークンのCookieがない場合は、先に取得する。
+  // 取得できなければ送らない(トークンなしで送ると403になり、資格情報だけが無駄に送られる)。
+  const method = (requestInit.method ?? 'GET').toUpperCase();
+  if (!SAFE_METHODS.has(method) && !readCookie(CSRF_COOKIE)) {
+    await refreshCsrfToken(auth.controller.signal).catch(() => {
+      // 取得の失敗は、下でCookieの有無として判定する。
+    });
+    if (isStale()) {
+      throw new AuthContextChangedError();
+    }
+    if (!readCookie(CSRF_COOKIE)) {
+      throw new CsrfTokenUnavailableError();
+    }
+  }
 
   let response: Response;
   try {

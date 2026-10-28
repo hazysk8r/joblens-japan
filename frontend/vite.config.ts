@@ -7,6 +7,8 @@ export default defineConfig({
 
   test: {
     environment: 'jsdom',
+    // すべてのテストの前に、CSRFトークンのCookieがある状態にする。
+    setupFiles: ['./src/test/setup.ts'],
   },
   /*
    * 브라우저에서 /api로 시작하는 요청을 보내면

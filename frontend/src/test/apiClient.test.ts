@@ -1,5 +1,6 @@
 import {
   AuthContextChangedError,
+  CsrfTokenUnavailableError,
   apiFetch,
   setUnauthorizedHandler,
   switchAuthContext,
@@ -111,12 +112,46 @@ describe('CSRFトークンのヘッダー', () => {
     });
   });
 
-  test('토큰 쿠키가 없으면 헤더 없이 요청을 보낸다', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
+  // ログアウト直後などトークンのCookieがない場合は、トークンなしで送らずに先に取得する。
+  test('토큰 쿠키가 없으면 먼저 토큰을 받아서 새 토큰으로 보낸다', async () => {
+    clearCsrfCookie();
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string) => {
+      if (url === '/api/auth/me') {
+        // サーバーがCookieを発行したことを再現する。
+        setCsrfCookie('issued');
+        return jsonResponse(401, { code: 'UNAUTHORIZED' });
+      }
+      return new Response(null, { status: 204 });
+    }));
 
     await apiFetch('/api/job-postings/1', { method: 'DELETE' });
 
-    expect(headersOfCall(0)?.[CSRF_HEADER]).toBeUndefined();
+    expect(vi.mocked(fetch).mock.calls.map(([url]) => url)).toEqual(['/api/auth/me', '/api/job-postings/1']);
+    expect(headersOfCall(1)?.[CSRF_HEADER]).toBe('issued');
+  });
+
+  test.each([
+    { name: '토큰이 발급되지 않음', me: async () => jsonResponse(401, { code: 'UNAUTHORIZED' }) },
+    { name: '토큰 요청이 실패함', me: async () => { throw new TypeError('Failed to fetch'); } },
+  ])('토큰 쿠키가 없고 받을 수도 없으면($name) 요청을 보내지 않고 CsrfTokenUnavailableError를 던진다', async ({ me }) => {
+    clearCsrfCookie();
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string) => (
+      url === '/api/auth/me' ? me() : new Response(null, { status: 204 })
+    )));
+
+    await expect(apiFetch('/api/auth/login', { method: 'POST', body: '{}' }))
+      .rejects.toBeInstanceOf(CsrfTokenUnavailableError);
+    // 資格情報などを、トークンなしで送らない。
+    expect(vi.mocked(fetch).mock.calls.map(([url]) => url)).toEqual(['/api/auth/me']);
+  });
+
+  test('조회 요청은 토큰 쿠키가 없어도 토큰을 먼저 받지 않는다', async () => {
+    clearCsrfCookie();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, [])));
+
+    await apiFetch('/api/job-postings');
+
+    expect(vi.mocked(fetch).mock.calls.map(([url]) => url)).toEqual(['/api/job-postings']);
   });
 
   const jobPostingRequest = {

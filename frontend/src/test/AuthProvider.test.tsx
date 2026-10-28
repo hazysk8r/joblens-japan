@@ -4,6 +4,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import {
   AuthContextChangedError,
+  CsrfTokenUnavailableError,
   apiFetch,
   switchAuthContext,
 } from '../api/apiClient';
@@ -96,7 +97,7 @@ describe('起動時のログイン状態の確認', () => {
 
     const { result } = renderAuth();
 
-    await waitFor(() => expect(result.current.state).toEqual({ status: 'anonymous', sessionExpired: false }));
+    await waitFor(() => expect(result.current.state).toEqual({ status: 'anonymous', reason: 'initial' }));
     await expect(expectedUserOfNextMutation()).resolves.toBeUndefined();
   });
 
@@ -246,7 +247,7 @@ describe.each(authOperations)('$name', ({ url, run, successResponse, certainFail
     await expect(done).resolves.toBeInstanceOf(AuthContextChangedError);
     // 応答のない認証として扱われると、ログイン状態の確認(/me)が追加で送られる。
     expect(fetchedUrls()).toEqual(['/api/auth/me', url, '/api/job-postings']);
-    expect(result.current.state).toEqual({ status: 'anonymous', sessionExpired: true });
+    expect(result.current.state).toEqual({ status: 'anonymous', reason: 'expired' });
   });
 
   test('서버가 실패를 반환하면 anonymous를 유지하고 오류를 전달하며, /me 확인과 만료 처리는 하지 않는다', async () => {
@@ -262,7 +263,42 @@ describe.each(authOperations)('$name', ({ url, run, successResponse, certainFail
     expect(error).toBeInstanceOf(ApiError);
     expect(error).toMatchObject({ code: certainFailureCode });
     expect(fetchedUrls()).toEqual(['/api/auth/me', url]);
-    expect(result.current.state).toEqual({ status: 'anonymous', sessionExpired: false });
+    expect(result.current.state).toEqual({ status: 'anonymous', reason: 'initial' });
+  });
+
+  // 5xxは、サーバーで処理が終わった後にも起こり得る(例: セッション作成後の500、プロキシの502・504)。
+  test.each([500, 502, 504])('서버가 %i를 반환하면 다시 보내지 않고 /me로 확인해 상태를 정한다', async (status) => {
+    const meResponses = [meUnauthorized(), jsonResponse(200, user(6))];
+    stubFetch((requestUrl) => (requestUrl === '/api/auth/me'
+      ? meResponses.shift()!
+      : jsonResponse(status, { message: '서버 오류' })));
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.state.status).toBe('anonymous'));
+
+    await act(async () => {
+      await run(result.current, 'user6@example.com', 'password123');
+    });
+
+    expect(fetchedUrls()).toEqual(['/api/auth/me', url, '/api/auth/me']);
+    expect(result.current.state).toEqual({ status: 'authenticated', user: user(6) });
+  });
+
+  test('CSRF 토큰을 받지 못해 요청을 보내지 않았으면 /me 확인 없이 오류를 전달한다', async () => {
+    stubFetch(() => meUnauthorized());
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.state.status).toBe('anonymous'));
+    // ログアウト直後などで、トークンのCookieがなく、取り直しても発行されない状況。
+    document.cookie = 'XSRF-TOKEN=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+
+    let error: unknown;
+    await act(async () => {
+      error = await run(result.current, 'user@example.com', 'password123').catch((cause: unknown) => cause);
+    });
+
+    expect(error).toBeInstanceOf(CsrfTokenUnavailableError);
+    // 認証リクエストは送られておらず、確認(/me)も追加で送らない(トークン取得の1回だけ)。
+    expect(fetchedUrls()).toEqual(['/api/auth/me', '/api/auth/me']);
+    expect(result.current.state.status).toBe('anonymous');
   });
 
   test('응답을 받지 못하면 요청을 다시 보내지 않고 /me로 확인해 상태를 정한다', async () => {
@@ -294,7 +330,7 @@ describe.each(authOperations)('$name', ({ url, run, successResponse, certainFail
     });
 
     expect(error).toBe(networkError);
-    expect(result.current.state).toEqual({ status: 'anonymous', sessionExpired: false });
+    expect(result.current.state).toEqual({ status: 'anonymous', reason: 'initial' });
   });
 });
 
@@ -386,6 +422,170 @@ describe('古い認証作業の結果', () => {
   });
 });
 
+describe('ログアウト', () => {
+  // ユーザー1でログインした状態から始める。/meの応答は各テストで決める。
+  async function renderLoggedIn(handler: (url: string, init?: RequestInit, meCall?: number) => Promise<Response> | Response) {
+    let meCall = 0;
+    stubFetch((url, init) => {
+      if (url === '/api/auth/me') {
+        meCall += 1;
+        if (meCall === 1) return jsonResponse(200, user(1));
+      }
+      return handler(url, init, meCall);
+    });
+    const rendered = renderAuth();
+    await waitFor(() => expect(rendered.result.current.state).toEqual({ status: 'authenticated', user: user(1) }));
+    return rendered;
+  }
+
+  async function logoutOf(result: { current: AuthContextValue }): Promise<unknown> {
+    let error: unknown;
+    await act(async () => {
+      error = await result.current.logout().catch((cause: unknown) => cause);
+    });
+    return error;
+  }
+
+  test('성공하면 /me로 확인(토큰 재발급)한 뒤 loggedOut이 되고, 이후 요청에 예상 사용자 헤더가 붙지 않는다', async () => {
+    const { result } = await renderLoggedIn((url) => (
+      url === '/api/auth/logout' ? new Response(null, { status: 204 }) : meUnauthorized()
+    ));
+
+    const error = await logoutOf(result);
+
+    expect(error).toBeUndefined();
+    expect(fetchedUrls()).toEqual(['/api/auth/me', '/api/auth/logout', '/api/auth/me']);
+    expect(result.current.state).toEqual({ status: 'anonymous', reason: 'loggedOut' });
+    await expect(expectedUserOfNextMutation()).resolves.toBeUndefined();
+  });
+
+  test('4xx로 거절되면 로그인 상태를 유지하고 오류를 전달하며, /me로 상태를 확인하지 않는다', async () => {
+    const { result } = await renderLoggedIn((url) => (
+      url === '/api/auth/logout' ? jsonResponse(400, { message: '요청이 올바르지 않습니다.' }) : jsonResponse(201, {})
+    ));
+
+    const error = await logoutOf(result);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(fetchedUrls()).toEqual(['/api/auth/me', '/api/auth/logout']);
+    expect(result.current.state).toEqual({ status: 'authenticated', user: user(1) });
+    await expect(expectedUserOfNextMutation()).resolves.toBe('1');
+  });
+
+  test.each([
+    { name: '500', logoutResponse: () => jsonResponse(500, { message: '서버 오류' }) },
+    { name: '응답 없음', logoutResponse: () => Promise.reject(new TypeError('Failed to fetch')) },
+  ])('$name: /me가 로그인 안 됨이면 로그아웃을 확정한다', async ({ logoutResponse }) => {
+    const { result } = await renderLoggedIn((url) => (
+      url === '/api/auth/logout' ? logoutResponse() : meUnauthorized()
+    ));
+
+    const error = await logoutOf(result);
+
+    expect(error).toBeUndefined();
+    expect(result.current.state).toEqual({ status: 'anonymous', reason: 'loggedOut' });
+  });
+
+  test('응답이 없고 /me가 원래 사용자면 로그인 상태를 유지하고 오류를 전달한다', async () => {
+    const { result } = await renderLoggedIn((url) => (
+      url === '/api/auth/logout' ? Promise.reject(new TypeError('Failed to fetch')) : jsonResponse(200, user(1))
+    ));
+
+    const error = await logoutOf(result);
+
+    expect(error).toBeInstanceOf(Error);
+    expect(result.current.state).toEqual({ status: 'authenticated', user: user(1) });
+    await expect(expectedUserOfNextMutation()).resolves.toBe('1');
+  });
+
+  test('응답이 없고 /me가 다른 사용자면 그 사용자로 맞춘다(이전 사용자의 화면을 유지하지 않음)', async () => {
+    const { result } = await renderLoggedIn((url) => {
+      if (url === '/api/auth/logout') return Promise.reject(new TypeError('Failed to fetch'));
+      if (url === '/api/auth/me') return jsonResponse(200, user(2));
+      return jsonResponse(201, {});
+    });
+
+    await logoutOf(result);
+
+    expect(result.current.state).toEqual({ status: 'authenticated', user: user(2) });
+    await expect(expectedUserOfNextMutation()).resolves.toBe('2');
+  });
+
+  test('204를 받은 뒤 /me 확인에 실패해도 로그아웃을 확정한다', async () => {
+    const { result } = await renderLoggedIn((url) => (
+      url === '/api/auth/logout' ? new Response(null, { status: 204 }) : Promise.reject(new TypeError('Failed to fetch'))
+    ));
+
+    const error = await logoutOf(result);
+
+    expect(error).toBeUndefined();
+    expect(result.current.state).toEqual({ status: 'anonymous', reason: 'loggedOut' });
+  });
+
+  test('응답이 없고 /me 확인도 실패하면 로그인 상태를 유지하고 오류를 전달한다', async () => {
+    const { result } = await renderLoggedIn((url) => (
+      url === '/api/auth/logout' || url === '/api/auth/me'
+        ? Promise.reject(new TypeError('Failed to fetch'))
+        : jsonResponse(201, {})
+    ));
+
+    const error = await logoutOf(result);
+
+    expect(error).toBeInstanceOf(Error);
+    expect(result.current.state).toEqual({ status: 'authenticated', user: user(1) });
+    await expect(expectedUserOfNextMutation()).resolves.toBe('1');
+  });
+
+  test('204를 받은 시점에 진행 중이던 이전 요청은 /me 확인을 기다리지 않고 취소된다', async () => {
+    const me = deferred<Response>();
+    const { result } = await renderLoggedIn((url, init) => {
+      if (url === '/api/auth/logout') return new Response(null, { status: 204 });
+      if (url === '/api/auth/me') return me.promise;
+      return pendingUntilAborted(init);
+    });
+
+    const previousRequest = apiFetch('/api/job-postings').catch((error: unknown) => error);
+    let done!: Promise<void>;
+    act(() => {
+      done = result.current.logout();
+    });
+
+    // サーバーがセッションを終えた時点で中断され、その401がセッション切れとして扱われない。
+    await expect(previousRequest).resolves.toBeInstanceOf(AuthContextChangedError);
+    expect(result.current.state.status).toBe('authenticated');
+
+    await act(async () => {
+      me.resolve(meUnauthorized());
+      await done;
+    });
+    expect(result.current.state).toEqual({ status: 'anonymous', reason: 'loggedOut' });
+  });
+
+  test('로그아웃 응답 전에 다른 요청의 401이 와도 만료가 아니라 loggedOut으로 처리한다', async () => {
+    const logoutResponse = deferred<Response>();
+    const { result } = await renderLoggedIn((url) => {
+      if (url === '/api/auth/logout') return logoutResponse.promise;
+      return meUnauthorized();
+    });
+
+    let done!: Promise<unknown>;
+    act(() => {
+      done = result.current.logout().catch((error: unknown) => error);
+    });
+    // サーバーではログアウトが先に処理され、別のリクエストの401が先に届いた場合。
+    await act(async () => {
+      await apiFetch('/api/job-postings');
+    });
+
+    expect(result.current.state).toEqual({ status: 'anonymous', reason: 'loggedOut' });
+    await act(async () => {
+      logoutResponse.resolve(new Response(null, { status: 204 }));
+    });
+    await expect(done).resolves.toBeInstanceOf(AuthContextChangedError);
+    expect(result.current.state).toEqual({ status: 'anonymous', reason: 'loggedOut' });
+  });
+});
+
 describe('セッション切れ(保護APIの401)', () => {
   test('401이 여러 개 와도 만료 처리는 한 번만 일어나고, 나머지 요청은 AuthContextChangedError가 된다', async () => {
     const first = deferred<Response>();
@@ -408,7 +608,7 @@ describe('セッション切れ(保護APIの401)', () => {
 
     await expect(firstRequest).resolves.toHaveProperty('status', 401);
     await expect(secondRequest).rejects.toBeInstanceOf(AuthContextChangedError);
-    expect(result.current.state).toEqual({ status: 'anonymous', sessionExpired: true });
+    expect(result.current.state).toEqual({ status: 'anonymous', reason: 'expired' });
     await expect(expectedUserOfNextMutation()).resolves.toBeUndefined();
   });
 

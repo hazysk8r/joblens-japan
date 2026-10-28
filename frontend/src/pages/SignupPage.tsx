@@ -73,11 +73,13 @@ function SignupPage() {
         if (caughtError.code === EMAIL_ALREADY_EXISTS) {
           setFieldErrors({ email: caughtError.message });
           setEmailAlreadyExists(true);
-        } else if (Object.keys(caughtError.fieldErrors).length > 0) {
-          setFieldErrors(caughtError.fieldErrors);
-        } else {
-          setFormError(caughtError.message);
+          return;
         }
+
+        // 画面にない項目のエラーは表示する場所がないため、全体のメッセージも必ず表示する。
+        // (項目のエラーだけにすると、表示されずに「押しても何も起きない」状態になる。)
+        setFieldErrors(caughtError.fieldErrors);
+        setFormError(caughtError.message);
         return;
       }
 

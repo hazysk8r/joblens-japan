@@ -192,6 +192,31 @@ describe('サーバーが返した失敗', () => {
     expect(currentLocation()).toBe('/signup');
   });
 
+  // 画面にない項目のエラーだけが返ると、どこにも表示されず「押しても何も起きない」状態になる。
+  test.each<{ name: string; fieldErrors: Record<string, string>; emailError: string | null }>([
+    {
+      name: '화면에 없는 항목의 오류만 있는 경우',
+      fieldErrors: { agreedToTerms: '이용약관에 동의해주세요.' },
+      emailError: null,
+    },
+    {
+      name: '화면에 있는 항목과 없는 항목의 오류가 섞인 경우',
+      fieldErrors: { email: '이메일 형식이 올바르지 않습니다.', agreedToTerms: '이용약관에 동의해주세요.' },
+      emailError: '이메일 형식이 올바르지 않습니다.',
+    },
+  ])('$name: 폼 아래에 일반 안내를 표시하고, 화면에 없는 항목의 메시지는 표시하지 않는다', async ({ fieldErrors, emailError }) => {
+    vi.mocked(signup).mockRejectedValue(
+      new ApiError('입력값이 올바르지 않습니다.', 400, 'VALIDATION_FAILED', fieldErrors),
+    );
+
+    renderApp();
+    await fillAndSubmit();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('입력값이 올바르지 않습니다.');
+    expect(screen.queryByText('이용약관에 동의해주세요.')).not.toBeInTheDocument();
+    expect(fieldErrorOf('メールアドレス')).toBe(emailError);
+  });
+
   test('이미 가입된 이메일(409)이면 이메일 칸에 표시하고, 돌아갈 경로를 유지한 로그인 링크를 보여 준다', async () => {
     vi.mocked(signup).mockRejectedValue(new ApiError('이미 가입된 이메일입니다.', 409, 'EMAIL_ALREADY_EXISTS'));
 

@@ -232,7 +232,7 @@ describe('ログイン画面', () => {
   });
 
   test('세션이 만료되어 로그인 화면으로 왔으면 만료 안내를 표시한다', async () => {
-    renderAppWithState({ status: 'anonymous', sessionExpired: true }, '/');
+    renderAppWithState({ status: 'anonymous', reason: 'expired' }, '/');
 
     expect(await screen.findByText('세션이 만료되었습니다. 다시 로그인해주세요.')).toBeInTheDocument();
     expect(currentLocation()).toBe('/login');

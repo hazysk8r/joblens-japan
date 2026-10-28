@@ -4,8 +4,9 @@ import { apiFetch } from './apiClient';
 import { parseApiError } from './apiError';
 
 /*
- * エラーの種類で、呼び出し元の判断が変わる。
- * - ApiError: サーバーが失敗を返した(例: パスワード不一致)。処理されていないことが確実。
+ * 失敗の扱いは呼び出し元(AuthProvider)が判断する。ここではエラーの種類を区別できるように投げる。
+ * - ApiError: サーバーが応答を返した。4xx(例: パスワード不一致)は処理されていないことが確実だが、
+ *   5xxはサーバーで処理が終わった後にも起こり得る。
  * - それ以外: 応答を受け取れなかった、または読めなかった。サーバーで処理されたかは分からない。
  */
 
@@ -55,7 +56,7 @@ export async function fetchMe(): Promise<User | null> {
 }
 
 // ログイン・会員登録の共通処理。成功するとサーバーでログイン状態(セッション)が作られる。
-async function authenticate(
+async function postCredentials(
   url: string,
   email: string,
   password: string,
@@ -80,7 +81,18 @@ export async function login(
   email: string,
   password: string,
 ): Promise<User> {
-  return authenticate('/api/auth/login', email, password, '로그인에 실패했습니다.');
+  return postCredentials('/api/auth/login', email, password, '로그인에 실패했습니다.');
+}
+
+// サーバーのセッションを終了する。成功すると204が返り、CSRFトークンのCookieも削除される。
+export async function logout(): Promise<void> {
+  const response = await apiFetch('/api/auth/logout', {
+    method: 'POST',
+  });
+
+  if (!response.ok) {
+    throw await parseApiError(response, 'ログアウトできませんでした。');
+  }
 }
 
 // 登録に成功すると、そのままログイン状態になる。
@@ -88,5 +100,5 @@ export async function signup(
   email: string,
   password: string,
 ): Promise<User> {
-  return authenticate('/api/auth/signup', email, password, '会員登録に失敗しました。');
+  return postCredentials('/api/auth/signup', email, password, '会員登録に失敗しました。');
 }

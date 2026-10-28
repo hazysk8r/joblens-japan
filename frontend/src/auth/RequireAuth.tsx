@@ -1,8 +1,9 @@
-import { Navigate, Outlet, useLocation } from 'react-router';
+import { Navigate, useLocation } from 'react-router';
 
 import { loginRedirectState } from '../utils/safeRedirect';
 
 import AuthCheckStatus from './AuthCheckStatus';
+import AuthenticatedLayout from './AuthenticatedLayout';
 import { useAuth } from './useAuth';
 
 /**
@@ -22,11 +23,17 @@ function RequireAuth() {
       return <AuthCheckStatus status={state.status} onRetry={retry} />;
 
     case 'anonymous':
+      // 自分でログアウトした場合は、次の利用者を前の画面に戻さないよう、戻り先を渡さない。
+      if (state.reason === 'loggedOut') {
+        return <Navigate to="/login" replace />;
+      }
       // ログイン後に戻れるよう、今の画面の経路を渡す。履歴に残さないようreplaceする。
       return <Navigate to="/login" replace state={loginRedirectState(location)} />;
 
     case 'authenticated':
-      return <Outlet />;
+      // ユーザーが変わったら、アカウント表示とログインが必要な画面をまとめて作り直し、
+      // 前のユーザーの画面の状態(入力中の内容・取得済みのデータ・エラー表示など)を残さない。
+      return <AuthenticatedLayout key={state.user.id} user={state.user} />;
 
     default: {
       // 状態を追加して、ここでの処理を書き忘れた場合に型エラーになる。
