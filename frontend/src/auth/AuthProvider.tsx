@@ -134,6 +134,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isLoggingOutRef.current()) {
         startOperation();
         applyAnonymous('loggedOut');
+        // 401でサーバーのセッションがないことは確定しているため、他のタブにも知らせる。
+        // (この後のログアウトの応答は中断扱いになり、logout側の通知には届かない。)
+        notifyAuthChanged();
         return;
       }
       // ログインしていない状態の401は、新しいことを示さない(「ログアウトしました」などの案内を上書きしない)。

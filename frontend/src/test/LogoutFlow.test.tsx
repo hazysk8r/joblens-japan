@@ -260,6 +260,69 @@ describe('ユーザーの切り替わり', () => {
 
     await waitFor(() => expect(currentLocation()).toBe('/job-postings/new?source=a'));
   });
+
+  describe('ログイン画面の再読み込み', () => {
+    // Aのセッションが切れてログイン画面に移った後、その画面を再読み込みする。
+    // 戻り先(location.state)はブラウザの履歴に残るため、再読み込み後もそのまま渡される。
+    async function reloadLoginAfterExpiry(path: string) {
+      vi.mocked(fetchMe).mockResolvedValue(userA);
+      renderApp(path);
+      await screen.findByText('user-a@example.com');
+      await expireSession();
+      await waitFor(() => expect(currentLocation()).toBe('/login'));
+      const state: unknown = JSON.parse(screen.getByTestId('location-state').textContent ?? 'null');
+
+      cleanup();
+      switchAuthContext(null);
+      vi.mocked(fetchMe).mockReset().mockResolvedValue(null);
+      renderApp({ pathname: '/login', state });
+      await screen.findByLabelText('メールアドレス');
+    }
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      sessionStorage.clear();
+    });
+
+    test('A의 세션 만료 후 새로고침하고 B가 로그인해도 A의 돌아갈 경로가 아니라 / 로 간다', async () => {
+      await reloadLoginAfterExpiry('/?keyword=A-private');
+      vi.mocked(login).mockResolvedValue(userB);
+
+      await submitLogin(userB.email);
+
+      await waitFor(() => expect(currentLocation()).toBe('/'));
+      expect(await screen.findByText('user-b@example.com')).toBeInTheDocument();
+      expect(screen.getByLabelText('검색어')).toHaveValue('');
+    });
+
+    test('A의 세션 만료 후 새로고침하고 A가 다시 로그인하면 원래 경로로 돌아간다', async () => {
+      await reloadLoginAfterExpiry('/job-postings/new?source=a');
+      vi.mocked(login).mockResolvedValue(userA);
+
+      await submitLogin(userA.email);
+
+      await waitFor(() => expect(currentLocation()).toBe('/job-postings/new?source=a'));
+    });
+
+    test('sessionStorage를 쓸 수 없어도 로그인과 사용자 전환은 동작한다', async () => {
+      vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new DOMException('denied', 'SecurityError');
+      });
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new DOMException('denied', 'SecurityError');
+      });
+      vi.mocked(fetchMe).mockResolvedValueOnce(userA).mockResolvedValue(userB);
+      vi.mocked(logout).mockRejectedValue(new TypeError('Failed to fetch'));
+      const user = userEvent.setup();
+
+      renderApp('/?keyword=A-private');
+      await user.click(await screen.findByRole('button', { name: 'ログアウト' }));
+
+      // 再読み込みをまたがない切り替わりは、今まで通り検出する。
+      await waitFor(() => expect(currentLocation()).toBe('/'));
+      expect(await screen.findByText('user-b@example.com')).toBeInTheDocument();
+    });
+  });
 });
 
 describe('他のタブでの変更', () => {

@@ -852,6 +852,30 @@ describe('他のタブとの同期と再確認', () => {
     expect(localStorage.getItem(AUTH_CHANGED_KEY)).toBeTruthy();
   });
 
+  test('로그아웃 응답 전에 다른 요청의 401로 loggedOut이 되어도 다른 탭에 알린다', async () => {
+    const logoutResponse = deferred<Response>();
+    const { result } = await renderLoggedInThen(() => meUnauthorized());
+    stubFetch((url) => (url === '/api/auth/logout' ? logoutResponse.promise : meUnauthorized()));
+
+    let done!: Promise<unknown>;
+    act(() => {
+      done = result.current.logout().catch((error: unknown) => error);
+    });
+    // サーバーではログアウトが先に処理され、別のリクエストの401が先に届いた場合。
+    await act(async () => {
+      await apiFetch('/api/job-postings');
+    });
+
+    expect(result.current.state).toEqual({ status: 'anonymous', reason: 'loggedOut' });
+    expect(localStorage.getItem(AUTH_CHANGED_KEY)).toBeTruthy();
+
+    // ログアウトの応答は、より新しい作業(401による確定)に置き換えられて終わる。
+    await act(async () => {
+      logoutResponse.resolve(new Response(null, { status: 204 }));
+    });
+    await expect(done).resolves.toBeInstanceOf(AuthContextChangedError);
+  });
+
   test('로그인하지 않은 상태에서 온 401은 상태를 바꾸지 않고 재확인도 하지 않는다', async () => {
     stubFetch(() => meUnauthorized());
     const { result } = renderAuth();

@@ -7,4 +7,6 @@ import { beforeEach } from 'vitest';
  */
 beforeEach(() => {
   document.cookie = 'XSRF-TOKEN=test-csrf-token; path=/';
+  // 前のテストでログインしたユーザーを「このタブの前回のユーザー」として残さない。
+  sessionStorage.clear();
 });

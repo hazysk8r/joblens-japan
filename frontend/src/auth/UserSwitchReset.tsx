@@ -4,12 +4,36 @@ import { Navigate, useLocation } from 'react-router';
 
 import { useAuth } from './useAuth';
 
+// このタブで最後にログインしていたユーザーのID。
+// 再読み込みやタブの復元でも残り、他のタブとは共有しないsessionStorageに保存する。
+const LAST_USER_KEY = 'joblens.last-user-id';
+
+function readLastUserId(): number | null {
+  try {
+    const value = Number(sessionStorage.getItem(LAST_USER_KEY));
+    // 保存されていない(null → 0)場合や、壊れた値(NaN)の場合は、覚えていないものとして扱う。
+    return value > 0 ? value : null;
+  } catch {
+    // 使えない環境では、このページを開いている間だけ覚える。
+    return null;
+  }
+}
+
+function saveLastUserId(userId: number) {
+  try {
+    sessionStorage.setItem(LAST_USER_KEY, String(userId));
+  } catch {
+    // 保存できなくても、このページを開いている間の切り替わりは検出できる。
+  }
+}
+
 /**
  * このタブで前回ログインしていたユーザーと別のユーザーになったら、トップ画面(クエリなし)へ移動する。
  *
  * 画面を作り直してもURLは残る。一覧画面は検索条件をURLから読むため、そのままだと
  * 前のユーザーの検索語(応募先の会社名など)で次のユーザーの画面が始まってしまう。
  * セッション切れ後に別のユーザーがログインした場合も、前のユーザーの戻り先は使わない。
+ * (戻り先はブラウザの履歴に残るため、ログイン画面を再読み込みした後も同じように扱う。)
  *
  * ログイン画面ではRequireAuthが表示されないため、ルート全体を包む位置で前回のユーザーを覚えておく。
  */
@@ -19,12 +43,13 @@ function UserSwitchReset({ children }: { children: ReactNode }) {
 
   const userId = state.status === 'authenticated' ? state.user.id : null;
   // 未ログインの間も、最後にログインしていたユーザーを覚えておく。
-  const [lastUserId, setLastUserId] = useState<number | null>(userId);
+  const [lastUserId, setLastUserId] = useState<number | null>(readLastUserId);
   const [resetting, setResetting] = useState(false);
 
   // 描画中に前回の値と比べて状態を更新する(Reactが推奨する「前回の値を保持する」方法)。
   if (userId !== null && userId !== lastUserId) {
     setLastUserId(userId);
+    saveLastUserId(userId);
     if (lastUserId !== null) {
       setResetting(true);
     }
