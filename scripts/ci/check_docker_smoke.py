@@ -46,6 +46,11 @@ class FrontendHTML(HTMLParser):
 
 
 def fetch(url, expected_status=200, data=None, headers=None):
+    content_type, body, _ = fetch_with_headers(url, expected_status, data, headers)
+    return content_type, body
+
+
+def fetch_with_headers(url, expected_status=200, data=None, headers=None):
     path = urlsplit(url).path
     request = Request(url, data=data, headers=headers or {}, method="POST" if data is not None else "GET")
     try:
@@ -60,7 +65,7 @@ def fetch(url, expected_status=200, data=None, headers=None):
                     f"{path}: expected HTTP {expected_status}, received {response.status}")
             body = response.read(8 * 1024 * 1024 + 1)
             require(len(body) <= 8 * 1024 * 1024, f"{path}: response exceeded 8 MiB")
-            return response.headers.get_content_type(), body
+            return response.headers.get_content_type(), body, response.headers
     except (HTTPException, TimeoutError, OSError) as error:
         raise SmokeFailure(f"{path}: response read failed ({type(error).__name__})") from None
 
@@ -154,6 +159,76 @@ def main():
     require(not page["content"] and page["totalElements"] == 0 and page["totalPages"] == 0,
             "CI job posting database must be newly initialized and empty")
     print("PASS: proxied API preserves pagination parameters and returns a valid empty CI database page")
+
+    check_auth_rate_limits(base)
+
+
+# frontend/nginx.confのlimit_reqの設定と同じ値にする(rate + burst、nodelay)。
+# 連続した要求は1秒以内に終わるため、その間に回復する許容量は1回分に満たない。
+LOGIN_ALLOWED_IN_BURST = 6
+SIGNUP_ALLOWED_IN_BURST = 4
+RATE_LIMITED_CODE = "TOO_MANY_REQUESTS"
+RATE_LIMITED_MESSAGE = "リクエストが多すぎます。しばらくしてから再度お試しください。"
+
+
+def current_csrf_token():
+    # ログイン・会員登録でトークンが再発行されるため、毎回Cookieから読む。
+    token = next((cookie.value for cookie in COOKIES if cookie.name == "XSRF-TOKEN"), None)
+    require(token, "XSRF-TOKEN cookie is missing")
+    return token
+
+
+def post_json(base, path, payload, expected_status):
+    return fetch_with_headers(urljoin(base, path), expected_status=expected_status,
+                              data=json.dumps(payload).encode(),
+                              headers={"Content-Type": "application/json", "X-XSRF-TOKEN": current_csrf_token()})
+
+
+def require_rate_limited(path, content_type, body, headers):
+    require(content_type == "application/json", f"{path}: rate-limited response must be JSON")
+    try:
+        error = json.loads(body)
+    except (UnicodeError, ValueError):
+        raise SmokeFailure(f"{path}: rate-limited response returned invalid JSON") from None
+    require(isinstance(error, dict) and error.get("status") == 429 and error.get("code") == RATE_LIMITED_CODE
+            and error.get("message") == RATE_LIMITED_MESSAGE and error.get("path") == path
+            and error.get("fieldErrors") == {},
+            f"{path}: rate-limited response must use the API error format")
+    require(headers.get("Retry-After") == "60", f"{path}: rate-limited response must send Retry-After: 60")
+
+
+def check_auth_rate_limits(base):
+    # 許容範囲内のログインはバックエンドまで届く(誤ったパスワードの401)。
+    wrong_login = {"email": "smoke-test@example.com", "password": "wrong-password"}
+    for _ in range(LOGIN_ALLOWED_IN_BURST):
+        content_type, body, _ = post_json(base, "/api/auth/login", wrong_login, expected_status=401)
+        require(content_type == "application/json", "Login within the rate limit must return JSON")
+        try:
+            error = json.loads(body)
+        except (UnicodeError, ValueError):
+            raise SmokeFailure("Login within the rate limit returned invalid JSON") from None
+        require(isinstance(error, dict) and error.get("code") == "INVALID_CREDENTIALS",
+                "Login within the rate limit must reach the backend")
+    content_type, body, headers = post_json(base, "/api/auth/login", wrong_login, expected_status=429)
+    require_rate_limited("/api/auth/login", content_type, body, headers)
+    print(f"PASS: login is rate-limited after {LOGIN_ALLOWED_IN_BURST} attempts with a JSON 429 and Retry-After")
+
+    # ログインの制限は他のAPIに影響しない(ログイン中のセッションでの照会・一覧取得)。
+    fetch(urljoin(base, "/api/auth/me"))
+    fetch(urljoin(base, "/api/job-postings"))
+    print("PASS: login rate limit does not affect other APIs")
+
+    # 会員登録は、上の確認で行った1回を含めて数える。
+    for index in range(1, SIGNUP_ALLOWED_IN_BURST):
+        post_json(base, "/api/auth/signup",
+                  {"email": f"smoke-test-{index}@example.com", "password": "smoke-test-password"},
+                  expected_status=201)
+    content_type, body, headers = post_json(
+        base, "/api/auth/signup",
+        {"email": "smoke-test-limited@example.com", "password": "smoke-test-password"},
+        expected_status=429)
+    require_rate_limited("/api/auth/signup", content_type, body, headers)
+    print(f"PASS: signup is rate-limited after {SIGNUP_ALLOWED_IN_BURST} attempts with a JSON 429 and Retry-After")
 
 
 if __name__ == "__main__":
