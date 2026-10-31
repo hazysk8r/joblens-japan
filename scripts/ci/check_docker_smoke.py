@@ -63,11 +63,58 @@ def fetch_with_headers(url, expected_status=200, data=None, headers=None):
         with response:
             require(response.status == expected_status,
                     f"{path}: expected HTTP {expected_status}, received {response.status}")
+            # server_tokens offにより、どの応答にもNginxのバージョンを出さない。
+            require(response.headers.get_all("Server", []) == ["nginx"],
+                    f"{path}: Server header must not reveal the nginx version")
             body = response.read(8 * 1024 * 1024 + 1)
             require(len(body) <= 8 * 1024 * 1024, f"{path}: response exceeded 8 MiB")
             return response.headers.get_content_type(), body, response.headers
     except (HTTPException, TimeoutError, OSError) as error:
         raise SmokeFailure(f"{path}: response read failed ({type(error).__name__})") from None
+
+
+# frontend/security-headers.confと同じ値にする。
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "same-origin",
+    "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; "
+                               "connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; "
+                               "form-action 'self'; frame-ancestors 'none'",
+}
+
+
+def require_security_headers(path, headers):
+    for name, value in SECURITY_HEADERS.items():
+        # get()は先頭の1つしか返さないため、重複も検出できるget_all()で比べる。
+        require(headers.get_all(name, []) == [value], f"{path}: expected exactly one {name}: {value}")
+
+
+def check_security_headers(base, root):
+    # ヘッダーを付けるlocationを1つずつ通る。/と画面のURLは内部で/index.htmlに移るため、
+    # location /は実在するファイル(/favicon.svg)で確かめる。404はalwaysの確認を兼ねる。
+    targets = [
+        ("/", 200),                                  # location = /index.html
+        ("/job-postings/new", 200),                  # location = /index.html
+        ("/favicon.svg", 200),                       # location /
+        (root.scripts[0], 200),                      # location ^~ /assets/
+        (root.styles[0], 200),
+        ("/assets/__docker_smoke_missing__.js", 404),
+        ("/healthz", 200),                           # location = /healthz
+    ]
+    for path, status in targets:
+        _, _, headers = fetch_with_headers(urljoin(base, path), expected_status=status)
+        require_security_headers(path, headers)
+    print("PASS: frontend responses send the security headers")
+
+    # APIの応答にはSpring Securityが付ける。Nginxが重ねて付けて重複していないこと。
+    _, _, headers = fetch_with_headers(urljoin(base, "/api/auth/me"), expected_status=401)
+    require(headers.get_all("X-Content-Type-Options", []) == ["nosniff"]
+            and headers.get_all("X-Frame-Options", []) == ["DENY"],
+            "/api/auth/me: API must send exactly one Spring Security header of each kind")
+    require(headers.get_all("Content-Security-Policy", []) == [] and headers.get_all("Referrer-Policy", []) == [],
+            "/api/auth/me: Nginx must not add its security headers to proxied API responses")
+    print("PASS: API responses carry Spring Security headers without duplicates")
 
 
 def html_page(url):
@@ -112,6 +159,7 @@ def main():
     print("PASS: built JavaScript and CSS assets are served correctly")
     fetch(urljoin(base, "/assets/__docker_smoke_missing__.js"), expected_status=404)
     print("PASS: a missing static asset returns HTTP 404")
+    check_security_headers(base, root)
 
     route = html_page(urljoin(base, "/job-postings/new"))
     require(route.scripts == root.scripts and route.styles == root.styles,
@@ -197,6 +245,7 @@ def require_rate_limited(path, content_type, body, headers):
             and error.get("fieldErrors") == {},
             f"{path}: rate-limited response must use the API error format")
     require(headers.get("Retry-After") == "60", f"{path}: rate-limited response must send Retry-After: 60")
+    require_security_headers(path, headers)
 
 
 # frontend/nginx.confのclient_max_body_sizeと同じ値にする(1m = 1048576バイト)。
@@ -219,7 +268,7 @@ def post_raw(base, path, body, expected_status):
                               headers={"Content-Type": "application/json", "X-XSRF-TOKEN": current_csrf_token()})
 
 
-def require_payload_too_large(path, content_type, body):
+def require_payload_too_large(path, content_type, body, headers):
     require(content_type == "application/json", f"{path}: payload-too-large response must be JSON")
     try:
         error = json.loads(body)
@@ -229,6 +278,7 @@ def require_payload_too_large(path, content_type, body):
             and error.get("message") == PAYLOAD_TOO_LARGE_MESSAGE and error.get("path") == ""
             and error.get("fieldErrors") == {},
             f"{path}: payload-too-large response must use the API error format")
+    require_security_headers(path, headers)
 
 
 # scripts/ci/docker-smoke.shが、この印の付いた要求についてNginxのログを確認する。
@@ -258,20 +308,20 @@ def check_body_size_limit(base):
             "Body at the size limit must reach the backend validation")
 
     # 1バイトでも超えれば、バックエンドに送らずNginxが413で拒否する。
-    content_type, body, _ = post_raw(base, "/api/job-postings",
-                                     json_body_of_size(posting_prefix, MAX_BODY_BYTES + 1), expected_status=413)
-    require_payload_too_large("/api/job-postings", content_type, body)
+    content_type, body, headers = post_raw(base, "/api/job-postings",
+                                           json_body_of_size(posting_prefix, MAX_BODY_BYTES + 1), expected_status=413)
+    require_payload_too_large("/api/job-postings", content_type, body, headers)
     print(f"PASS: request bodies over {MAX_BODY_BYTES} bytes are rejected with a JSON 413")
 
     # 回数制限のlocationにも、独自のerror_pageがあっても同じJSONの413が返る。
     login_prefix = '{"email":"smoke-test@example.com","password":"'
-    content_type, body, _ = post_raw(base, "/api/auth/login",
-                                     json_body_of_size(login_prefix, MAX_BODY_BYTES + 1), expected_status=413)
-    require_payload_too_large("/api/auth/login", content_type, body)
+    content_type, body, headers = post_raw(base, "/api/auth/login",
+                                           json_body_of_size(login_prefix, MAX_BODY_BYTES + 1), expected_status=413)
+    require_payload_too_large("/api/auth/login", content_type, body, headers)
     signup_prefix = '{"email":"smoke-test-oversized@example.com","password":"'
-    content_type, body, _ = post_raw(base, "/api/auth/signup",
-                                     json_body_of_size(signup_prefix, MAX_BODY_BYTES + 1), expected_status=413)
-    require_payload_too_large("/api/auth/signup", content_type, body)
+    content_type, body, headers = post_raw(base, "/api/auth/signup",
+                                           json_body_of_size(signup_prefix, MAX_BODY_BYTES + 1), expected_status=413)
+    require_payload_too_large("/api/auth/signup", content_type, body, headers)
     print("PASS: oversized login and signup bodies are rejected with a JSON 413")
 
 
