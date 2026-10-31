@@ -37,6 +37,13 @@ case "${1:-}" in
     "$python_bin" "$script_dir/check_docker_smoke.py" \
       --base-url "http://$frontend_address" \
       2>&1 | tee "$SMOKE_LOG_DIR/http.log"
+    # 正常な最大級の要求が一時ファイルに書かれていないこと(印はcheck_docker_smoke.pyが付ける)。
+    frontend_log="$("${compose[@]}" logs --no-color frontend 2>&1)"
+    if grep -qE 'buffered to a temporary file.*smoke=body-buffer' <<<"$frontend_log"; then
+      echo "FAIL: the largest valid request body was buffered to a temporary file"         | tee -a "$SMOKE_LOG_DIR/http.log"
+      exit 1
+    fi
+    echo "PASS: the largest valid request body is buffered in memory" | tee -a "$SMOKE_LOG_DIR/http.log"
     ;;
   diagnostics)
     "${compose[@]}" ps --all --format json \

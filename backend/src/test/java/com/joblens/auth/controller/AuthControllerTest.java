@@ -224,6 +224,61 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.email").value(longEmail));
     }
 
+    // ---- ログインの入力の上限 ----
+
+    // 会員登録で受け付ける最長の値(SignupRequestの上限)と同じ長さ。
+    private static final String LONGEST_SIGNUP_EMAIL =
+            "a".repeat(64) + "@" + "b".repeat(63) + "." + "c".repeat(63) + "." + "d".repeat(57) + ".com";
+    private static final String LONGEST_SIGNUP_PASSWORD = "a".repeat(64);
+    private static final String EMAIL_TOO_LONG_MESSAGE = "メールアドレスは254文字以内で入力してください。";
+    private static final String LOGIN_PASSWORD_TOO_LONG_MESSAGE = "パスワードは64文字以内で入力してください。";
+
+    @Test
+    void 가입할_수_있는_가장_긴_이메일과_비밀번호로_로그인할_수_있다() throws Exception {
+        // ログインの上限が会員登録より小さいと、登録できたのにログインできないユーザーが生まれる。
+        assertEquals(254, LONGEST_SIGNUP_EMAIL.length());
+
+        assertEquals(201, signup(LONGEST_SIGNUP_EMAIL, LONGEST_SIGNUP_PASSWORD).getResponse().getStatus());
+        assertEquals(200, login(LONGEST_SIGNUP_EMAIL, LONGEST_SIGNUP_PASSWORD).getResponse().getStatus());
+    }
+
+    @Test
+    void 로그인_비밀번호가_64자를_넘으면_400을_반환한다() throws Exception {
+        mockMvc.perform(post("/api/auth/login")
+                        .with(doubleSubmitCsrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(credentials("user@example.com", "a".repeat(65))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.fieldErrors.password").value(LOGIN_PASSWORD_TOO_LONG_MESSAGE));
+    }
+
+    @Test
+    void 로그인_이메일이_254자를_넘으면_400을_반환한다() throws Exception {
+        mockMvc.perform(post("/api/auth/login")
+                        .with(doubleSubmitCsrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(credentials("a" + LONGEST_SIGNUP_EMAIL, PASSWORD)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.fieldErrors.email").value(EMAIL_TOO_LONG_MESSAGE));
+    }
+
+    @Test
+    void 가입_이메일이_254자를_넘으면_400을_반환한다() throws Exception {
+        // 形式として正しい255文字のメールアドレス。@Emailではなく長さの上限だけに当たる。
+        String tooLongEmail = "a".repeat(64) + "@" + "b".repeat(63) + "." + "c".repeat(63) + "." + "d".repeat(58) + ".com";
+        assertEquals(255, tooLongEmail.length());
+
+        mockMvc.perform(post("/api/auth/signup")
+                        .with(doubleSubmitCsrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(credentials(tooLongEmail, PASSWORD)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.fieldErrors.email").value(EMAIL_TOO_LONG_MESSAGE));
+    }
+
     // ---- ログイン ----
 
     @Test

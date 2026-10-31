@@ -160,6 +160,8 @@ def main():
             "CI job posting database must be newly initialized and empty")
     print("PASS: proxied API preserves pagination parameters and returns a valid empty CI database page")
 
+    # 上限を超える要求が回数制限を消費しないことも確かめるため、回数制限の確認より先に行う。
+    check_body_size_limit(base)
     check_auth_rate_limits(base)
 
 
@@ -195,6 +197,82 @@ def require_rate_limited(path, content_type, body, headers):
             and error.get("fieldErrors") == {},
             f"{path}: rate-limited response must use the API error format")
     require(headers.get("Retry-After") == "60", f"{path}: rate-limited response must send Retry-After: 60")
+
+
+# frontend/nginx.confのclient_max_body_sizeと同じ値にする(1m = 1048576バイト)。
+MAX_BODY_BYTES = 1024 * 1024
+PAYLOAD_TOO_LARGE_CODE = "PAYLOAD_TOO_LARGE"
+PAYLOAD_TOO_LARGE_MESSAGE = "リクエストのサイズが大きすぎます。"
+
+
+def json_body_of_size(prefix, size):
+    # prefix + 'a'...'a' + '"}' がちょうどsizeバイトになるJSONを作る。
+    suffix = '"}'
+    filler = size - len(prefix.encode()) - len(suffix.encode())
+    body = (prefix + "a" * filler + suffix).encode()
+    require(len(body) == size, f"test body must be exactly {size} bytes")
+    return body
+
+
+def post_raw(base, path, body, expected_status):
+    return fetch_with_headers(urljoin(base, path), expected_status=expected_status, data=body,
+                              headers={"Content-Type": "application/json", "X-XSRF-TOKEN": current_csrf_token()})
+
+
+def require_payload_too_large(path, content_type, body):
+    require(content_type == "application/json", f"{path}: payload-too-large response must be JSON")
+    try:
+        error = json.loads(body)
+    except (UnicodeError, ValueError):
+        raise SmokeFailure(f"{path}: payload-too-large response returned invalid JSON") from None
+    require(isinstance(error, dict) and error.get("status") == 413 and error.get("code") == PAYLOAD_TOO_LARGE_CODE
+            and error.get("message") == PAYLOAD_TOO_LARGE_MESSAGE and error.get("path") == ""
+            and error.get("fieldErrors") == {},
+            f"{path}: payload-too-large response must use the API error format")
+
+
+# scripts/ci/docker-smoke.shが、この印の付いた要求についてNginxのログを確認する。
+BODY_BUFFER_MARKER = "smoke=body-buffer"
+
+
+def check_body_size_limit(base):
+    # 正常な要求の最大級(原文20000文字)は、Nginxが一時ファイルに書かずメモリで処理する。
+    # json.dumpsは非ASCIIを\uXXXXで書くため約124KBになり、nginx.confの想定する最大(約120KB)に近い。
+    largest_posting = {"title": "求" * 200, "companyName": "社" * 200,
+                       "sourceUrl": "https://example.com/" + "a" * (2048 - len("https://example.com/")),
+                       "originalText": "あ" * 20000}
+    post_json(base, "/api/job-postings?" + BODY_BUFFER_MARKER, largest_posting, expected_status=201)
+    print("PASS: the largest valid job posting is accepted")
+
+    # 上限ちょうどの本文はバックエンドまで届く(原文が上限を超えるため400の入力エラー)。
+    posting_prefix = '{"title":"smoke","originalText":"'
+    content_type, body, _ = post_raw(base, "/api/job-postings",
+                                     json_body_of_size(posting_prefix, MAX_BODY_BYTES), expected_status=400)
+    require(content_type == "application/json", "Body at the size limit must reach the backend")
+    try:
+        error = json.loads(body)
+    except (UnicodeError, ValueError):
+        raise SmokeFailure("Body at the size limit returned invalid JSON") from None
+    require(isinstance(error, dict) and error.get("code") == "VALIDATION_FAILED"
+            and "originalText" in (error.get("fieldErrors") or {}),
+            "Body at the size limit must reach the backend validation")
+
+    # 1バイトでも超えれば、バックエンドに送らずNginxが413で拒否する。
+    content_type, body, _ = post_raw(base, "/api/job-postings",
+                                     json_body_of_size(posting_prefix, MAX_BODY_BYTES + 1), expected_status=413)
+    require_payload_too_large("/api/job-postings", content_type, body)
+    print(f"PASS: request bodies over {MAX_BODY_BYTES} bytes are rejected with a JSON 413")
+
+    # 回数制限のlocationにも、独自のerror_pageがあっても同じJSONの413が返る。
+    login_prefix = '{"email":"smoke-test@example.com","password":"'
+    content_type, body, _ = post_raw(base, "/api/auth/login",
+                                     json_body_of_size(login_prefix, MAX_BODY_BYTES + 1), expected_status=413)
+    require_payload_too_large("/api/auth/login", content_type, body)
+    signup_prefix = '{"email":"smoke-test-oversized@example.com","password":"'
+    content_type, body, _ = post_raw(base, "/api/auth/signup",
+                                     json_body_of_size(signup_prefix, MAX_BODY_BYTES + 1), expected_status=413)
+    require_payload_too_large("/api/auth/signup", content_type, body)
+    print("PASS: oversized login and signup bodies are rejected with a JSON 413")
 
 
 def check_auth_rate_limits(base):

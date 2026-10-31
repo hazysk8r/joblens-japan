@@ -11,7 +11,7 @@ public record SignupRequest(
 
         @NotBlank(message = "이메일은 필수입니다.")
         @Email(message = "이메일 형식이 올바르지 않습니다.")
-        @Size(max = 254)
+        @Size(max = 254, message = "メールアドレスは254文字以内で入力してください。")
         String email,
 
         // BCryptは72バイトまでしか扱えないため、文字数に加えてUTF-8のバイト数も制限する。
