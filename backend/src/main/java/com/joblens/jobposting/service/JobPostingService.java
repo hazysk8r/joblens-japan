@@ -13,6 +13,7 @@ import com.joblens.jobposting.dto.UpdateApplicationStatusRequest;
 import com.joblens.jobposting.repository.JobPostingRepository;
 import com.joblens.jobposting.repository.JobPostingStatusHistoryRepository;
 import com.joblens.jobposting.specification.JobPostingSpecifications;
+import com.joblens.jobposting.exception.InvalidPageException;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
 import com.joblens.jobposting.exception.JobPostingVersionConflictException;
 import com.joblens.jobposting.validation.JobPostingSortValidator;
@@ -178,6 +179,11 @@ public class JobPostingService {
             LocalDate deadlineFrom,
             LocalDate deadlineTo
     ) {
+        // Hibernateはオフセットをintで扱うため、超えると検索の実行時に例外になる。
+        if (pageable.getOffset() > Integer.MAX_VALUE) {
+            throw new InvalidPageException();
+        }
+
         // pageable에서 sort만 꺼냄
         Sort requestedSort = pageable.getSort();
         // validator에서 검증

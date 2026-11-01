@@ -10,6 +10,7 @@ from http.cookiejar import CookieJar
 from html.parser import HTMLParser
 import json
 import sys
+import traceback
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urljoin, urlsplit
 from urllib.request import HTTPCookieProcessor, Request, build_opener
@@ -50,6 +51,19 @@ def fetch(url, expected_status=200, data=None, headers=None):
     return content_type, body
 
 
+def transport_error_details(error):
+    # urllibはソケット例外をURLError.reasonに包む。本文や認証情報は出さず、原因と番号を残す。
+    cause = error.reason if isinstance(error, URLError) else error
+    details = [type(error).__name__]
+    if cause is not error:
+        details.append(type(cause).__name__)
+    for name in ("errno", "winerror"):
+        value = getattr(cause, name, None)
+        if value is not None:
+            details.append(f"{name}={value}")
+    return ", ".join(details)
+
+
 def fetch_with_headers(url, expected_status=200, data=None, headers=None):
     path = urlsplit(url).path
     request = Request(url, data=data, headers=headers or {}, method="POST" if data is not None else "GET")
@@ -58,7 +72,7 @@ def fetch_with_headers(url, expected_status=200, data=None, headers=None):
     except HTTPError as error:
         response = error
     except (URLError, HTTPException, TimeoutError, OSError) as error:
-        raise SmokeFailure(f"{path}: HTTP request failed ({type(error).__name__})") from None
+        raise SmokeFailure(f"{path}: HTTP request failed ({transport_error_details(error)})") from error
     try:
         with response:
             require(response.status == expected_status,
@@ -70,7 +84,7 @@ def fetch_with_headers(url, expected_status=200, data=None, headers=None):
             require(len(body) <= 8 * 1024 * 1024, f"{path}: response exceeded 8 MiB")
             return response.headers.get_content_type(), body, response.headers
     except (HTTPException, TimeoutError, OSError) as error:
-        raise SmokeFailure(f"{path}: response read failed ({type(error).__name__})") from None
+        raise SmokeFailure(f"{path}: response read failed ({transport_error_details(error)})") from error
 
 
 # frontend/security-headers.confと同じ値にする。
@@ -132,8 +146,20 @@ def html_page(url):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", required=True)
+    parser.add_argument("--debug", action="store_true", help="Show the original exception traceback on failure")
     args = parser.parse_args()
-    base = args.base_url.rstrip("/") + "/"
+    try:
+        check(args.base_url)
+    except SmokeFailure as error:
+        print(f"FAIL: {error}", file=sys.stderr)
+        if args.debug:
+            traceback.print_exc()
+        return 1
+    return 0
+
+
+def check(base_url):
+    base = base_url.rstrip("/") + "/"
     origin = urlsplit(base)
     require(origin.scheme in {"http", "https"} and origin.netloc and
             not origin.username and not origin.password and origin.path == "/" and
@@ -184,6 +210,7 @@ def main():
     require(content_type == "application/json", "Signup API must return JSON")
     require(any(cookie.name == "SESSION" for cookie in COOKIES), "Signup must start a login session")
     print("PASS: proxied POST with the CSRF header signs up and starts a session")
+    check_spring_error_format(base)
 
     query = urlencode({"page": 0, "size": 3})
     content_type, body = fetch(urljoin(base, "/api/job-postings") + "?" + query)
@@ -211,6 +238,21 @@ def main():
     # 上限を超える要求が回数制限を消費しないことも確かめるため、回数制限の確認より先に行う。
     check_body_size_limit(base)
     check_auth_rate_limits(base)
+
+
+def check_spring_error_format(base):
+    # Spring自身が返すエラーも、Nginxを通してAPIと同じ形式で届く。
+    path = "/api/__docker_smoke_missing__"
+    content_type, body, _ = fetch_with_headers(urljoin(base, path), expected_status=404)
+    require(content_type == "application/json", f"{path}: error response must be JSON")
+    try:
+        error = json.loads(body)
+    except (UnicodeError, ValueError):
+        raise SmokeFailure(f"{path}: error response returned invalid JSON") from None
+    require(isinstance(error, dict) and error.get("status") == 404 and error.get("code") == "NOT_FOUND"
+            and error.get("path") == path and error.get("fieldErrors") == {} and error.get("message"),
+            f"{path}: error response must use the API error format")
+    print("PASS: Spring error responses use the API error format")
 
 
 # frontend/nginx.confのlimit_reqの設定と同じ値にする(rate + burst、nodelay)。
@@ -360,8 +402,4 @@ def check_auth_rate_limits(base):
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except SmokeFailure as error:
-        print(f"FAIL: {error}", file=sys.stderr)
-        sys.exit(1)
+    sys.exit(main())

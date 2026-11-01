@@ -3,6 +3,7 @@ package com.joblens.common.error;
 import com.joblens.auth.exception.EmailAlreadyExistsException;
 import com.joblens.common.web.AuthContextChangedException;
 import com.joblens.jobposting.exception.IfMatchRequiredException;
+import com.joblens.jobposting.exception.InvalidPageException;
 import com.joblens.jobposting.exception.InvalidSortFieldException;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
 import com.joblens.jobposting.exception.JobPostingVersionConflictException;
@@ -10,9 +11,13 @@ import com.joblens.jobposting.exception.MalformedIfMatchHeaderException;
 import com.joblens.note.exception.JobPostingMemoNotFoundException;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -26,6 +31,13 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    // PostgreSQLのSQLState。22xxxは値自体がDBで扱えない場合(NUL文字、範囲外の日付など)。
+    private static final String SQL_STATE_CLASS_DATA_EXCEPTION = "22";
+    private static final String SQL_STATE_UNIQUE_VIOLATION = "23505";
+    private static final String SQL_STATE_FOREIGN_KEY_VIOLATION = "23503";
 
     /**
      * JobPostingNotFoundException이 발생하면
@@ -145,6 +157,14 @@ public class GlobalExceptionHandler {
                 .body(response);
     }
 
+    @ExceptionHandler(InvalidPageException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidPage(
+            InvalidPageException exception,
+            HttpServletRequest request
+    ) {
+        return errorResponse(HttpStatus.BAD_REQUEST, "INVALID_PAGE", exception.getMessage(), request);
+    }
+
     @ExceptionHandler(JobPostingMemoNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleJobPostingMemoNotFound(
                     JobPostingMemoNotFoundException exception,
@@ -248,6 +268,60 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(response);
+    }
+
+    @ExceptionHandler(DataAccessException.class)
+    public ResponseEntity<ApiErrorResponse> handleDataAccessFailure(
+            DataAccessException exception,
+            HttpServletRequest request
+    ) {
+        return storageFailureResponse(exception, request);
+    }
+
+    /*
+     * ユーザーの検索に失敗した場合。AuthenticationExceptionの一種だが、認証の失敗ではない。
+     * 401にすると、DBの障害が「パスワードが違う」と表示され、ログにも残らない。
+     */
+    @ExceptionHandler(AuthenticationServiceException.class)
+    public ResponseEntity<ApiErrorResponse> handleAuthenticationServiceFailure(
+            AuthenticationServiceException exception,
+            HttpServletRequest request
+    ) {
+        return storageFailureResponse(exception, request);
+    }
+
+    private ResponseEntity<ApiErrorResponse> storageFailureResponse(
+            Exception exception,
+            HttpServletRequest request
+    ) {
+        String sqlState = DatabaseErrors.sqlStateOf(exception);
+
+        if (sqlState != null && sqlState.startsWith(SQL_STATE_CLASS_DATA_EXCEPTION)) {
+            return errorResponse(HttpStatus.BAD_REQUEST, "INVALID_REQUEST_VALUE",
+                    "入力された値を処理できませんでした。", request);
+        }
+
+        if (SQL_STATE_UNIQUE_VIOLATION.equals(sqlState) || SQL_STATE_FOREIGN_KEY_VIOLATION.equals(sqlState)) {
+            return errorResponse(HttpStatus.CONFLICT, "DATA_CONFLICT",
+                    "他のデータと競合したため処理できませんでした。画面を更新してから再度お試しください。", request);
+        }
+
+        // 入力の検証を通過した値のCHECK違反やDBの障害は、サーバーの問題として扱う。
+        log.error("データベースの処理に失敗しました: {} {}", request.getMethod(), request.getRequestURI(), exception);
+        return errorResponse(HttpStatus.INTERNAL_SERVER_ERROR, HttpStatus.INTERNAL_SERVER_ERROR.name(),
+                ApiErrorAttributes.SERVER_ERROR_MESSAGE, request);
+    }
+
+    private ResponseEntity<ApiErrorResponse> errorResponse(
+            HttpStatus status,
+            String code,
+            String message,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity
+                .status(status)
+                .body(new ApiErrorResponse(
+                        Instant.now(), status.value(), code, message, request.getRequestURI(), Map.of()));
     }
 
     // メールアドレスの未登録とパスワード不一致を区別せず、同じ応答を返す。

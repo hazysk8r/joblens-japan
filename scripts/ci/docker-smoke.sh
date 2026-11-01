@@ -34,8 +34,11 @@ case "${1:-}" in
   check)
     frontend_address="$("${compose[@]}" port frontend 80)"
     python_bin="${PYTHON_BIN:-python3}"
-    "$python_bin" "$script_dir/check_docker_smoke.py" \
-      --base-url "http://$frontend_address" \
+    smoke_args=(--base-url "http://$frontend_address")
+    if [[ "${SMOKE_DEBUG:-0}" == "1" ]]; then
+      smoke_args+=(--debug)
+    fi
+    "$python_bin" "$script_dir/check_docker_smoke.py" "${smoke_args[@]}" \
       2>&1 | tee "$SMOKE_LOG_DIR/http.log"
     # 正常な最大級の要求が一時ファイルに書かれていないこと(印はcheck_docker_smoke.pyが付ける)。
     frontend_log="$("${compose[@]}" logs --no-color frontend 2>&1)"

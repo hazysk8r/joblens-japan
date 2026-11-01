@@ -10,12 +10,15 @@ import com.joblens.auth.dto.SignupRequest;
 import com.joblens.auth.exception.EmailAlreadyExistsException;
 import com.joblens.auth.repository.UserRepository;
 import com.joblens.auth.security.AuthenticatedUser;
+import com.joblens.common.error.DatabaseErrors;
 
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
+
+    private static final String EMAIL_UNIQUE_CONSTRAINT = "uq_users_email";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -32,7 +35,11 @@ public class AuthService {
             return AuthenticatedUser.from(user);
         } catch (DataIntegrityViolationException exception) {
             // 同じメールアドレスで同時に登録された場合も、一意制約違反を重複エラーとして返す。
-            throw new EmailAlreadyExistsException();
+            // 他の制約の違反を重複と表示すると、本当の原因が隠れるため区別する。
+            if (DatabaseErrors.violatesConstraint(exception, EMAIL_UNIQUE_CONSTRAINT)) {
+                throw new EmailAlreadyExistsException();
+            }
+            throw exception;
         }
     }
 }
