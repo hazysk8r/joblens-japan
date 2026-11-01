@@ -3,6 +3,7 @@ package com.joblens.jobposting.dto;
 import java.time.LocalDate;
 
 import com.joblens.jobposting.validation.SalaryRangeTarget;
+import com.joblens.jobposting.validation.ValidHttpUrl;
 import com.joblens.jobposting.validation.ValidSalaryRange;
 
 import jakarta.validation.constraints.NotBlank;
@@ -22,6 +23,7 @@ public record CreateJobPostingRequest(
 
         // 一般的なブラウザ・サーバーが扱えるURLの長さに合わせる。
         @Size(max = 2048)
+        @ValidHttpUrl
         String sourceUrl,
 
         // 求人原文として十分な長さを確保しつつ、極端に大きなデータの保存を防ぐ。

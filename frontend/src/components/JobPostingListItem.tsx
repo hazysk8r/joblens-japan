@@ -8,6 +8,7 @@ import type {
 import { useRef, useState, useEffect } from 'react';
 import './JobPostingListItem.css';
 import { formatDateTime } from '../utils/date';
+import { isHttpUrl } from '../utils/httpUrl';
 
 import JobPostingMemoCreateForm from './JobPostingMemoCreateForm';
 import JobPostingEditForm from './JobPostingEditForm';
@@ -369,7 +370,7 @@ function JobPostingListItem({
 						<p className="job-posting-card__original-text">
 							{jobPosting.originalText}
 						</p>
-						{jobPosting.sourceUrl && (
+						{jobPosting.sourceUrl && isHttpUrl(jobPosting.sourceUrl) && (
 							<p className="job-posting-card__source">
 								<a
 									href={

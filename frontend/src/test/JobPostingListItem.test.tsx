@@ -2136,3 +2136,66 @@ describe('status', () => {
     },
   );
 })
+
+describe('공고 원문 링크', () => {
+  const renderWithSourceUrl = async (sourceUrl: string | null) => {
+    const jobPosting: JobPosting = {
+      id: 1,
+      companyName: '黄猿',
+      title: 'エンジニア求人',
+      sourceUrl,
+      originalText: 'AWSエンジニア求人',
+      createdAt: '2026-08-14T00:00:00Z',
+      applicationStatus: 'SAVED',
+      salaryMin: null,
+      salaryMax: null,
+      applicationDeadline: null,
+      version: 0,
+    };
+
+    render(
+      <JobPostingListItem
+        jobPosting={jobPosting}
+        isEditing={false}
+        isSaving={false}
+        isDeleting={false}
+        isUpdatingStatus={false}
+        onStartEdit={vi.fn()}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        onDelete={vi.fn()}
+        onApplicationStatusChange={vi.fn()}
+      />
+    );
+
+    await screen.findByRole('button', { name: '기술 스택 보기' });
+  };
+
+  test('http와 https URL은 새 탭으로 여는 링크로 표시한다', async () => {
+    await renderWithSourceUrl('https://example.com/jobs/1');
+
+    const link = screen.getByRole('link', { name: '원문 보기' });
+    expect(link).toHaveAttribute('href', 'https://example.com/jobs/1');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noreferrer');
+  });
+
+  // 検証を導入する前に保存された値が、DBに残っている場合。
+  test.each([
+    'javascript:alert(1)',
+    'data:text/html,<script>alert(1)</script>',
+    'www.example.com',
+    'ftp://example.com/x',
+  ])('저장된 값이 %s이면 링크를 표시하지 않는다', async (sourceUrl) => {
+    await renderWithSourceUrl(sourceUrl);
+
+    expect(screen.queryByRole('link', { name: '원문 보기' })).not.toBeInTheDocument();
+    expect(screen.getByText('AWSエンジニア求人')).toBeInTheDocument();
+  });
+
+  test('URL이 없으면 링크를 표시하지 않는다', async () => {
+    await renderWithSourceUrl(null);
+
+    expect(screen.queryByRole('link', { name: '원문 보기' })).not.toBeInTheDocument();
+  });
+});

@@ -5,6 +5,12 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
 
+  build: {
+    // 小さなファイルをdata: URIにすると、CSPのimg-src 'self'(security-headers.conf)で表示できない。
+    // 開発サーバーにはCSPがないため、本番でだけ壊れる。常にファイルとして出力する。
+    assetsInlineLimit: 0,
+  },
+
   test: {
     environment: 'jsdom',
     // すべてのテストの前に、CSRFトークンのCookieがある状態にする。

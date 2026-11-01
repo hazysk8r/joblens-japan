@@ -444,6 +444,72 @@ class JobPostingControllerTest {
                 assertEquals("既存の原文", unchanged.getOriginalText());
         }
 
+        // ---- URLのスキーム ----
+
+        private static final String INVALID_SOURCE_URL_MESSAGE =
+                        "URLはhttp://またはhttps://で始まる形式で入力してください。";
+
+        @Test
+        void 생성시_http와_https가_아닌_URL이면_400을_반환하고_저장하지_않는다() throws Exception {
+                mockMvc.perform(post("/api/job-postings")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody("javascript:alert(1)", "原文")))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                                .andExpect(jsonPath("$.fieldErrors.sourceUrl").value(INVALID_SOURCE_URL_MESSAGE));
+
+                assertEquals(0, jobPostingRepository.count());
+        }
+
+        @Test
+        void 수정시_http와_https가_아닌_URL이면_400을_반환하고_데이터를_유지한다() throws Exception {
+                JobPosting saved = jobPostingRepository.saveAndFlush(
+                                new JobPosting(testUsers.defaultUserId(), null, "既存タイトル",
+                                                "https://example.com/old", "既存の原文", null, null, null));
+
+                mockMvc.perform(put("/api/job-postings/{id}", saved.getId())
+                                .header(HttpHeaders.IF_MATCH, "\"" + saved.getVersion() + "\"")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody("javascript:alert(1)", "原文")))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.fieldErrors.sourceUrl").value(INVALID_SOURCE_URL_MESSAGE));
+
+                JobPosting unchanged = jobPostingRepository.findById(saved.getId()).orElseThrow();
+                assertEquals("https://example.com/old", unchanged.getSourceUrl());
+        }
+
+        @Test
+        void 검증_도입_전의_잘못된_URL은_올바른_URL로_고치면_수정할_수_있다() throws Exception {
+                JobPosting saved = jobPostingRepository.saveAndFlush(
+                                new JobPosting(testUsers.defaultUserId(), null, "既存タイトル",
+                                                "www.example.com", "既存の原文", null, null, null));
+
+                mockMvc.perform(put("/api/job-postings/{id}", saved.getId())
+                                .header(HttpHeaders.IF_MATCH, "\"" + saved.getVersion() + "\"")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody("https://www.example.com", "既存の原文")))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.sourceUrl").value("https://www.example.com"));
+        }
+
+        @Test
+        void 검증_도입_전의_잘못된_URL이_있어도_지원_상태는_변경할_수_있다() throws Exception {
+                JobPosting saved = jobPostingRepository.saveAndFlush(
+                                new JobPosting(testUsers.defaultUserId(), null, "既存タイトル",
+                                                "www.example.com", "既存の原文", null, null, null));
+
+                mockMvc.perform(patch("/api/job-postings/{id}/status", saved.getId())
+                                .header(HttpHeaders.IF_MATCH, "\"" + saved.getVersion() + "\"")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                                {
+                                                  "status": "APPLIED"
+                                                }
+                                                """))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.applicationStatus").value("APPLIED"));
+        }
+
         @Test
         void 페이지_크기를_상한보다_크게_요청해도_100건까지만_반환한다() throws Exception {
                 List<JobPosting> postings = IntStream.rangeClosed(1, 101)
