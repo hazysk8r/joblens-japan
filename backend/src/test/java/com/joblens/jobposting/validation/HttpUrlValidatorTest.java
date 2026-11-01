@@ -1,7 +1,10 @@
 package com.joblens.jobposting.validation;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.Duration;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -86,8 +89,13 @@ class HttpUrlValidatorTest {
         assertFalse(validator.isValid(url, null));
     }
 
+    // 正規表現に書き換えると、値の長さの2乗の時間がかかるおそれがある。止まったままにせず、失敗させる。
     @Test
-    void 아주_긴_값도_마지막_문자까지_확인한다() {
-        assertFalse(validator.isValid("https://example.com/" + "a".repeat(1024 * 1024) + "\n", null));
+    void 아주_긴_값도_마지막_문자까지_바로_확인한다() {
+        String longValue = "https://example.com/" + "a".repeat(1024 * 1024) + "\n";
+
+        assertFalse(assertTimeoutPreemptively(
+                Duration.ofSeconds(5),
+                () -> validator.isValid(longValue, null)));
     }
 }

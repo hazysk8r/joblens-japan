@@ -19,7 +19,7 @@ import java.lang.annotation.Target;
 @Constraint(validatedBy = HttpUrlValidator.class)
 public @interface ValidHttpUrl {
 
-    String message() default "URLはhttp://またはhttps://で始まる形式で入力してください。";
+    String message() default "http://またはhttps://で始まるURLを、空白を含めずに入力してください。";
 
     Class<?>[] groups() default {};
 

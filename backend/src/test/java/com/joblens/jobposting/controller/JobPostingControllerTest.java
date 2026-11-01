@@ -447,7 +447,7 @@ class JobPostingControllerTest {
         // ---- URLのスキーム ----
 
         private static final String INVALID_SOURCE_URL_MESSAGE =
-                        "URLはhttp://またはhttps://で始まる形式で入力してください。";
+                        "http://またはhttps://で始まるURLを、空白を含めずに入力してください。";
 
         @Test
         void 생성시_http와_https가_아닌_URL이면_400을_반환하고_저장하지_않는다() throws Exception {
