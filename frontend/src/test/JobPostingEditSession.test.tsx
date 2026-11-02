@@ -17,9 +17,9 @@ import type { JobPosting, PageResponse } from '../types/jobPosting';
 vi.mock('../api/jobPostingApi');
 vi.mock('../api/jobPostingMemoApi');
 
-const CONFLICT_MESSAGE = '다른 화면에서 채용공고가 수정되었습니다.';
-const RECOVERY_MESSAGE = '최신 공고를 불러오지 못했습니다. 다시 불러온 후 수정해 주세요.';
-const RETRY_NAME = '최신 공고 다시 불러오기';
+const CONFLICT_MESSAGE = '別の画面で求人が編集されました。';
+const RECOVERY_MESSAGE = '最新の求人を読み込めませんでした。再読み込みしてから編集してください。';
+const RETRY_NAME = '最新の求人を再読み込み';
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -87,17 +87,17 @@ async function renderPostings(...postings: JobPosting[]) {
 }
 
 async function replaceTitle(user: ReturnType<typeof userEvent.setup>, card: HTMLElement, title: string) {
-  const titleInput = within(card).getByRole('textbox', { name: '공고 제목' });
+  const titleInput = within(card).getByRole('textbox', { name: '求人タイトル' });
   await user.clear(titleInput);
   await user.type(titleInput, title);
 }
 
 async function beginEdit(user: ReturnType<typeof userEvent.setup>, card: HTMLElement) {
-  await user.click(within(card).getByRole('button', { name: '수정' }));
+  await user.click(within(card).getByRole('button', { name: '編集' }));
 }
 
 async function submitEdit(user: ReturnType<typeof userEvent.setup>, card: HTMLElement) {
-  await user.click(within(card).getByRole('button', { name: '저장' }));
+  await user.click(within(card).getByRole('button', { name: '保存' }));
 }
 
 beforeEach(() => {
@@ -116,16 +116,16 @@ afterEach(() => {
   cleanup();
 });
 
-describe('편집 시작 version', () => {
-  test('props가 갱신되어도 입력 초안과 편집 시작 version으로 저장한다', async () => {
+describe('編集開始時のversion', () => {
+  test('propsが更新されても入力の下書きと編集開始時のversionで保存する', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     const onCancel = vi.fn();
     const user = userEvent.setup();
     const { rerender } = render(
       <JobPostingEditForm jobPosting={postingA} saving={false} onSave={onSave} onCancel={onCancel} />,
     );
-    await user.clear(screen.getByRole('textbox', { name: '공고 제목' }));
-    await user.type(screen.getByRole('textbox', { name: '공고 제목' }), '自分の編集中タイトル');
+    await user.clear(screen.getByRole('textbox', { name: '求人タイトル' }));
+    await user.type(screen.getByRole('textbox', { name: '求人タイトル' }), '自分の編集中タイトル');
 
     rerender(
       <JobPostingEditForm
@@ -135,8 +135,8 @@ describe('편집 시작 version', () => {
         onCancel={onCancel}
       />,
     );
-    expect(screen.getByRole('textbox', { name: '공고 원문' })).toHaveValue(postingA.originalText);
-    await user.click(screen.getByRole('button', { name: '저장' }));
+    expect(screen.getByRole('textbox', { name: '求人原文' })).toHaveValue(postingA.originalText);
+    await user.click(screen.getByRole('button', { name: '保存' }));
 
     expect(onSave).toHaveBeenCalledWith(
       postingA.id,
@@ -149,28 +149,28 @@ describe('편집 시작 version', () => {
     );
   });
 
-  test('새 세션으로 폼이 다시 생성되면 최신 필드와 version으로 시작한다', async () => {
+  test('新しいセッションでフォームが作り直されると最新の項目とversionで始まる', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     const onCancel = vi.fn();
     const user = userEvent.setup();
     const { rerender } = render(
       <JobPostingEditForm key="session-1" jobPosting={postingA} saving={false} onSave={onSave} onCancel={onCancel} />,
     );
-    await user.clear(screen.getByRole('textbox', { name: '공고 제목' }));
-    await user.type(screen.getByRole('textbox', { name: '공고 제목' }), '破棄する旧下書き');
+    await user.clear(screen.getByRole('textbox', { name: '求人タイトル' }));
+    await user.type(screen.getByRole('textbox', { name: '求人タイトル' }), '破棄する旧下書き');
     const latest = posting({ title: '最新タイトル', originalText: '最新原文', salaryMin: 400000, version: 9 });
     rerender(
       <JobPostingEditForm key="session-2" jobPosting={latest} saving={false} onSave={onSave} onCancel={onCancel} />,
     );
-    expect(screen.getByRole('textbox', { name: '공고 제목' })).toHaveValue(latest.title);
-    expect(screen.getByRole('textbox', { name: '공고 원문' })).toHaveValue(latest.originalText);
-    await user.click(screen.getByRole('button', { name: '저장' }));
+    expect(screen.getByRole('textbox', { name: '求人タイトル' })).toHaveValue(latest.title);
+    expect(screen.getByRole('textbox', { name: '求人原文' })).toHaveValue(latest.originalText);
+    await user.click(screen.getByRole('button', { name: '保存' }));
     expect(onSave).toHaveBeenCalledWith(latest.id, expect.objectContaining({ title: latest.title }), latest.version);
   });
 });
 
-describe('412 복구', () => {
-  test('재조회가 아직 pending이어도 412 즉시 폼을 종료하고 자동 재저장하지 않는다', async () => {
+describe('412の復旧', () => {
+  test('再取得がまだpendingでも412ですぐフォームを閉じ、自動で再保存しない', async () => {
     const recovery = deferred<PageResponse<JobPosting>>();
     const user = userEvent.setup();
     await renderPostings(postingA);
@@ -182,9 +182,9 @@ describe('412 복구', () => {
 
     await submitEdit(user, cardA);
     await waitFor(() => expect(fetchJobPostings).toHaveBeenCalledTimes(2));
-    expect(screen.queryByRole('textbox', { name: '공고 제목' })).not.toBeInTheDocument();
-    expect(within(cardA).getByRole('button', { name: '수정' })).toBeDisabled();
-    expect(within(cardA).getByText('최신 공고를 다시 불러오는 중...')).toHaveAttribute('role', 'status');
+    expect(screen.queryByRole('textbox', { name: '求人タイトル' })).not.toBeInTheDocument();
+    expect(within(cardA).getByRole('button', { name: '編集' })).toBeDisabled();
+    expect(within(cardA).getByText('最新の求人を再読み込み中…')).toHaveAttribute('role', 'status');
     expect(screen.getByText(CONFLICT_MESSAGE)).toBeInTheDocument();
     expect(updateJobPosting).toHaveBeenCalledTimes(1);
 
@@ -192,7 +192,7 @@ describe('412 복구', () => {
     expect(updateJobPosting).toHaveBeenCalledTimes(1);
   });
 
-  test('복구 실패 시 재편집을 막고 재시도 성공 후 최신 필드와 version으로 저장한다', async () => {
+  test('復旧に失敗すると再編集を止め、再試行の成功後に最新の項目とversionで保存する', async () => {
     const recovery = deferred<PageResponse<JobPosting>>();
     const retry = deferred<PageResponse<JobPosting>>();
     const latest = posting({ title: '最新タイトル', originalText: '最新原文', salaryMin: 400000, version: 8 });
@@ -207,16 +207,16 @@ describe('412 복구', () => {
     await submitEdit(user, cardA);
     await act(async () => recovery.reject(new Error('復旧GET失敗')));
     expect(screen.getByText(RECOVERY_MESSAGE)).toBeInTheDocument();
-    expect(within(cardA).getByRole('button', { name: '수정' })).toBeDisabled();
-    expect(screen.queryByRole('textbox', { name: '공고 제목' })).not.toBeInTheDocument();
+    expect(within(cardA).getByRole('button', { name: '編集' })).toBeDisabled();
+    expect(screen.queryByRole('textbox', { name: '求人タイトル' })).not.toBeInTheDocument();
     await user.click(within(cardA).getByRole('button', { name: RETRY_NAME }));
-    expect(within(cardA).getByRole('button', { name: '수정' })).toBeDisabled();
+    expect(within(cardA).getByRole('button', { name: '編集' })).toBeDisabled();
     await act(async () => retry.resolve(pageOf(latest)));
 
     await beginEdit(user, cardA);
-    expect(within(cardA).getByRole('textbox', { name: '공고 제목' })).toHaveValue(latest.title);
-    expect(within(cardA).getByRole('textbox', { name: '공고 원문' })).toHaveValue(latest.originalText);
-    expect(within(cardA).getByRole('combobox', { name: '최저 월급' })).toHaveValue('400000');
+    expect(within(cardA).getByRole('textbox', { name: '求人タイトル' })).toHaveValue(latest.title);
+    expect(within(cardA).getByRole('textbox', { name: '求人原文' })).toHaveValue(latest.originalText);
+    expect(within(cardA).getByRole('combobox', { name: '最低月給' })).toHaveValue('400000');
     await submitEdit(user, cardA);
     expect(updateJobPosting).toHaveBeenLastCalledWith(
       latest.id,
@@ -225,7 +225,7 @@ describe('412 복구', () => {
     );
   });
 
-  test('A의 늦은 412와 복구 실패가 편집 중인 B의 입력 초안을 지우지 않는다', async () => {
+  test('Aの遅い412と復旧の失敗が編集中のBの下書きを消さない', async () => {
     const saveA = deferred<JobPosting>();
     const recovery = deferred<PageResponse<JobPosting>>();
     const user = userEvent.setup();
@@ -240,15 +240,15 @@ describe('412 복구', () => {
     vi.mocked(fetchJobPostings).mockReturnValueOnce(recovery.promise);
 
     await act(async () => saveA.reject(conflict()));
-    expect(within(cardB).getByRole('textbox', { name: '공고 제목' })).toHaveValue('Bの保存前の下書き');
+    expect(within(cardB).getByRole('textbox', { name: '求人タイトル' })).toHaveValue('Bの保存前の下書き');
     await act(async () => recovery.reject(new Error('復旧GET失敗')));
     expect(screen.getByText(RECOVERY_MESSAGE)).toBeInTheDocument();
-    expect(within(cardB).getByRole('textbox', { name: '공고 제목' })).toHaveValue('Bの保存前の下書き');
-    expect(within(cardB).getByRole('button', { name: '저장' })).toBeEnabled();
-    expect(within(cardA).getByRole('button', { name: '수정' })).toBeDisabled();
+    expect(within(cardB).getByRole('textbox', { name: '求人タイトル' })).toHaveValue('Bの保存前の下書き');
+    expect(within(cardB).getByRole('button', { name: '保存' })).toBeEnabled();
+    expect(within(cardA).getByRole('button', { name: '編集' })).toBeDisabled();
   });
 
-  test('A의 이전 저장이 늦게 412를 반환해도 새 A 세션과 그 시작 version을 유지한다', async () => {
+  test('Aの以前の保存が遅れて412を返しても、新しいAのセッションとその開始versionを維持する', async () => {
     const previousSave = deferred<JobPosting>();
     const recovery = deferred<PageResponse<JobPosting>>();
     const user = userEvent.setup();
@@ -264,9 +264,9 @@ describe('412 복구', () => {
     vi.mocked(fetchJobPostings).mockReturnValueOnce(recovery.promise);
 
     await act(async () => previousSave.reject(conflict()));
-    expect(within(cardA).getByRole('textbox', { name: '공고 제목' })).toHaveValue('新しいAセッションの下書き');
+    expect(within(cardA).getByRole('textbox', { name: '求人タイトル' })).toHaveValue('新しいAセッションの下書き');
     await act(async () => recovery.resolve(pageOf(posting({ version: 9 }), postingB)));
-    expect(within(cardA).getByRole('textbox', { name: '공고 제목' })).toHaveValue('新しいAセッションの下書き');
+    expect(within(cardA).getByRole('textbox', { name: '求人タイトル' })).toHaveValue('新しいAセッションの下書き');
     await submitEdit(user, cardA);
     expect(updateJobPosting).toHaveBeenLastCalledWith(
       postingA.id,
@@ -275,7 +275,7 @@ describe('412 복구', () => {
     );
   });
 
-  test('새 recovery가 실패한 뒤 이전 recovery 응답이 도착해도 재편집 제한을 해제하지 않는다', async () => {
+  test('新しいrecoveryの失敗後に以前のrecoveryの応答が届いても、再編集の制限を解除しない', async () => {
     const previousSave = deferred<JobPosting>();
     const currentSave = deferred<JobPosting>();
     const previousRecovery = deferred<PageResponse<JobPosting>>();
@@ -303,31 +303,31 @@ describe('412 복구', () => {
     expect(screen.getByText(RECOVERY_MESSAGE)).toBeInTheDocument();
     await act(async () => previousRecovery.resolve(pageOf(posting({ title: '古い復旧結果', version: 4 }), postingB)));
 
-    expect(within(cardA).getByRole('button', { name: '수정' })).toBeDisabled();
+    expect(within(cardA).getByRole('button', { name: '編集' })).toBeDisabled();
     expect(within(cardA).getByRole('button', { name: RETRY_NAME })).toBeEnabled();
     expect(screen.getByText(RECOVERY_MESSAGE)).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: '古い復旧結果', level: 2 })).not.toBeInTheDocument();
   });
 });
 
-describe('저장 완료의 세션 보호', () => {
-  test('현재 세션의 일반 저장 실패에서는 폼과 입력을 유지한다', async () => {
+describe('保存完了時のセッション保護', () => {
+  test('現在のセッションの通常の保存失敗ではフォームと入力を維持する', async () => {
     const user = userEvent.setup();
     await renderPostings(postingA);
     const cardA = cardFor(postingA.title);
     await beginEdit(user, cardA);
     await replaceTitle(user, cardA, '失敗後も保持する下書き');
-    vi.mocked(updateJobPosting).mockRejectedValueOnce(new Error('일반 저장 실패'));
+    vi.mocked(updateJobPosting).mockRejectedValueOnce(new Error('通常の保存失敗'));
     await submitEdit(user, cardA);
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('일반 저장 실패');
-    expect(within(cardA).getByRole('textbox', { name: '공고 제목' })).toHaveValue('失敗後も保持する下書き');
-    expect(within(cardA).getByRole('button', { name: '저장' })).toBeEnabled();
+    expect(await screen.findByRole('alert')).toHaveTextContent('通常の保存失敗');
+    expect(within(cardA).getByRole('textbox', { name: '求人タイトル' })).toHaveValue('失敗後も保持する下書き');
+    expect(within(cardA).getByRole('button', { name: '保存' })).toBeEnabled();
     expect(fetchJobPostings).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('button', { name: RETRY_NAME })).not.toBeInTheDocument();
   });
 
-  test('이전 A의 일반 오류와 finally가 새 A의 저장 상태를 해제하지 않는다', async () => {
+  test('以前のAの通常のエラーとfinallyが新しいAの保存状態を解除しない', async () => {
     const previousSave = deferred<JobPosting>();
     const currentSave = deferred<JobPosting>();
     const user = userEvent.setup();
@@ -342,15 +342,15 @@ describe('저장 완료의 세션 보호', () => {
     await replaceTitle(user, cardA, '保存中の新しい下書き');
     await submitEdit(user, cardA);
 
-    await act(async () => previousSave.reject(new Error('이전 세션의 저장 실패')));
-    expect(screen.queryByText('이전 세션의 저장 실패')).not.toBeInTheDocument();
-    expect(within(cardA).getByRole('textbox', { name: '공고 제목' })).toHaveValue('保存中の新しい下書き');
-    expect(within(cardA).getByRole('button', { name: '저장 중...' })).toBeDisabled();
-    expect(within(cardA).getByRole('textbox', { name: '공고 제목' })).toBeDisabled();
+    await act(async () => previousSave.reject(new Error('以前のセッションの保存失敗')));
+    expect(screen.queryByText('以前のセッションの保存失敗')).not.toBeInTheDocument();
+    expect(within(cardA).getByRole('textbox', { name: '求人タイトル' })).toHaveValue('保存中の新しい下書き');
+    expect(within(cardA).getByRole('button', { name: '保存中…' })).toBeDisabled();
+    expect(within(cardA).getByRole('textbox', { name: '求人タイトル' })).toBeDisabled();
     await act(async () => currentSave.resolve(posting({ version: 4 })));
   });
 
-  test('A의 늦은 성공 후 B가 목록에서 빠져도 편집 초안을 유지한다', async () => {
+  test('Aの遅い成功の後にBが一覧から外れても編集の下書きを維持する', async () => {
     const saveA = deferred<JobPosting>();
     const refresh = deferred<PageResponse<JobPosting>>();
     const user = userEvent.setup();
@@ -365,21 +365,21 @@ describe('저장 완료의 세션 보호', () => {
     vi.mocked(fetchJobPostings).mockReturnValueOnce(refresh.promise);
 
     await act(async () => saveA.resolve(posting({ version: 4 })));
-    expect(within(cardB).getByRole('textbox', { name: '공고 제목' })).toHaveValue('Bの保存前の下書き');
+    expect(within(cardB).getByRole('textbox', { name: '求人タイトル' })).toHaveValue('Bの保存前の下書き');
     await act(async () => refresh.resolve(pageOf(posting({ version: 4 }))));
-    expect(within(cardB).getByRole('textbox', { name: '공고 제목' })).toHaveValue('Bの保存前の下書き');
-    await user.click(within(cardB).getByRole('button', { name: '취소' }));
+    expect(within(cardB).getByRole('textbox', { name: '求人タイトル' })).toHaveValue('Bの保存前の下書き');
+    await user.click(within(cardB).getByRole('button', { name: 'キャンセル' }));
     expect(cardB).not.toBeInTheDocument();
   });
 });
 
-describe('목록 조회 경로의 응답 순서', () => {
-  test('초기 조회가 pending이어도 새 POP 응답이 표시되고 로딩 상태가 종료된다', async () => {
+describe('一覧取得の経路の応答順序', () => {
+  test('初回取得がpendingでも新しいPOPの応答が表示され、読み込み状態が終わる', async () => {
     const initial = deferred<PageResponse<JobPosting>>();
     const history = deferred<PageResponse<JobPosting>>();
     function HistoryControl() {
       const navigate = useNavigate();
-      return <button type="button" onClick={() => navigate(-1)}>테스트 뒤로가기</button>;
+      return <button type="button" onClick={() => navigate(-1)}>テスト用の戻る</button>;
     }
     const user = userEvent.setup();
     vi.mocked(fetchJobPostings)
@@ -392,26 +392,26 @@ describe('목록 조회 경로의 응답 순서', () => {
       </MemoryRouter>,
     );
     await waitFor(() => expect(fetchJobPostings).toHaveBeenCalledTimes(1));
-    await user.click(screen.getByRole('button', { name: '테스트 뒤로가기' }));
+    await user.click(screen.getByRole('button', { name: 'テスト用の戻る' }));
     await waitFor(() => expect(fetchJobPostings).toHaveBeenCalledTimes(2));
     await act(async () => history.resolve(pageOf(posting({ title: '戻る操作の最新結果' }))));
 
     expect(screen.getByRole('heading', { name: '戻る操作の最新結果', level: 2 })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '검색' })).toBeEnabled();
-    expect(screen.queryByText('채용공고를 불러오는 중...')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '検索' })).toBeEnabled();
+    expect(screen.queryByText('求人を読み込み中…')).not.toBeInTheDocument();
     await act(async () => initial.resolve(pageOf(posting({ title: '遅い初期結果' }))));
     expect(screen.getByRole('heading', { name: '戻る操作の最新結果', level: 2 })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: '遅い初期結果', level: 2 })).not.toBeInTheDocument();
   });
 
-  test('초기 조회가 늦게 끝나도 최신 정렬 결과를 덮어쓰지 않는다', async () => {
+  test('初回取得が遅れて終わっても最新の並び替え結果を上書きしない', async () => {
     const initial = deferred<PageResponse<JobPosting>>();
     const sorted = deferred<PageResponse<JobPosting>>();
     const user = userEvent.setup();
     vi.mocked(fetchJobPostings).mockReturnValueOnce(initial.promise).mockReturnValueOnce(sorted.promise);
     render(<MemoryRouter><AuthenticatedApp /></MemoryRouter>);
     await user.click(screen.getByRole('button', { name: '＋ 詳細条件' }));
-    await user.selectOptions(screen.getByRole('combobox', { name: '정렬' }), 'companyName,asc');
+    await user.selectOptions(screen.getByRole('combobox', { name: '並び替え' }), 'companyName,asc');
     await act(async () => sorted.resolve(pageOf(posting({ title: '最新の並べ替え結果' }))));
     expect(screen.getByRole('heading', { name: '最新の並べ替え結果', level: 2 })).toBeInTheDocument();
     await act(async () => initial.resolve(pageOf(posting({ title: '遅い初期結果' }))));
@@ -420,12 +420,12 @@ describe('목록 조회 경로의 응답 순서', () => {
     expect(screen.queryByRole('heading', { name: '遅い初期結果', level: 2 })).not.toBeInTheDocument();
   });
 
-  test('POP 조회가 늦게 끝나도 그 뒤의 정렬 결과를 덮어쓰지 않는다', async () => {
+  test('POPの取得が遅れて終わっても、その後の並び替え結果を上書きしない', async () => {
     const history = deferred<PageResponse<JobPosting>>();
     const sorted = deferred<PageResponse<JobPosting>>();
     function HistoryControl() {
       const navigate = useNavigate();
-      return <button type="button" onClick={() => navigate(-1)}>테스트 뒤로가기</button>;
+      return <button type="button" onClick={() => navigate(-1)}>テスト用の戻る</button>;
     }
     const user = userEvent.setup();
     vi.mocked(fetchJobPostings)
@@ -439,10 +439,10 @@ describe('목록 조회 경로의 응답 순서', () => {
       </MemoryRouter>,
     );
     await screen.findByRole('heading', { name: postingA.title, level: 2 });
-    await user.click(screen.getByRole('button', { name: '테스트 뒤로가기' }));
+    await user.click(screen.getByRole('button', { name: 'テスト用の戻る' }));
     await waitFor(() => expect(fetchJobPostings).toHaveBeenCalledTimes(2));
     await user.click(screen.getByRole('button', { name: '＋ 詳細条件' }));
-    await user.selectOptions(screen.getByRole('combobox', { name: '정렬' }), 'companyName,asc');
+    await user.selectOptions(screen.getByRole('combobox', { name: '並び替え' }), 'companyName,asc');
     await act(async () => sorted.resolve(pageOf(posting({ title: '最新の並べ替え結果' }))));
     await act(async () => history.resolve(pageOf(posting({ title: '遅い履歴結果' }))));
 

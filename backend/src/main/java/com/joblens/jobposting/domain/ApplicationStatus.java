@@ -2,19 +2,19 @@ package com.joblens.jobposting.domain;
 
 public enum ApplicationStatus {
   
-  // 관심 공고 저장 상태
+  // 気になる求人を保存した状態
   SAVED,
 
-  // 실제 지원 완료 상태
+  // 実際に応募した状態
   APPLIED,
 
-  // 면접 진행 중인 상태
+  // 面接が進行中の状態
   INTERVIEWING,
 
-  // 합격 또는 오퍼를 받은 상태
+  // 合格または内定を受けた状態
   OFFERED,
 
-  // 불합격한 상태
+  // 不合格の状態
   REJECTED
 
 }

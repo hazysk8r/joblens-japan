@@ -10,11 +10,11 @@ import { fetchApplicationStatusSummary, fetchJobPostings, deleteJobPosting, upda
 import type { JobPosting, PageResponse } from '../types/jobPosting';
 import JobPostingListItem from '../components/JobPostingListItem';
 
-// 이전 Mock 호출 기록 삭제
+// 以前のMock呼び出し履歴を削除
 beforeEach(() => {
   vi.clearAllMocks();
 });
-// render()가 만든 React DOM 삭제
+// render()が作ったReact DOMを削除
 afterEach(() => {
   cleanup();
 });
@@ -64,7 +64,7 @@ function deferred<T>() {
 vi.mocked(fetchJobPostings).mockResolvedValue(mockPage);
 vi.mocked(fetchApplicationStatusSummary).mockResolvedValue(mockSummary);
 
-test('정렬 select가 보인다', async () => {
+test('並び替えのselectが表示される', async () => {
   const user = userEvent.setup();
   renderApp();
 
@@ -75,13 +75,13 @@ test('정렬 select가 보인다', async () => {
   );
 
   const sortingSelect = screen.getByRole('combobox', {
-    name: '정렬',
+    name: '並び替え',
   });
 
   expect(sortingSelect).toBeDefined();
 });
 
-test('회사명순 선택 시 해당 정렬값으로 다시 조회한다', async () => {
+test('会社名順を選ぶと、その並び順で再取得する', async () => {
   const user = userEvent.setup();
 
   renderApp();
@@ -93,7 +93,7 @@ test('회사명순 선택 시 해당 정렬값으로 다시 조회한다', async
   );
 
   const sortingSelect = screen.getByRole('combobox', {
-    name: '정렬',
+    name: '並び替え',
   });
 
   await user.selectOptions(
@@ -114,7 +114,7 @@ test('회사명순 선택 시 해당 정렬값으로 다시 조회한다', async
     );
 });
 
-test('검색 조건을 유지한 채 회사명 순으로 정렬한다', async () => {
+test('検索条件を維持したまま会社名順に並び替える', async () => {
   const user = userEvent.setup();
   renderApp();
 
@@ -125,17 +125,17 @@ test('검색 조건을 유지한 채 회사명 순으로 정렬한다', async ()
   );
 
   const keywordInput = screen.getByRole('textbox', {
-    name: '검색어',
+    name: '検索キーワード',
   });
   const statusSelect = screen.getByRole('combobox', {
-    name: '상태',
+    name: 'ステータス',
   });
   const sortingSelect = screen.getByRole('combobox', {
-    name: '정렬',
+    name: '並び替え',
   });
 
   const searchButton = await screen.findByRole('button', {
-    name: '검색',
+    name: '検索',
   });
 
   await user.type(keywordInput, 'AWS');
@@ -159,7 +159,7 @@ test('검색 조건을 유지한 채 회사명 순으로 정렬한다', async ()
     );
 });
 
-test('현재 정렬 조건이 페이지를 넘겨도 유지된다', async () => {
+test('現在の並び順がページを移動しても維持される', async () => {
   const user = userEvent.setup();
   renderApp();
 
@@ -170,10 +170,10 @@ test('현재 정렬 조건이 페이지를 넘겨도 유지된다', async () => 
   );
 
   const sortingSelect = screen.getByRole('combobox', {
-    name: '정렬',
+    name: '並び替え',
   });
   const nextPageButton = await screen.findByRole('button', {
-    name: '다음',
+    name: '次へ',
   });
 
   await user.selectOptions(sortingSelect, 'companyName,asc');
@@ -200,7 +200,7 @@ test('현재 정렬 조건이 페이지를 넘겨도 유지된다', async () => 
 
 });
 
-test('사용자가 선택한 정렬 상태를 유지한 채 다음 페이지로 갔다가 이전 페이지로 돌아올 수 있다', async () => {
+test('ユーザーが選んだ並び順を維持したまま次のページへ進み、前のページへ戻れる', async () => {
   const firstPage = {
     ...mockPage,
     page: 0,
@@ -231,12 +231,12 @@ test('사용자가 선택한 정렬 상태를 유지한 채 다음 페이지로 
   );
 
   const sortingSelect = screen.getByRole('combobox', {
-    name: '정렬',
+    name: '並び替え',
   });
   await user.selectOptions(sortingSelect, 'companyName,asc');
 
   const nextPageButton = await screen.findByRole('button', {
-    name: '다음',
+    name: '次へ',
   });
   await waitFor(() => {
     expect(
@@ -246,7 +246,7 @@ test('사용자가 선택한 정렬 상태를 유지한 채 다음 페이지로 
   await user.click(nextPageButton);
 
   const previousPageButton = await screen.findByRole('button', {
-    name: '이전',
+    name: '前へ',
   });
   await waitFor(() => {
     expect(
@@ -269,7 +269,7 @@ test('사용자가 선택한 정렬 상태를 유지한 채 다음 페이지로 
 
 });
 
-test('현재 페이지가 범위를 벗어나면 마지막 유효 페이지를 다시 조회한다', async () => {
+test('現在のページが範囲を超えたら、最後の有効なページを再取得する', async () => {
   const mockContent: JobPosting = {
     id: 0,
     companyName: '黄猿',
@@ -336,7 +336,7 @@ test('현재 페이지가 범위를 벗어나면 마지막 유효 페이지를 �
   renderApp();
 
   const nextPageButton = await screen.findByRole('button', {
-    name: '다음',
+    name: '次へ',
   });
 
   await waitFor(() => {
@@ -360,7 +360,7 @@ test('현재 페이지가 범위를 벗어나면 마지막 유효 페이지를 �
 
   const applicationStatusSelect =
     within(jobPostingItem).getByRole('combobox', {
-      name: /지원 상태/,
+      name: /応募ステータス/,
     });
 
   await user.selectOptions(
@@ -373,7 +373,7 @@ test('현재 페이지가 범위를 벗어나면 마지막 유효 페이지를 �
       .toHaveBeenLastCalledWith(
         '',
         '',
-        1, // 마지막 유효 페이지
+        1, // 最後の有効なページ
         'createdAt,desc',
         null,
         null,
@@ -388,7 +388,7 @@ test('현재 페이지가 범위를 벗어나면 마지막 유효 페이지를 �
 
 });
 
-test('공고 원문이 변경되면 이전 기술스택 캐시를 사용하지 않고 다시 조회한다', async () => {
+test('求人原文が変更されたら、以前の技術スタックのキャッシュを使わず再取得する', async () => {
   const user = userEvent.setup();
 
   const jobPosting: JobPosting = {
@@ -429,7 +429,7 @@ test('공고 원문이 변경되면 이전 기술스택 캐시를 사용하지 �
   );
 
   const skillsButton = screen.getByRole('button', {
-    name: '기술 스택 보기',
+    name: '技術スタックを見る',
   });
 
   // 最初取得
@@ -460,7 +460,7 @@ test('공고 원문이 변경되면 이전 기술스택 캐시를 사용하지 �
 
   await user.click(
     screen.getByRole('button', {
-      name: '기술 스택 보기',
+      name: '技術スタックを見る',
     }),
   );
 
@@ -472,7 +472,7 @@ test('공고 원문이 변경되면 이전 기술스택 캐시를 사용하지 �
     .toHaveBeenCalledTimes(2);
 });
 
-test('특정 정렬 상태에서 삭제 행위가 이뤄져도 사용자가 선택한 정렬 상태를 유지할 수 있다', async () => {
+test('特定の並び順で削除しても、ユーザーが選んだ並び順を維持できる', async () => {
   const mockContent: JobPosting = {
     id: 0,
     companyName: '黄猿',
@@ -507,12 +507,12 @@ test('특정 정렬 상태에서 삭제 행위가 이뤄져도 사용자가 선�
   );
 
   const sortingSelect = screen.getByRole('combobox', {
-    name: '정렬',
+    name: '並び替え',
   });
   await user.selectOptions(sortingSelect, 'companyName,asc');
 
   const deleteButton = await screen.findByRole('button', {
-    name: '삭제'
+    name: '削除'
   });
   vi.spyOn(window, 'confirm').mockReturnValue(true);
   await user.click(deleteButton);
@@ -539,7 +539,7 @@ test('특정 정렬 상태에서 삭제 행위가 이뤄져도 사용자가 선�
 
 
 
-test('특정 정렬 상태에서 수정 행위가 이뤄져도 사용자가 선택한 정렬 상태를 유지할 수 있다', async () => {
+test('特定の並び順で編集しても、ユーザーが選んだ並び順を維持できる', async () => {
   const mockContent: JobPosting = {
     id: 0,
     companyName: '黄猿',
@@ -574,26 +574,26 @@ test('특정 정렬 상태에서 수정 행위가 이뤄져도 사용자가 선�
   );
 
   const sortingSelect = screen.getByRole('combobox', {
-    name: '정렬',
+    name: '並び替え',
   });
   await user.selectOptions(sortingSelect, 'companyName,asc');
 
   const updateButton = await screen.findByRole('button', {
-    name: '수정'
+    name: '編集'
   });
   await user.click(updateButton);
 
   const jobPostingItem = screen.getByRole('listitem');
 
   const titleInput = within(jobPostingItem).getByRole('textbox', {
-    name: '공고 제목',
+    name: '求人タイトル',
   });
 
   await user.clear(titleInput);
   await user.type(titleInput, 'クラウドエンジニア求人');
 
   const saveButton = screen.getByRole('button', {
-    name: '저장',
+    name: '保存',
   });
 
   await user.click(saveButton);
@@ -630,7 +630,7 @@ test('특정 정렬 상태에서 수정 행위가 이뤄져도 사용자가 선�
   });
 });
 
-test('검색어나 필터가 적용된 상태에서 JobLens Japan 을 누르면, 첫페이지 기본정렬로 돌아간다', async () => {
+test('検索キーワードやフィルターが適用された状態でJobLens Japanを押すと、最初のページと既定の並び順に戻る', async () => {
   const mockContent: JobPosting = {
     id: 0,
     companyName: '黄猿',
@@ -666,10 +666,10 @@ test('검색어나 필터가 적용된 상태에서 JobLens Japan 을 누르면,
 
   vi.mocked(fetchJobPostings).mockResolvedValue(pageWithContent);
   vi.mocked(fetchJobPostings)
-    .mockResolvedValueOnce(firstPage) //초기 render
-    .mockResolvedValueOnce(firstPage) //검색
-    .mockResolvedValueOnce(firstPage) //정렬변경
-    .mockResolvedValueOnce(secondPage); //다음 페이지
+    .mockResolvedValueOnce(firstPage) //初回render
+    .mockResolvedValueOnce(firstPage) //検索
+    .mockResolvedValueOnce(firstPage) //並び順の変更
+    .mockResolvedValueOnce(secondPage); //次のページ
 
   const user = userEvent.setup();
   renderApp();
@@ -681,17 +681,17 @@ test('검색어나 필터가 적용된 상태에서 JobLens Japan 을 누르면,
   );
 
   const keywordInput = screen.getByRole('textbox', {
-    name: '검색어',
+    name: '検索キーワード',
   });
   const statusSelect = screen.getByRole('combobox', {
-    name: '상태',
+    name: 'ステータス',
   });
   const sortingSelect = screen.getByRole('combobox', {
-    name: '정렬',
+    name: '並び替え',
   });
 
   const searchButton = await screen.findByRole('button', {
-    name: '검색',
+    name: '検索',
   });
 
   const goBackToHome = await screen.findByRole('button', {
@@ -707,7 +707,7 @@ test('검색어나 필터가 적용된 상태에서 JobLens Japan 을 누르면,
   await user.selectOptions(sortingSelect, 'companyName,asc');
 
   const nextPageButton = await screen.findByRole('button', {
-    name: '다음',
+    name: '次へ',
   });
   await waitFor(() => {
     expect(
@@ -733,7 +733,7 @@ test('검색어나 필터가 적용된 상태에서 JobLens Japan 을 누르면,
   });
 });
 
-test('월급 범위를 선택하고 검색하면 salaryMin과 salaryMax를 전달한다', async () => {
+test('月給の範囲を選んで検索すると、salaryMinとsalaryMaxを渡す', async () => {
   const user = userEvent.setup();
 
   renderApp();
@@ -745,18 +745,18 @@ test('월급 범위를 선택하고 검색하면 salaryMin과 salaryMax를 전�
   );
 
   const salaryMinSelect = screen.getByLabelText(
-    '최저 월급',
+    '最低月給',
     { selector: '#search-salaryMin' },
   );
 
   const salaryMaxSelect = screen.getByLabelText(
-    '최고 월급',
+    '最高月給',
     { selector: '#search-salaryMax' },
   );
 
   const searchButton = await screen.findByRole(
     'button',
-    { name: '검색' },
+    { name: '検索' },
   );
 
   await user.selectOptions(
@@ -784,7 +784,7 @@ test('월급 범위를 선택하고 검색하면 salaryMin과 salaryMax를 전�
     );
 });
 
-test('최저 월급보다 낮은 최고 월급은 선택할 수 없다', async () => {
+test('最低月給より低い最高月給は選択できない', async () => {
   const user = userEvent.setup();
 
   renderApp();
@@ -796,12 +796,12 @@ test('최저 월급보다 낮은 최고 월급은 선택할 수 없다', async (
   );
 
   const salaryMinSelect = screen.getByLabelText(
-    '최저 월급',
+    '最低月給',
     { selector: '#search-salaryMin' },
   );
 
   const salaryMaxSelect = screen.getByLabelText(
-    '최고 월급',
+    '最高月給',
     { selector: '#search-salaryMax' },
   );
 
@@ -821,32 +821,32 @@ test('최저 월급보다 낮은 최고 월급은 선택할 수 없다', async (
   ).toBe(true);
 });
 
-test('월급 범위를 포함하여 채용공고를 등록할 수 있다', async () => {
+test('月給の範囲を含めて求人を登録できる', async () => {
   const user = userEvent.setup();
 
   renderApp('/job-postings/new')
 
   await user.type(
     screen.getByRole('textbox', {
-      name: '공고 제목',
+      name: '求人タイトル',
     }),
     'クラウドエンジニア',
   );
 
   await user.type(
     screen.getByRole('textbox', {
-      name: '공고 원문',
+      name: '求人原文',
     }),
     'AWS Java',
   );
 
   const salaryMinSelect = screen.getByLabelText(
-    '최저 월급',
+    '最低月給',
     { selector: '#create-salaryMin' },
   );
 
   const salaryMaxSelect = screen.getByLabelText(
-    '최고 월급',
+    '最高月給',
     { selector: '#create-salaryMax' },
   );
 
@@ -862,17 +862,17 @@ test('월급 범위를 포함하여 채용공고를 등록할 수 있다', async
 
   const createSection = screen
     .getByRole('heading', {
-      name: '채용공고 등록',
+      name: '求人登録',
     })
     .closest('section');
 
   if (!createSection) {
-    throw new Error('채용공고 등록 영역을 찾을 수 없습니다.');
+    throw new Error('求人登録の領域が見つかりません。');
   }
 
   const createButton = within(createSection)
     .getByRole('button', {
-      name: '등록',
+      name: '登録',
     });
 
   await user.click(createButton);
@@ -891,7 +891,7 @@ test('월급 범위를 포함하여 채용공고를 등록할 수 있다', async
   });
 });
 
-test('홈에서求人を登録する 링크를 누르면 채용공고 등록 페이지로 이동한다', async () => {
+test('ホームで「求人を登録する」リンクを押すと、求人登録ページへ移動する', async () => {
   const user = userEvent.setup();
 
   renderApp();
@@ -912,13 +912,13 @@ test('홈에서求人を登録する 링크를 누르면 채용공고 등록 페
 
   const createFormHeading =
     screen.getByRole('heading', {
-      name: '채용공고 등록',
+      name: '求人登録',
     });
 
   expect(createFormHeading).toBeDefined();
 });
 
-test('오래된 목록 응답이 최신 정렬 결과를 덮어쓰지 않는다', async () => {
+test('古い一覧の応答が最新の並び替え結果を上書きしない', async () => {
 
   const firstSortRequest = deferred<PageResponse<JobPosting>>();
   const secondSortRequest = deferred<PageResponse<JobPosting>>();
@@ -961,7 +961,7 @@ test('오래된 목록 응답이 최신 정렬 결과를 덮어쓰지 않는다'
   renderApp();
 
   await screen.findByRole('button', {
-    name: '검색',
+    name: '検索',
   });
 
   await user.click(
@@ -972,7 +972,7 @@ test('오래된 목록 응답이 최신 정렬 결과를 덮어쓰지 않는다'
 
   const sortingSelect = 
     screen.getByRole('combobox', {
-      name: '정렬',
+      name: '並び替え',
     });
 
   await user.selectOptions(
@@ -1018,7 +1018,7 @@ test('오래된 목록 응답이 최신 정렬 결과를 덮어쓰지 않는다'
 
 });
 
-test('오래된 목록 요청오류가 최신 정렬 결과 화면에 표시되지 않는다', async () => {
+test('古い一覧リクエストのエラーが最新の並び替え結果の画面に表示されない', async () => {
 
   const firstSortRequest = deferred<PageResponse<JobPosting>>();
   const secondSortRequest = deferred<PageResponse<JobPosting>>();
@@ -1053,7 +1053,7 @@ test('오래된 목록 요청오류가 최신 정렬 결과 화면에 표시되�
   renderApp();
 
   await screen.findByRole('button', {
-    name: '검색',
+    name: '検索',
   });
 
   await user.click(
@@ -1064,7 +1064,7 @@ test('오래된 목록 요청오류가 최신 정렬 결과 화면에 표시되�
 
   const sortingSelect = 
     screen.getByRole('combobox', {
-      name: '정렬',
+      name: '並び替え',
     });
 
   await user.selectOptions(
@@ -1129,14 +1129,14 @@ describe('URL Query State', () => {
           type="button"
           onClick={() => navigate(-1)}
         >
-          뒤로가기
+          戻る
         </button>
 
         <button
           type="button"
           onClick={() => navigate(1)}
         >
-          앞으로가기
+          進む
         </button>
       </>
     );
@@ -1155,7 +1155,7 @@ describe('URL Query State', () => {
   };
 
   test(
-    'URL의 검색 조건으로 검색 상태와 목록을 복원한다',
+    'URLの検索条件から検索状態と一覧を復元する',
     async () => {
       renderApp(
         '/?keyword=Java&status=APPLIED&page=2',
@@ -1164,7 +1164,7 @@ describe('URL Query State', () => {
       const keywordInput = screen.getByRole(
         'textbox',
         {
-          name: '검색어',
+          name: '検索キーワード',
         },
       );
 
@@ -1173,7 +1173,7 @@ describe('URL Query State', () => {
       const statusSelect = screen.getByRole(
         'combobox',
         {
-          name: '상태',
+          name: 'ステータス',
         },
       );
 
@@ -1201,7 +1201,7 @@ describe('URL Query State', () => {
   );
 
   test(
-    '검색 실행 시 검색 조건을 URL에 반영하고 page를 0으로 초기화한다',
+    '検索を実行すると、検索条件をURLに反映してpageを0に初期化する',
     async () => {
       const user = userEvent.setup();
 
@@ -1212,14 +1212,14 @@ describe('URL Query State', () => {
       const keywordInput = screen.getByRole(
         'textbox',
         {
-          name: '검색어',
+          name: '検索キーワード',
         },
       );
 
       const statusSelect = screen.getByRole(
         'combobox',
         {
-          name: '상태',
+          name: 'ステータス',
         },
       );
 
@@ -1234,7 +1234,7 @@ describe('URL Query State', () => {
       await user.selectOptions(statusSelect, 'APPLIED');
 
       const searchButton = await screen.findByRole('button', {
-        name: '검색',
+        name: '検索',
       });
 
       await user.click(searchButton);
@@ -1251,7 +1251,7 @@ describe('URL Query State', () => {
   );
 
   test(
-    '다음 페이지로 이동하면 page를 URL에 반영한다',
+    '次のページへ移動すると、pageをURLに反映する',
     async () => {
       const user = userEvent.setup();
 
@@ -1274,7 +1274,7 @@ describe('URL Query State', () => {
         await screen.findByRole(
           'button',
           {
-            name: '다음',
+            name: '次へ',
           },
         );
 
@@ -1299,7 +1299,7 @@ describe('URL Query State', () => {
   );
 
   test(
-    '첫 페이지로 돌아오면 URL에서 page 파라미터를 제거한다',
+    '最初のページに戻ると、URLからpageパラメーターを削除する',
     async () => {
       const user = userEvent.setup();
 
@@ -1331,7 +1331,7 @@ describe('URL Query State', () => {
         await screen.findByRole(
           'button',
           {
-            name: '이전',
+            name: '前へ',
           },
         );
 
@@ -1356,7 +1356,7 @@ describe('URL Query State', () => {
   );
 
   test(
-    '뒤로가기 시 이전 URL의 검색 조건과 목록을 복원한다',
+    '戻るとき、前のURLの検索条件と一覧を復元する',
     async () => {
       const user = userEvent.setup();
 
@@ -1367,14 +1367,14 @@ describe('URL Query State', () => {
       const keywordInput = screen.getByRole(
         'textbox',
         {
-          name: '검색어',
+          name: '検索キーワード',
         },
       );
 
       const statusSelect = screen.getByRole(
         'combobox',
         {
-          name: '상태',
+          name: 'ステータス',
         },
       );
 
@@ -1398,7 +1398,7 @@ describe('URL Query State', () => {
         screen.getByRole(
           'button',
           {
-            name: '검색',
+            name: '検索',
           },
         ),
       );
@@ -1417,7 +1417,7 @@ describe('URL Query State', () => {
         screen.getByRole(
           'button',
           {
-            name: '뒤로가기',
+            name: '戻る',
           },
         ),
       );
@@ -1458,7 +1458,7 @@ describe('URL Query State', () => {
   );
 
   test(
-    '잘못된 status와 page Query는 기본값으로 처리한다',
+    '不正なstatusとpageのQueryは既定値として処理する',
     async () => {
       renderAppWithLocation(
         '/?keyword=Java&status=UNKNOWN&page=abc',
@@ -1467,14 +1467,14 @@ describe('URL Query State', () => {
       const keywordInput = screen.getByRole(
         'textbox',
         {
-          name: '검색어',
+          name: '検索キーワード',
         },
       );
 
       const statusSelect = screen.getByRole(
         'combobox',
         {
-          name: '상태',
+          name: 'ステータス',
         },
       );
 
@@ -1502,7 +1502,7 @@ describe('URL Query State', () => {
   );
 
   test(
-    'Joblens로고를 눌러서 홈페이지로 돌아가면 URL Query parameter를 초기화한다',
+    'Joblensのロゴを押してホームに戻ると、URLのQueryパラメーターを初期化する',
     async () => {
       const user = userEvent.setup();
 
@@ -1528,7 +1528,7 @@ describe('URL Query State', () => {
   );
 
   test(
-    '검색결과가 0건일 때 추가 fetch를 수행하지 않는다',
+    '検索結果が0件のとき、追加のfetchを行わない',
     async () => {
       vi.mocked(fetchJobPostings)
         .mockResolvedValueOnce({
@@ -1566,7 +1566,7 @@ describe('URL Query State', () => {
     },
   );
 
-  test('지원 마감일 범위를 선택하고 검색하면 deadlineFrom과 deadlineTo를 전달한다', async () => {
+  test('応募締切日の範囲を選んで検索すると、deadlineFromとdeadlineToを渡す', async () => {
     const user = userEvent.setup();
 
     renderApp();
@@ -1586,7 +1586,7 @@ describe('URL Query State', () => {
 
     const searchButton = await screen.findByRole(
       'button',
-      { name: '검색' },
+      { name: '検索' },
     );
 
     await user.type(
@@ -1616,7 +1616,7 @@ describe('URL Query State', () => {
 
 });
 
-test('詳細条件 버튼을 누르면 상세 검색 조건이 표시된다', async () => {
+test('「詳細条件」ボタンを押すと詳細な検索条件が表示される', async () => {
   const user = userEvent.setup();
 
   renderApp();
@@ -1636,7 +1636,7 @@ test('詳細条件 버튼을 누르면 상세 검색 조건이 표시된다', as
   ).toBeDefined();
 });
 
-test('version 불일치 시 stale draft를 폐기하고 최신 데이터로 다시 편집한다', async () => {
+test('versionが一致しないとき、stale draftを破棄して最新データで編集し直す', async () => {
   const staleJobPosting: JobPosting = {
     id: 1,
     companyName: '札幌クラウド',
@@ -1682,30 +1682,30 @@ test('version 불일치 시 stale draft를 폐기하고 최신 데이터로 다�
 
   const user = userEvent.setup();
   renderApp();
-  await user.click(await screen.findByRole('button', { name: '수정' }));
-  const titleInput = screen.getByRole('textbox', { name: '공고 제목' });
+  await user.click(await screen.findByRole('button', { name: '編集' }));
+  const titleInput = screen.getByRole('textbox', { name: '求人タイトル' });
   await user.clear(titleInput);
   await user.type(titleInput, '自分が修正したタイトル');
-  await user.click(screen.getByRole('button', { name: '저장' }));
+  await user.click(screen.getByRole('button', { name: '保存' }));
 
   expect(await screen.findByRole('alert')).toHaveTextContent(
-    '다른 화면에서 채용공고가 수정되었습니다.',
+    '別の画面で求人が編集されました。',
   );
   expect(await screen.findByRole('heading', {
     name: latestJobPosting.title,
     level: 2,
   })).toBeInTheDocument();
-  expect(screen.queryByRole('textbox', { name: '공고 제목' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('textbox', { name: '求人タイトル' })).not.toBeInTheDocument();
   expect(updateJobPosting).toHaveBeenCalledTimes(1);
 
-  await user.click(screen.getByRole('button', { name: '수정' }));
-  expect(screen.getByRole('textbox', { name: '공고 제목' }))
+  await user.click(screen.getByRole('button', { name: '編集' }));
+  expect(screen.getByRole('textbox', { name: '求人タイトル' }))
     .toHaveValue(latestJobPosting.title);
-  expect(screen.getByRole('textbox', { name: '공고 원문' }))
+  expect(screen.getByRole('textbox', { name: '求人原文' }))
     .toHaveValue(latestJobPosting.originalText);
-  expect(screen.getByRole('combobox', { name: '최저 월급' }))
+  expect(screen.getByRole('combobox', { name: '最低月給' }))
     .toHaveValue(String(latestJobPosting.salaryMin));
-  await user.click(screen.getByRole('button', { name: '저장' }));
+  await user.click(screen.getByRole('button', { name: '保存' }));
   expect(updateJobPosting).toHaveBeenLastCalledWith(
     1,
     expect.objectContaining({
@@ -1716,7 +1716,7 @@ test('version 불일치 시 stale draft를 폐기하고 최신 데이터로 다�
     latestJobPosting.version,
   );
 });
-test('Status 변경 도중에 version 불일치가 발생하면 안내 message를 표시하고, 최신 공고를 다시 조회한다', async () => {
+test('Statusの変更中にversionの不一致が起きたら案内messageを表示し、最新の求人を再取得する', async () => {
   const staleJobPosting: JobPosting = {
     id: 1,
     companyName: '札幌クラウド',
@@ -1770,7 +1770,7 @@ test('Status 변경 도중에 version 불일치가 발생하면 안내 message�
 
   const statusSelect =
     await screen.findByRole('combobox', {
-      name: /지원 상태/,
+      name: /応募ステータス/,
     });
 
   await user.selectOptions(statusSelect, 'APPLIED');
@@ -1778,7 +1778,7 @@ test('Status 변경 도중에 version 불일치가 발생하면 안내 message�
   expect(
     await screen.findByRole('alert'),
   ).toHaveTextContent(
-    '다른 화면에서 채용공고가 수정되었습니다.',
+    '別の画面で求人が編集されました。',
   );
 
   await waitFor(() => {
@@ -1793,7 +1793,7 @@ test('Status 변경 도중에 version 불일치가 발생하면 안내 message�
 
   expect(
     screen.getByRole('combobox', {
-      name: /지원 상태/,
+      name: /応募ステータス/,
     }),
   ).toHaveValue('INTERVIEWING');
 
@@ -1812,7 +1812,7 @@ describe('NotFoundPage', () => {
     );
   }
 
-  test('정의되지 않은 경로로 접근하면 Not Found 페이지를 표시한다', async () => {
+  test('定義されていないパスにアクセスするとNot Foundページを表示する', async () => {
     render(
       <MemoryRouter initialEntries={['/unknown-page']}>
         <AuthenticatedApp />
@@ -1833,7 +1833,7 @@ describe('NotFoundPage', () => {
 
   });
 
-  test('ホームに戻る를 클릭하면 HomePage로 이동한다', async () => {
+  test('「ホームに戻る」をクリックするとHomePageへ移動する', async () => {
     const user = userEvent.setup();
 
     render(

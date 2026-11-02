@@ -34,22 +34,22 @@ function JobPostingMemoCreateForm({
         content,
       });
 
-      setContent(''); //메모 등록 성공 후 입력 칸 초기화
+      setContent(''); // メモ登録の成功後に入力欄を初期化する
 
-      setMessage('메모가 성공적으로 등록되었습니다')
+      setMessage('メモを登録しました。')
       await onCreated();
     } catch (caughtError) {
       setError(errorMessageOf(
         caughtError,
         'content',
-        '알 수 없는 오류가 발생하였습니다',
+        '不明なエラーが発生しました。',
       ));
     } finally {
       setSubmitting(false);
     }
   };
 
-  // 메모 성공 message timer
+  // メモ成功メッセージのタイマー
   useEffect(() => {
     if (message === null) {
       return;
@@ -66,11 +66,11 @@ function JobPostingMemoCreateForm({
 
   return (
     <section>
-      <h3>메모 등록</h3>
+      <h3>メモ登録</h3>
 
       <form onSubmit={handleSubmit}>
         <div>
-          <label htmlFor={contentId}>메모내용</label>
+          <label htmlFor={contentId}>メモ内容</label>
           <textarea
             id={contentId}
             value={content}
@@ -83,7 +83,7 @@ function JobPostingMemoCreateForm({
         </div>
         
         <button type="submit" disabled={submitting || content.trim() === ''}>
-          {submitting ? '등록 중...' : '등록'}
+          {submitting ? '登録中…' : '登録'}
         </button>
       </form>
 

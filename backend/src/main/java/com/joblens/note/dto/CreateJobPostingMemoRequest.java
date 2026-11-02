@@ -4,8 +4,8 @@ import jakarta.validation.constraints.Size;
 
 public record CreateJobPostingMemoRequest(
 
-    @NotBlank(message = "메모를 입력해주세요")
-    @Size(max = 250, message = "메모는 250자 이하로 작성해주세요")
+    @NotBlank(message = "メモを入力してください。")
+    @Size(max = 250, message = "メモは250文字以内で入力してください。")
     String content
 ) {
 

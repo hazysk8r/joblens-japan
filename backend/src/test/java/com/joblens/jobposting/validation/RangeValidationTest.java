@@ -27,9 +27,9 @@ import static org.assertj.core.api.Assertions.tuple;
 class RangeValidationTest {
 
     private static final String SALARY_RANGE_MESSAGE =
-            "최소 급여는 최대 급여보다 클 수 없습니다.";
+            "最低月給を最高月給より大きくすることはできません。";
     private static final String DEADLINE_RANGE_MESSAGE =
-            "시작일은 마감일보다 뒤의 날짜를 선택할 수 없습니다.";
+            "開始日を締切日より後の日付にすることはできません。";
 
     private static ValidatorFactory validatorFactory;
     private static Validator validator;

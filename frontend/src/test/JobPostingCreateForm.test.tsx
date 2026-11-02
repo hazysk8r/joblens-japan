@@ -17,18 +17,18 @@ import type { JobPosting } from '../types/jobPosting';
 vi.mock('../api/jobPostingApi');
 
 const fields = [
-  ['companyName', '회사명'],
-  ['title', '공고 제목'],
-  ['sourceUrl', '공고 URL'],
-  ['originalText', '공고 원문'],
-  ['salaryMin', '최저 월급'],
-  ['salaryMax', '최고 월급'],
+  ['companyName', '会社名'],
+  ['title', '求人タイトル'],
+  ['sourceUrl', '求人URL'],
+  ['originalText', '求人原文'],
+  ['salaryMin', '最低月給'],
+  ['salaryMax', '最高月給'],
   ['applicationDeadline', '応募締切日'],
 ] as const;
 
 const unrecognizedFieldCases: { name: string; fieldErrors: Record<string, string> }[] = [
-  { name: '알 수 없는 필드만 있는 경우', fieldErrors: { serverOnly: '표시할 수 없는 필드 오류' } },
-  { name: '지원 필드와 알 수 없는 필드가 섞인 경우', fieldErrors: { title: '제목을 확인해 주세요.', serverOnly: '표시할 수 없는 필드 오류' } },
+  { name: '不明な項目だけがある場合', fieldErrors: { serverOnly: '表示できない項目のエラー' } },
+  { name: '対応する項目と不明な項目が混在する場合', fieldErrors: { title: 'タイトルを確認してください。', serverOnly: '表示できない項目のエラー' } },
 ];
 
 const createdPosting: JobPosting = {
@@ -56,16 +56,16 @@ function deferred<T>() {
 }
 
 async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText('공고 제목'), 'エンジニア');
-  await user.type(screen.getByLabelText('공고 원문'), 'Java AWS');
+  await user.type(screen.getByLabelText('求人タイトル'), 'エンジニア');
+  await user.type(screen.getByLabelText('求人原文'), 'Java AWS');
 }
 
 async function fillAllFields(user: ReturnType<typeof userEvent.setup>) {
   await fillRequiredFields(user);
-  await user.type(screen.getByLabelText('회사명'), '求人会社');
-  await user.type(screen.getByLabelText('공고 URL'), 'https://example.com/job/1');
-  await user.selectOptions(screen.getByLabelText('최저 월급'), '300000');
-  await user.selectOptions(screen.getByLabelText('최고 월급'), '500000');
+  await user.type(screen.getByLabelText('会社名'), '求人会社');
+  await user.type(screen.getByLabelText('求人URL'), 'https://example.com/job/1');
+  await user.selectOptions(screen.getByLabelText('最低月給'), '300000');
+  await user.selectOptions(screen.getByLabelText('最高月給'), '500000');
   await user.type(screen.getByLabelText('応募締切日'), '2026-12-01');
 }
 
@@ -82,14 +82,14 @@ afterEach(() => {
   cleanup();
 });
 
-describe('JobPostingCreateForm 필드 오류', () => {
-  test('지원하는 일곱 필드의 메시지를 입력란과 연결하고 일반 오류도 표시한다', async () => {
+describe('JobPostingCreateFormの項目エラー', () => {
+  test('対応する7項目のメッセージを入力欄と関連付け、全体のエラーも表示する', async () => {
     const user = userEvent.setup();
     const fieldErrors = Object.fromEntries(
-      fields.map(([field]) => [field, `${field} 입력을 확인해 주세요.`]),
+      fields.map(([field]) => [field, `${field} の入力を確認してください。`]),
     );
     vi.mocked(createJobPosting).mockRejectedValueOnce(
-      new ApiError('입력값 검증에 실패했습니다.', 400, 'VALIDATION_ERROR', fieldErrors),
+      new ApiError('入力値の検証に失敗しました。', 400, 'VALIDATION_ERROR', fieldErrors),
     );
     render(<JobPostingCreateForm onCreated={vi.fn()} />);
 
@@ -99,9 +99,9 @@ describe('JobPostingCreateForm 필드 오류', () => {
     }
 
     await fillRequiredFields(user);
-    await user.click(screen.getByRole('button', { name: '등록' }));
+    await user.click(screen.getByRole('button', { name: '登録' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('입력값 검증에 실패했습니다.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('入力値の検証に失敗しました。');
     expect(screen.getAllByRole('alert')).toHaveLength(1);
     for (const [field, label] of fields) {
       const input = screen.getByLabelText(label);
@@ -114,34 +114,34 @@ describe('JobPostingCreateForm 필드 오류', () => {
     }
   });
 
-  test.each(unrecognizedFieldCases)('$name에도 일반 오류 안내를 유지한다', async ({ fieldErrors }) => {
+  test.each(unrecognizedFieldCases)('$nameでも全体のエラー案内を維持する', async ({ fieldErrors }) => {
     const user = userEvent.setup();
     vi.mocked(createJobPosting).mockRejectedValueOnce(
-      new ApiError('등록 요청을 확인해 주세요.', 400, 'VALIDATION_ERROR', fieldErrors),
+      new ApiError('登録リクエストを確認してください。', 400, 'VALIDATION_ERROR', fieldErrors),
     );
     render(<JobPostingCreateForm onCreated={vi.fn()} />);
     await fillRequiredFields(user);
-    await user.click(screen.getByRole('button', { name: '등록' }));
+    await user.click(screen.getByRole('button', { name: '登録' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('등록 요청을 확인해 주세요.');
-    expect(screen.queryByText('표시할 수 없는 필드 오류')).not.toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent('登録リクエストを確認してください。');
+    expect(screen.queryByText('表示できない項目のエラー')).not.toBeInTheDocument();
     if ('title' in fieldErrors) {
-      expect(screen.getByLabelText('공고 제목')).toHaveAccessibleDescription('제목을 확인해 주세요.');
+      expect(screen.getByLabelText('求人タイトル')).toHaveAccessibleDescription('タイトルを確認してください。');
     } else {
-      expect(screen.getByLabelText('공고 제목')).not.toHaveAttribute('aria-invalid');
+      expect(screen.getByLabelText('求人タイトル')).not.toHaveAttribute('aria-invalid');
     }
   });
 
   test.each([
-    { name: '필드 없는 API 오류', error: new ApiError('서버가 응답하지 않습니다.', 503), message: '서버가 응답하지 않습니다.' },
-    { name: '네트워크 오류', error: new TypeError('Failed to fetch'), message: 'Failed to fetch' },
-    { name: 'Error가 아닌 실패', error: null, message: '알 수 없는 오류가 발생했습니다.' },
-  ])('$name을 일반 오류로 표시한다', async ({ error, message }) => {
+    { name: '項目のないAPIエラー', error: new ApiError('サーバーが応答しません。', 503), message: 'サーバーが応答しません。' },
+    { name: 'ネットワークエラー', error: new TypeError('Failed to fetch'), message: 'Failed to fetch' },
+    { name: 'Errorではない失敗', error: null, message: '不明なエラーが発生しました。' },
+  ])('$nameを全体のエラーとして表示する', async ({ error, message }) => {
     const user = userEvent.setup();
     vi.mocked(createJobPosting).mockRejectedValueOnce(error);
     render(<JobPostingCreateForm onCreated={vi.fn()} />);
     await fillRequiredFields(user);
-    await user.click(screen.getByRole('button', { name: '등록' }));
+    await user.click(screen.getByRole('button', { name: '登録' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(message);
     for (const [, label] of fields) {
@@ -150,33 +150,33 @@ describe('JobPostingCreateForm 필드 오류', () => {
     }
   });
 
-  test('입력 수정 시 오류를 유지하고 재제출 시작 시 지운 뒤 새 실패로 교체한다', async () => {
+  test('入力の編集中はエラーを維持し、再送信の開始時に消してから新しい失敗に置き換える', async () => {
     const user = userEvent.setup();
     const retry = deferred<JobPosting>();
     const onCreated = vi.fn();
     vi.mocked(createJobPosting)
-      .mockRejectedValueOnce(new ApiError('첫 번째 검증 오류', 400, 'VALIDATION_ERROR', {
-        title: '이전 제목 오류',
-        salaryMin: '이전 최저 월급 오류',
+      .mockRejectedValueOnce(new ApiError('1回目の検証エラー', 400, 'VALIDATION_ERROR', {
+        title: '以前のタイトルのエラー',
+        salaryMin: '以前の最低月給のエラー',
       }))
       .mockReturnValueOnce(retry.promise);
     render(<JobPostingCreateForm onCreated={onCreated} />);
     await fillAllFields(user);
-    await user.click(screen.getByRole('button', { name: '등록' }));
-    await screen.findByText('이전 제목 오류');
+    await user.click(screen.getByRole('button', { name: '登録' }));
+    await screen.findByText('以前のタイトルのエラー');
 
-    await user.clear(screen.getByLabelText('공고 제목'));
-    await user.type(screen.getByLabelText('공고 제목'), '수정한 제목');
-    await user.selectOptions(screen.getByLabelText('최저 월급'), '350000');
-    expect(screen.getByRole('alert')).toHaveTextContent('첫 번째 검증 오류');
-    expect(screen.getByLabelText('공고 제목')).toHaveAccessibleDescription('이전 제목 오류');
-    expect(screen.getByLabelText('최저 월급')).toHaveAccessibleDescription('이전 최저 월급 오류');
+    await user.clear(screen.getByLabelText('求人タイトル'));
+    await user.type(screen.getByLabelText('求人タイトル'), '編集したタイトル');
+    await user.selectOptions(screen.getByLabelText('最低月給'), '350000');
+    expect(screen.getByRole('alert')).toHaveTextContent('1回目の検証エラー');
+    expect(screen.getByLabelText('求人タイトル')).toHaveAccessibleDescription('以前のタイトルのエラー');
+    expect(screen.getByLabelText('最低月給')).toHaveAccessibleDescription('以前の最低月給のエラー');
 
-    await user.click(screen.getByRole('button', { name: '등록' }));
-    expect(screen.getByRole('button', { name: '등록 중...' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: '登録' }));
+    expect(screen.getByRole('button', { name: '登録中…' })).toBeDisabled();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(screen.queryByText('이전 제목 오류')).not.toBeInTheDocument();
-    expect(screen.queryByText('이전 최저 월급 오류')).not.toBeInTheDocument();
+    expect(screen.queryByText('以前のタイトルのエラー')).not.toBeInTheDocument();
+    expect(screen.queryByText('以前の最低月給のエラー')).not.toBeInTheDocument();
     for (const [, label] of fields) {
       expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-invalid');
       expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-describedby');
@@ -184,44 +184,44 @@ describe('JobPostingCreateForm 필드 오류', () => {
     }
 
     await act(async () => {
-      retry.reject(new ApiError('두 번째 검증 오류', 400, 'VALIDATION_ERROR', {
-        salaryMax: '새 최고 월급 오류',
+      retry.reject(new ApiError('2回目の検証エラー', 400, 'VALIDATION_ERROR', {
+        salaryMax: '新しい最高月給のエラー',
       }));
     });
 
-    expect(screen.getByRole('alert')).toHaveTextContent('두 번째 검증 오류');
-    expect(screen.getByLabelText('최고 월급')).toHaveAccessibleDescription('새 최고 월급 오류');
-    expect(screen.getByLabelText('공고 제목')).not.toHaveAttribute('aria-invalid');
-    expect(screen.getByLabelText('최저 월급')).not.toHaveAttribute('aria-invalid');
-    expect(screen.getByLabelText('공고 제목')).toHaveValue('수정한 제목');
-    expect(screen.getByLabelText('최저 월급')).toHaveValue('350000');
-    expect(screen.getByLabelText('최고 월급')).toHaveValue('500000');
-    expect(screen.getByLabelText('회사명')).toHaveValue('求人会社');
-    expect(screen.getByLabelText('공고 URL')).toHaveValue('https://example.com/job/1');
-    expect(screen.getByLabelText('공고 원문')).toHaveValue('Java AWS');
+    expect(screen.getByRole('alert')).toHaveTextContent('2回目の検証エラー');
+    expect(screen.getByLabelText('最高月給')).toHaveAccessibleDescription('新しい最高月給のエラー');
+    expect(screen.getByLabelText('求人タイトル')).not.toHaveAttribute('aria-invalid');
+    expect(screen.getByLabelText('最低月給')).not.toHaveAttribute('aria-invalid');
+    expect(screen.getByLabelText('求人タイトル')).toHaveValue('編集したタイトル');
+    expect(screen.getByLabelText('最低月給')).toHaveValue('350000');
+    expect(screen.getByLabelText('最高月給')).toHaveValue('500000');
+    expect(screen.getByLabelText('会社名')).toHaveValue('求人会社');
+    expect(screen.getByLabelText('求人URL')).toHaveValue('https://example.com/job/1');
+    expect(screen.getByLabelText('求人原文')).toHaveValue('Java AWS');
     expect(screen.getByLabelText('応募締切日')).toHaveValue('2026-12-01');
     expect(onCreated).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: '등록' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '登録' })).toBeEnabled();
   });
 
-  test('재제출 성공 시 오류와 입력값을 초기화하고 등록 완료를 전달한다', async () => {
+  test('再送信の成功時にエラーと入力値を初期化し、登録完了を伝える', async () => {
     const user = userEvent.setup();
     const onCreated = vi.fn().mockResolvedValue(undefined);
     vi.mocked(createJobPosting)
-      .mockRejectedValueOnce(new ApiError('입력값 오류', 400, 'VALIDATION_ERROR', {
-        title: '제목 확인 필요',
+      .mockRejectedValueOnce(new ApiError('入力値のエラー', 400, 'VALIDATION_ERROR', {
+        title: 'タイトルの確認が必要',
       }))
       .mockResolvedValueOnce(createdPosting);
     render(<JobPostingCreateForm onCreated={onCreated} />);
     await fillAllFields(user);
-    await user.click(screen.getByRole('button', { name: '등록' }));
-    await screen.findByText('제목 확인 필요');
-    await user.click(screen.getByRole('button', { name: '등록' }));
+    await user.click(screen.getByRole('button', { name: '登録' }));
+    await screen.findByText('タイトルの確認が必要');
+    await user.click(screen.getByRole('button', { name: '登録' }));
 
-    expect(await screen.findByText('채용공고가 등록되었습니다.')).toBeInTheDocument();
+    expect(await screen.findByText('求人を登録しました。')).toBeInTheDocument();
     expect(onCreated).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(screen.queryByText('제목 확인 필요')).not.toBeInTheDocument();
+    expect(screen.queryByText('タイトルの確認が必要')).not.toBeInTheDocument();
     for (const [, label] of fields) {
       expect(screen.getByLabelText(label)).toHaveValue('');
       expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-invalid');
@@ -230,7 +230,7 @@ describe('JobPostingCreateForm 필드 오류', () => {
   });
 });
 
-test('등록 페이지에서 등록 성공 후 기존 홈 경로로 이동한다', async () => {
+test('登録ページで登録に成功すると既存のホームのパスへ移動する', async () => {
   const user = userEvent.setup();
   const request = deferred<JobPosting>();
   vi.mocked(createJobPosting).mockReturnValueOnce(request.promise);
@@ -247,7 +247,7 @@ test('등록 페이지에서 등록 성공 후 기존 홈 경로로 이동한다
     </MemoryRouter>,
   );
   await fillRequiredFields(user);
-  await user.click(screen.getByRole('button', { name: '등록' }));
+  await user.click(screen.getByRole('button', { name: '登録' }));
   expect(screen.getByTestId('create-location')).toHaveTextContent('/job-postings/new');
 
   await act(async () => {
@@ -257,7 +257,7 @@ test('등록 페이지에서 등록 성공 후 기존 홈 경로로 이동한다
   await waitFor(() => {
     expect(screen.getByTestId('create-location').textContent).toBe('/');
   });
-  expect(screen.queryByRole('heading', { name: '채용공고 등록' })).not.toBeInTheDocument();
-  expect(screen.getByRole('textbox', { name: '검색어' })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: '求人登録' })).not.toBeInTheDocument();
+  expect(screen.getByRole('textbox', { name: '検索キーワード' })).toBeInTheDocument();
   expect(fetchJobPostings).toHaveBeenCalled();
 });

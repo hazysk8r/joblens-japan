@@ -165,7 +165,7 @@ function JobPostingListItem({
 				setSkillsError(error.message);
 			} else {
 				setSkillsError(
-					'기술 스택 조회에 실패하였습니다.',
+					'技術スタックの取得に失敗しました。',
 				);
 			}
 		} finally {
@@ -306,7 +306,7 @@ function JobPostingListItem({
 							</h2>
 							<p className="job-posting-card__company">
 								{jobPosting.companyName ??
-									'회사명 미등록'}
+									'会社名未登録'}
 							</p>
 							<div className="job-posting-card__meta">
 								<p className="job-posting-card__salary">
@@ -315,13 +315,13 @@ function JobPostingListItem({
 
 								<p className="job-posting-card__deadline">
 									応募締切日：{' '}
-									{jobPosting.applicationDeadline ?? '미등록'}
+									{jobPosting.applicationDeadline ?? '未登録'}
 								</p>
 							</div>
 						</div>
 						<div className="job-posting-card__status">
 							<label>
-								지원 상태:
+								応募ステータス:
 								<select
 									value={
 										jobPosting.applicationStatus
@@ -337,30 +337,30 @@ function JobPostingListItem({
 									}}
 								>
 									<option value="SAVED">
-										저장
+										保存済み
 									</option>
 
 									<option value="APPLIED">
-										지원완료
+										応募済み
 									</option>
 
 									<option value="INTERVIEWING">
-										면접 진행 중
+										面接中
 									</option>
 
 									<option value="OFFERED">
-										오퍼수령
+										内定
 									</option>
 
 									<option value="REJECTED">
-										거절됨
+										不採用
 									</option>
 								</select>
 							</label>
 
 							{isUpdatingStatus && (
 								<span>
-									상태 변경 중...
+									ステータス変更中…
 								</span>
 							)}
 						</div>
@@ -379,7 +379,7 @@ function JobPostingListItem({
 									target="_blank"
 									rel="noreferrer"
 								>
-									원문 보기
+									原文を見る
 								</a>
 							</p>
 						)}
@@ -390,12 +390,12 @@ function JobPostingListItem({
 			{editRecovery && (
 				<div className="job-posting-card__edit-recovery">
 					{editRecovery.pending ? (
-						<p role="status">최신 공고를 다시 불러오는 중...</p>
+						<p role="status">最新の求人を再読み込み中…</p>
 					) : (
 						<>
 							<p role="alert">{editRecovery.error}</p>
 							<button type="button" onClick={onRetryEditRecovery}>
-								최신 공고 다시 불러오기
+								最新の求人を再読み込み
 							</button>
 						</>
 					)}
@@ -411,8 +411,8 @@ function JobPostingListItem({
 					}}
 				>
 					{loading
-						? '처리중...'
-						: '기술 스택 보기'}
+						? '処理中…'
+						: '技術スタックを見る'}
 				</button>
 
 				<button
@@ -424,8 +424,8 @@ function JobPostingListItem({
 					}
 				>
 					{memoVisible
-						? '메모 닫기'
-						: '메모 보기'}
+						? 'メモを閉じる'
+						: 'メモを見る'}
 				</button>
 
 				<button
@@ -460,7 +460,7 @@ function JobPostingListItem({
 							</ul>
 						) : (
 							<p>
-								추출된 기술 스택이 없습니다.
+								抽出された技術スタックはありません。
 							</p>
 						)
 					)}
@@ -521,7 +521,7 @@ function JobPostingListItem({
 						>
 							{memosLoading ? (
 								<p>
-									메모 불러오는 중...
+									メモを読み込み中…
 								</p>
 							) : memosError !== null ? (
 								<p role="alert">
@@ -600,7 +600,7 @@ function JobPostingListItem({
 																		memo.id
 																	}
 																>
-																	수정
+																	編集
 																</button>
 
 																<button
@@ -617,8 +617,8 @@ function JobPostingListItem({
 																>
 																	{deletingMemoId ===
 																		memo.id
-																		? '메모 삭제 중...'
-																		: '메모 삭제'}
+																		? 'メモを削除中…'
+																		: 'メモを削除'}
 																</button>
 															</>
 														)}
@@ -627,7 +627,7 @@ function JobPostingListItem({
 										</ul>
 									) : (
 										<p>
-											등록된 메모가 없습니다.
+											登録されたメモはありません。
 										</p>
 									)}
 								</>
@@ -648,7 +648,7 @@ function JobPostingListItem({
 						}
 						disabled={isDeleting || editRecovery !== undefined}
 					>
-						수정
+						編集
 					</button>
 
 					<button
@@ -662,8 +662,8 @@ function JobPostingListItem({
 						disabled={isDeleting}
 					>
 						{isDeleting
-							? '삭제 중...'
-							: '삭제'}
+							? '削除中…'
+							: '削除'}
 					</button>
 				</div>
 			)}

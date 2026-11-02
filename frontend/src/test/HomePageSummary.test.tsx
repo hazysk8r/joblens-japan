@@ -80,7 +80,7 @@ function renderHome(strict = false) {
 }
 
 function summarySection() {
-  const section = screen.getByRole('heading', { name: '지원현황', level: 2 }).closest('section');
+  const section = screen.getByRole('heading', { name: '応募状況', level: 2 }).closest('section');
   if (!section) {
     throw new Error('応募状況の表示領域が見つかりません。');
   }
@@ -88,8 +88,8 @@ function summarySection() {
 }
 
 function expectSavedCount(count: number) {
-  const row = within(summarySection()).getByText('저장:').closest('p');
-  expect(row).toHaveTextContent(`저장: ${count}`);
+  const row = within(summarySection()).getByText('保存済み:').closest('p');
+  expect(row).toHaveTextContent(`保存済み: ${count}`);
 }
 
 function postingCard() {
@@ -124,11 +124,11 @@ describe('応募状況と求人一覧の独立した取得', () => {
     renderHome();
 
     await screen.findByRole('heading', { name: jobPosting.title });
-    const region = await screen.findByRole('region', { name: '지원현황' });
+    const region = await screen.findByRole('region', { name: '応募状況' });
     expect(within(region).getByRole('alert')).toHaveTextContent('集計を取得できません。');
     expect(screen.getAllByRole('alert')).toHaveLength(1);
-    expect(within(region).getByRole('button', { name: '지원현황 다시 시도' })).toBeEnabled();
-    expect(within(region).queryByText('저장:')).not.toBeInTheDocument();
+    expect(within(region).getByRole('button', { name: '応募状況を再試行' })).toBeEnabled();
+    expect(within(region).queryByText('保存済み:')).not.toBeInTheDocument();
     expect(fetchJobPostings).toHaveBeenCalledTimes(1);
   });
 
@@ -141,7 +141,7 @@ describe('応募状況と求人一覧の独立した取得', () => {
     renderHome();
     await screen.findByRole('heading', { name: jobPosting.title });
     await screen.findByRole('alert');
-    const retryButton = screen.getByRole('button', { name: '지원현황 다시 시도' });
+    const retryButton = screen.getByRole('button', { name: '応募状況を再試行' });
 
     await user.click(retryButton);
 
@@ -164,7 +164,7 @@ describe('応募状況と求人一覧の独立した取得', () => {
     renderHome();
 
     await screen.findByRole('alert');
-    await screen.findByRole('heading', { name: '지원현황' });
+    await screen.findByRole('heading', { name: '応募状況' });
     expectSavedCount(5);
     expect(screen.getByRole('alert')).toHaveTextContent('一覧を取得できません。');
     expect(within(summarySection()).queryByRole('alert')).not.toBeInTheDocument();
@@ -176,10 +176,10 @@ describe('応募状況と求人一覧の独立した取得', () => {
     renderHome();
 
     await screen.findByRole('heading', { name: jobPosting.title });
-    expect(screen.queryByText('채용공고를 불러오는 중...')).not.toBeInTheDocument();
+    expect(screen.queryByText('求人を読み込み中…')).not.toBeInTheDocument();
     expect(fetchApplicationStatusSummary).toHaveBeenCalledTimes(1);
     await act(async () => summary.resolve(initialSummary));
-    await screen.findByRole('heading', { name: '지원현황' });
+    await screen.findByRole('heading', { name: '応募状況' });
     expectSavedCount(5);
   });
 
@@ -190,16 +190,16 @@ describe('応募状況と求人一覧の独立した取得', () => {
       .mockRejectedValueOnce(new Error('最新の集計を取得できません。'));
     renderHome();
     await screen.findByRole('heading', { name: jobPosting.title });
-    await screen.findByRole('heading', { name: '지원현황' });
+    await screen.findByRole('heading', { name: '応募状況' });
 
     await user.selectOptions(within(postingCard()).getByRole('combobox'), 'APPLIED');
 
     const alert = await within(summarySection()).findByRole('alert');
     expect(alert).toHaveTextContent('最新の集計を取得できません。');
-    expect(summarySection()).toHaveTextContent('이전에 조회한 집계입니다.');
+    expect(summarySection()).toHaveTextContent('以前に取得した集計です。');
     expectSavedCount(5);
     expect(screen.getByRole('heading', { name: jobPosting.title })).toBeInTheDocument();
-    expect(within(summarySection()).getByRole('button', { name: '지원현황 다시 시도' })).toBeEnabled();
+    expect(within(summarySection()).getByRole('button', { name: '応募状況を再試行' })).toBeEnabled();
     expect(fetchJobPostings).toHaveBeenCalledTimes(2);
   });
 
@@ -219,11 +219,11 @@ describe('応募状況と求人一覧の独立した取得', () => {
     }
     renderHome();
     await screen.findByRole('heading', { name: jobPosting.title });
-    await screen.findByRole('heading', { name: '지원현황' });
+    await screen.findByRole('heading', { name: '応募状況' });
 
     if (action === 'delete') {
       vi.mocked(fetchJobPostings).mockResolvedValueOnce({ ...page, content: [], totalElements: 0, totalPages: 0 });
-      await user.click(within(postingCard()).getByRole('button', { name: '삭제' }));
+      await user.click(within(postingCard()).getByRole('button', { name: '削除' }));
     } else {
       await user.selectOptions(within(postingCard()).getByRole('combobox'), 'APPLIED');
     }
@@ -253,10 +253,10 @@ describe('応募状況と求人一覧の独立した取得', () => {
       }
     });
 
-    const region = screen.getByRole('region', { name: '지원현황' });
+    const region = screen.getByRole('region', { name: '応募状況' });
     expect(within(region).getByRole('status')).toBeInTheDocument();
     expect(within(region).queryByRole('alert')).not.toBeInTheDocument();
-    expect(within(region).queryByText('저장:')).not.toBeInTheDocument();
+    expect(within(region).queryByText('保存済み:')).not.toBeInTheDocument();
     await act(async () => refresh.resolve(refreshedSummary));
 
     await waitFor(() => expectSavedCount(4));
@@ -272,7 +272,7 @@ describe('応募状況と求人一覧の独立した取得', () => {
     renderHome(true);
     await waitFor(() => expect(fetchApplicationStatusSummary).toHaveBeenCalledTimes(2));
     await act(async () => latest.resolve(refreshedSummary));
-    await screen.findByRole('heading', { name: '지원현황' });
+    await screen.findByRole('heading', { name: '応募状況' });
     expectSavedCount(4);
 
     await act(async () => {

@@ -11,11 +11,11 @@ import jakarta.validation.constraints.Size;
  */
 public record LoginRequest(
 
-        @NotBlank(message = "이메일은 필수입니다.")
+        @NotBlank(message = "メールアドレスを入力してください。")
         @Size(max = 254, message = "メールアドレスは254文字以内で入力してください。")
         String email,
 
-        @NotBlank(message = "비밀번호는 필수입니다.")
+        @NotBlank(message = "パスワードを入力してください。")
         @Size(max = 64, message = "パスワードは64文字以内で入力してください。")
         String password
 ) {

@@ -166,7 +166,7 @@ class JobPostingOwnershipTest {
     // ---- A. 他人の求人へのアクセス ----
 
     @Test
-    void 다른_사용자의_공고를_조회하면_404를_반환한다() throws Exception {
+    void 別のユーザーの求人を取得すると_404を返す() throws Exception {
         long postingId = createPostingId(userB);
 
         mockMvc.perform(as(userA, get("/api/job-postings/{id}", postingId)))
@@ -175,7 +175,7 @@ class JobPostingOwnershipTest {
     }
 
     @Test
-    void 다른_사용자의_공고를_올바른_IfMatch로_수정하면_404를_반환하고_내용은_그대로다() throws Exception {
+    void 別のユーザーの求人を正しいIfMatchで編集すると_404を返し内容は変わらない() throws Exception {
         long postingId = createPostingId(userB);
 
         mockMvc.perform(as(userA, put("/api/job-postings/{id}", postingId))
@@ -189,7 +189,7 @@ class JobPostingOwnershipTest {
     }
 
     @Test
-    void 다른_사용자의_공고를_틀린_IfMatch로_수정해도_412가_아닌_404를_반환한다() throws Exception {
+    void 別のユーザーの求人を誤ったIfMatchで編集しても_412ではなく_404を返す() throws Exception {
         long postingId = createPostingId(userB);
 
         mockMvc.perform(as(userA, put("/api/job-postings/{id}", postingId))
@@ -201,7 +201,7 @@ class JobPostingOwnershipTest {
     }
 
     @Test
-    void 다른_사용자의_공고_상태를_올바른_IfMatch로_변경하면_404를_반환하고_이력이_쌓이지_않는다() throws Exception {
+    void 別のユーザーの求人のステータスを正しいIfMatchで変更すると_404を返し履歴が増えない() throws Exception {
         long postingId = createPostingId(userB);
 
         mockMvc.perform(as(userA, patch("/api/job-postings/{id}/status", postingId))
@@ -217,7 +217,7 @@ class JobPostingOwnershipTest {
     }
 
     @Test
-    void 다른_사용자의_공고_상태를_틀린_IfMatch로_변경해도_412가_아닌_404를_반환한다() throws Exception {
+    void 別のユーザーの求人のステータスを誤ったIfMatchで変更しても_412ではなく_404を返す() throws Exception {
         long postingId = createPostingId(userB);
 
         mockMvc.perform(as(userA, patch("/api/job-postings/{id}/status", postingId))
@@ -229,7 +229,7 @@ class JobPostingOwnershipTest {
     }
 
     @Test
-    void 다른_사용자의_공고를_삭제하면_404를_반환하고_공고는_남아있다() throws Exception {
+    void 別のユーザーの求人を削除すると_404を返し求人は残る() throws Exception {
         long postingId = createPostingId(userB);
 
         mockMvc.perform(as(userA, delete("/api/job-postings/{id}", postingId)))
@@ -240,7 +240,7 @@ class JobPostingOwnershipTest {
     }
 
     @Test
-    void 다른_사용자의_공고에서_스킬을_추출하면_404를_반환한다() throws Exception {
+    void 別のユーザーの求人からスキルを抽出すると_404を返す() throws Exception {
         long postingId = createPostingId(userB);
 
         mockMvc.perform(as(userA, get("/api/job-postings/{id}/skills", postingId)))
@@ -249,7 +249,7 @@ class JobPostingOwnershipTest {
     }
 
     @Test
-    void 다른_사용자의_공고_상태_이력을_조회하면_404를_반환한다() throws Exception {
+    void 別のユーザーの求人のステータス履歴を取得すると_404を返す() throws Exception {
         long postingId = createPostingId(userB);
 
         mockMvc.perform(as(userA, get("/api/job-postings/{id}/status-history", postingId)))
@@ -272,7 +272,7 @@ class JobPostingOwnershipTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("postingRequests")
-    void 존재하지_않는_공고와_다른_사용자의_공고는_같은_응답을_반환한다(
+    void 存在しない求人と別のユーザーの求人は同じ応答を返す(
             String method,
             Function<Long, MockHttpServletRequestBuilder> request
     ) throws Exception {
@@ -289,7 +289,7 @@ class JobPostingOwnershipTest {
     // ---- B. 他人のメモへのアクセス ----
 
     @Test
-    void 다른_사용자의_공고에_메모를_작성하면_404를_반환하고_메모는_생성되지_않는다() throws Exception {
+    void 別のユーザーの求人にメモを書くと_404を返しメモは作成されない() throws Exception {
         long postingId = createPostingId(userB);
 
         mockMvc.perform(as(userA, post("/api/job-postings/{id}/notes", postingId))
@@ -303,7 +303,7 @@ class JobPostingOwnershipTest {
     }
 
     @Test
-    void 다른_사용자의_공고의_메모_목록을_조회하면_404를_반환한다() throws Exception {
+    void 別のユーザーの求人のメモ一覧を取得すると_404を返す() throws Exception {
         long postingId = createPostingId(userB);
         createMemo(userB, postingId, "Bのメモ");
 
@@ -313,7 +313,7 @@ class JobPostingOwnershipTest {
     }
 
     @Test
-    void 다른_사용자의_공고와_메모로_수정_삭제하면_404를_반환하고_메모는_그대로다() throws Exception {
+    void 別のユーザーの求人とメモで編集と削除をすると_404を返しメモは変わらない() throws Exception {
         long postingId = createPostingId(userB);
         long memoId = createMemo(userB, postingId, "Bのメモ");
 
@@ -329,7 +329,7 @@ class JobPostingOwnershipTest {
     }
 
     @Test
-    void 내_공고_ID와_다른_사용자의_메모_ID로_수정_삭제하면_404를_반환하고_메모는_그대로다() throws Exception {
+    void 自分の求人IDと別のユーザーのメモIDで編集と削除をすると_404を返しメモは変わらない() throws Exception {
         long myPostingId = createPostingId(userA);
         long othersPostingId = createPostingId(userB);
         long othersMemoId = createMemo(userB, othersPostingId, "Bのメモ");
@@ -348,7 +348,7 @@ class JobPostingOwnershipTest {
     // ---- C. 一覧・集計 ----
 
     @Test
-    void 공고_목록에는_내_공고만_나온다() throws Exception {
+    void 求人一覧には自分の求人だけが出る() throws Exception {
         long myFirst = createPosting(userA, "Aの求人1", "本文").get("id").asLong();
         long mySecond = createPosting(userA, "Aの求人2", "本文").get("id").asLong();
         createPosting(userB, "Bの求人1", "本文");
@@ -363,7 +363,7 @@ class JobPostingOwnershipTest {
     }
 
     @Test
-    void 다른_사용자의_공고에만_있는_키워드로_검색하면_결과가_없다() throws Exception {
+    void 別のユーザーの求人にだけあるキーワードで検索すると結果がない() throws Exception {
         createPosting(userA, "Aの求人", "Java開発");
         createPosting(userB, "Bの求人", "Kubernetes運用");
 
@@ -373,7 +373,7 @@ class JobPostingOwnershipTest {
     }
 
     @Test
-    void 상태_요약은_내_공고만_집계한다() throws Exception {
+    void ステータス集計は自分の求人だけを集計する() throws Exception {
         createPosting(userA, "Aの求人", "本文");
 
         createPosting(userB, "Bの求人1", "本文");
@@ -394,7 +394,7 @@ class JobPostingOwnershipTest {
     // ---- D. 登録と所有者 ----
 
     @Test
-    void 공고를_등록하면_로그인한_사용자가_소유자가_된다() throws Exception {
+    void 求人を登録するとログイン中のユーザーが所有者になる() throws Exception {
         long postingId = createPosting(userA, "Aの求人", "本文").get("id").asLong();
 
         assertEquals(userA.id(), jdbcTemplate.queryForObject(
@@ -402,7 +402,7 @@ class JobPostingOwnershipTest {
     }
 
     @Test
-    void 요청_본문에_다른_사용자의_ID를_넣어도_로그인한_사용자가_소유자가_된다() throws Exception {
+    void リクエスト本文に別のユーザーのIDを入れてもログイン中のユーザーが所有者になる() throws Exception {
         MvcResult result = mockMvc.perform(as(userA, post("/api/job-postings"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -423,7 +423,7 @@ class JobPostingOwnershipTest {
     // ---- E. データの整合性 ----
 
     @Test
-    void 사용자를_삭제하면_공고_메모_상태_이력도_함께_삭제된다() throws Exception {
+    void ユーザーを削除すると求人とメモとステータス履歴も一緒に削除される() throws Exception {
         long postingId = createPostingId(userB);
         createMemo(userB, postingId, "Bのメモ");
         mockMvc.perform(as(userB, patch("/api/job-postings/{id}/status", postingId))

@@ -66,7 +66,7 @@ export function useJobPostingMemos(jobPostingId: number) {
       setMemosError(
         error instanceof Error
           ? error.message
-          : '메모 조회에 실패하였습니다.',
+          : 'メモの取得に失敗しました。',
       );
     } finally {
       setMemosLoading(false);
@@ -134,7 +134,7 @@ export function useJobPostingMemos(jobPostingId: number) {
       setMemoUpdateError(errorMessageOf(
         error,
         'content',
-        '수정 중 알 수 없는 오류가 발생하였습니다.',
+        '編集中に不明なエラーが発生しました。',
       ));
     } finally {
       // 別のMemoが保存中の場合、その保存状態を解除しない。
@@ -169,7 +169,7 @@ export function useJobPostingMemos(jobPostingId: number) {
       setMemoMutationError(
         error instanceof Error
           ? error.message
-          : '삭제 중 알 수 없는 오류가 발생하였습니다.',
+          : '削除中に不明なエラーが発生しました。',
       );
     } finally {
       setDeletingMemoId(null);

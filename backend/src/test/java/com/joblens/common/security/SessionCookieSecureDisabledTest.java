@@ -45,7 +45,7 @@ class SessionCookieSecureDisabledTest {
     }
 
     @Test
-    void SESSION_COOKIE_SECURE가_false면_Secure_없이_세션_쿠키를_발급한다() throws Exception {
+    void SESSION_COOKIE_SECUREがfalseならSecureなしでセッションCookieを発行する() throws Exception {
         MvcResult result = mockMvc.perform(post("/api/auth/signup")
                         .with(doubleSubmitCsrf())
                         .contentType(MediaType.APPLICATION_JSON)

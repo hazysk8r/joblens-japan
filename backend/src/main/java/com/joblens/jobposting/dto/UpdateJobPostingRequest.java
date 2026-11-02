@@ -11,35 +11,35 @@ import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
 /**
- * 채용공고 수정 요청을 전달하는 DTO다.
+ * 求人の編集リクエストを渡すDTO。
  *
- * 생성 요청과 현재 필드가 같더라도 별도의 DTO로 분리한다.
- * 나중에 생성과 수정의 검증 규칙이 달라질 수 있기 때문
+ * 作成リクエストと現在の項目が同じでも、別のDTOに分ける。
+ * 今後、作成と編集で検証ルールが変わる可能性があるため。
  */
 @ValidSalaryRange
 public record UpdateJobPostingRequest(
 
-        @Size(max = 200)
+        @Size(max = 200, message = "会社名は200文字以内で入力してください。")
         String companyName,
 
-        @NotBlank(message = "공고 제목은 필수입니다.")
-        @Size(max = 200)
+        @NotBlank(message = "求人タイトルは必須です。")
+        @Size(max = 200, message = "求人タイトルは200文字以内で入力してください。")
         String title,
 
         // 一般的なブラウザ・サーバーが扱えるURLの長さに合わせる。
-        @Size(max = 2048)
+        @Size(max = 2048, message = "求人URLは2048文字以内で入力してください。")
         @ValidHttpUrl
         String sourceUrl,
 
         // 求人原文として十分な長さを確保しつつ、極端に大きなデータの保存を防ぐ。
-        @NotBlank(message = "공고 원문은 필수입니다.")
-        @Size(max = 20000)
+        @NotBlank(message = "求人原文は必須です。")
+        @Size(max = 20000, message = "求人原文は20000文字以内で入力してください。")
         String originalText,
 
-        @PositiveOrZero
+        @PositiveOrZero(message = "最低月給は0以上で入力してください。")
         Integer salaryMin,
 
-        @PositiveOrZero 
+        @PositiveOrZero(message = "最高月給は0以上で入力してください。")
         Integer salaryMax,
 
         LocalDate applicationDeadline

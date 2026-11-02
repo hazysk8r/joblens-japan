@@ -44,7 +44,7 @@ public class JobPostingMemoService {
 
     List<JobPostingMemo> jobPostingMemos = jobPostingMemoRepository.findByJobPosting_IdOrderByUpdatedAtDescIdDesc(jobPostingId);
 
-    // List 변환은 stream() 활용
+    // Listへの変換はstream()を活用
     return jobPostingMemos.stream()
           .map(JobPostingMemoResponse::from)
           .toList();

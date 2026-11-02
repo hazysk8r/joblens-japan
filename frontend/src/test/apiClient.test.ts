@@ -63,7 +63,7 @@ afterEach(() => {
 
 describe('CSRFトークンのヘッダー', () => {
   test.each(['POST', 'PUT', 'PATCH', 'DELETE'])(
-    '%s 요청에는 쿠키의 CSRF 토큰을 헤더로 넣는다',
+    '%sリクエストにはCookieのCSRFトークンをヘッダーに入れる',
     async (method) => {
       setCsrfCookie('token-1');
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
@@ -74,7 +74,7 @@ describe('CSRFトークンのヘッダー', () => {
     },
   );
 
-  test('GET 요청에는 CSRF 토큰을 넣지 않는다', async () => {
+  test('GETリクエストにはCSRFトークンを入れない', async () => {
     setCsrfCookie('token-1');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, [])));
 
@@ -83,7 +83,7 @@ describe('CSRFトークンのヘッダー', () => {
     expect(headersOfCall(0)?.[CSRF_HEADER]).toBeUndefined();
   });
 
-  test('토큰 쿠키가 바뀌면 다음 요청은 새 토큰을 사용한다', async () => {
+  test('トークンのCookieが変わると次のリクエストは新しいトークンを使う', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
 
     setCsrfCookie('before-login');
@@ -96,7 +96,7 @@ describe('CSRFトークンのヘッダー', () => {
     expect(headersOfCall(1)?.[CSRF_HEADER]).toBe('after-login');
   });
 
-  test('기존 헤더를 유지하면서 CSRF 토큰을 추가한다', async () => {
+  test('既存のヘッダーを維持しながらCSRFトークンを追加する', async () => {
     setCsrfCookie('token-1');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, {})));
 
@@ -114,7 +114,7 @@ describe('CSRFトークンのヘッダー', () => {
   });
 
   // ログアウト直後などトークンのCookieがない場合は、トークンなしで送らずに先に取得する。
-  test('토큰 쿠키가 없으면 먼저 토큰을 받아서 새 토큰으로 보낸다', async () => {
+  test('トークンのCookieがなければ先にトークンを受け取り、新しいトークンで送る', async () => {
     clearCsrfCookie();
     vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string) => {
       if (url === '/api/auth/me') {
@@ -132,9 +132,9 @@ describe('CSRFトークンのヘッダー', () => {
   });
 
   test.each([
-    { name: '토큰이 발급되지 않음', me: async () => jsonResponse(401, { code: 'UNAUTHORIZED' }) },
-    { name: '토큰 요청이 실패함', me: async () => { throw new TypeError('Failed to fetch'); } },
-  ])('토큰 쿠키가 없고 받을 수도 없으면($name) 요청을 보내지 않고 CsrfTokenUnavailableError를 던진다', async ({ me }) => {
+    { name: 'トークンが発行されない', me: async () => jsonResponse(401, { code: 'UNAUTHORIZED' }) },
+    { name: 'トークンのリクエストが失敗', me: async () => { throw new TypeError('Failed to fetch'); } },
+  ])('トークンのCookieがなく受け取ることもできないと($name)、リクエストを送らずCsrfTokenUnavailableErrorを投げる', async ({ me }) => {
     clearCsrfCookie();
     vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string) => (
       url === '/api/auth/me' ? me() : new Response(null, { status: 204 })
@@ -146,7 +146,7 @@ describe('CSRFトークンのヘッダー', () => {
     expect(vi.mocked(fetch).mock.calls.map(([url]) => url)).toEqual(['/api/auth/me']);
   });
 
-  test('조회 요청은 토큰 쿠키가 없어도 토큰을 먼저 받지 않는다', async () => {
+  test('取得リクエストはトークンのCookieがなくても先にトークンを受け取らない', async () => {
     clearCsrfCookie();
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, [])));
 
@@ -167,16 +167,16 @@ describe('CSRFトークンのヘッダー', () => {
 
   // 状態を変更するすべてのAPI関数が、fetchを直接呼ばずにapiFetchを通ることを確認する。
   const stateChangingApis = [
-    { name: '공고 등록', run: () => createJobPosting(jobPostingRequest) },
-    { name: '공고 수정', run: () => updateJobPosting(1, jobPostingRequest, 3) },
-    { name: '공고 삭제', run: () => deleteJobPosting(1) },
-    { name: '지원 상태 변경', run: () => updateApplicationStatus(1, { status: 'APPLIED' }, 3) },
-    { name: '메모 등록', run: () => createJobPostingMemo(1, { content: 'memo' }) },
-    { name: '메모 수정', run: () => updateJobPostingMemo(1, 2, { content: 'memo' }) },
-    { name: '메모 삭제', run: () => deleteJobPostingMemo(1, 2) },
+    { name: '求人の登録', run: () => createJobPosting(jobPostingRequest) },
+    { name: '求人の編集', run: () => updateJobPosting(1, jobPostingRequest, 3) },
+    { name: '求人の削除', run: () => deleteJobPosting(1) },
+    { name: '応募ステータスの変更', run: () => updateApplicationStatus(1, { status: 'APPLIED' }, 3) },
+    { name: 'メモ登録', run: () => createJobPostingMemo(1, { content: 'memo' }) },
+    { name: 'メモを編集', run: () => updateJobPostingMemo(1, 2, { content: 'memo' }) },
+    { name: 'メモを削除', run: () => deleteJobPostingMemo(1, 2) },
   ];
 
-  test.each(stateChangingApis)('$name API는 CSRF 토큰을 헤더로 보낸다', async ({ run }) => {
+  test.each(stateChangingApis)('$nameのAPIはCSRFトークンをヘッダーで送る', async ({ run }) => {
     setCsrfCookie('token-1');
     // 成功応答の本文は検証しないため、どのAPIでも読めるJSONを返す。
     vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => jsonResponse(200, {})));
@@ -188,7 +188,7 @@ describe('CSRFトークンのヘッダー', () => {
 });
 
 describe('CSRFトークンが無効な場合', () => {
-  test('403 CSRF_TOKEN_INVALID이면 토큰만 새로 받고 원래 요청은 다시 보내지 않는다', async () => {
+  test('403 CSRF_TOKEN_INVALIDならトークンだけ受け取り直し、元のリクエストは再送しない', async () => {
     setCsrfCookie('stale');
     vi.stubGlobal('fetch', vi.fn()
       .mockResolvedValueOnce(jsonResponse(403, { code: 'CSRF_TOKEN_INVALID' }))
@@ -206,7 +206,7 @@ describe('CSRFトークンが無効な場合', () => {
     await expect(response.json()).resolves.toEqual({ code: 'CSRF_TOKEN_INVALID' });
   });
 
-  test('CSRF 이외의 403은 토큰을 새로 받지 않는다', async () => {
+  test('CSRF以外の403ではトークンを受け取り直さない', async () => {
     setCsrfCookie('token-1');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(403, { code: 'FORBIDDEN' })));
 
@@ -219,9 +219,9 @@ describe('CSRFトークンが無効な場合', () => {
 
 describe('別のユーザーへの切り替わり(409 AUTH_CONTEXT_CHANGED)の通知', () => {
   // サーバーが「画面のユーザーとセッションのユーザーが違う」と判断した応答。
-  const mismatch = () => jsonResponse(409, { code: 'AUTH_CONTEXT_CHANGED', message: '다른 탭에서 로그인 계정이 바뀌었습니다.' });
+  const mismatch = () => jsonResponse(409, { code: 'AUTH_CONTEXT_CHANGED', message: '別のタブでログインアカウントが変更されました。' });
 
-  test('409 AUTH_CONTEXT_CHANGED이면 등록된 핸들러를 호출하고 응답은 그대로 반환한다', async () => {
+  test('409 AUTH_CONTEXT_CHANGEDなら登録されたハンドラーを呼び、応答はそのまま返す', async () => {
     const handler = vi.fn();
     const unregister = setAuthContextMismatchHandler(handler);
     switchAuthContext(1);
@@ -237,7 +237,7 @@ describe('別のユーザーへの切り替わり(409 AUTH_CONTEXT_CHANGED)の�
     }
   });
 
-  test('다른 409(이미 가입된 이메일)는 핸들러를 호출하지 않는다', async () => {
+  test('別の409(登録済みのメールアドレス)ではハンドラーを呼ばない', async () => {
     const handler = vi.fn();
     const unregister = setAuthContextMismatchHandler(handler);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(409, { code: 'EMAIL_ALREADY_EXISTS' })));
@@ -251,7 +251,7 @@ describe('別のユーザーへの切り替わり(409 AUTH_CONTEXT_CHANGED)の�
     }
   });
 
-  test('인증 상태가 바뀐 뒤 늦게 도착한 409는 핸들러를 호출하지 않는다', async () => {
+  test('認証状態が変わった後に遅れて届いた409ではハンドラーを呼ばない', async () => {
     const handler = vi.fn();
     const unregister = setAuthContextMismatchHandler(handler);
     switchAuthContext(1);
@@ -274,7 +274,7 @@ describe('別のユーザーへの切り替わり(409 AUTH_CONTEXT_CHANGED)の�
 });
 
 describe('ログインが必要な応答(401)の通知', () => {
-  test('notifyUnauthorized가 false인 요청의 401은 핸들러를 호출하지 않고, 이 옵션은 fetch에 넘기지 않는다', async () => {
+  test('notifyUnauthorizedがfalseのリクエストの401ではハンドラーを呼ばず、このオプションはfetchに渡さない', async () => {
     const handler = vi.fn();
     const unregister = setUnauthorizedHandler(handler);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(401, { code: 'UNAUTHORIZED' })));
@@ -291,11 +291,11 @@ describe('ログインが必要な応答(401)の通知', () => {
     }
   });
 
-  test('401 UNAUTHORIZED이면 등록된 핸들러를 호출하고 응답 본문은 그대로 읽을 수 있다', async () => {
+  test('401 UNAUTHORIZEDなら登録されたハンドラーを呼び、応答の本文はそのまま読める', async () => {
     const handler = vi.fn();
     const unregister = setUnauthorizedHandler(handler);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
-      jsonResponse(401, { code: 'UNAUTHORIZED', message: '로그인이 필요합니다.' }),
+      jsonResponse(401, { code: 'UNAUTHORIZED', message: 'ログインが必要です。' }),
     ));
 
     try {
@@ -308,7 +308,7 @@ describe('ログインが必要な応答(401)の通知', () => {
     }
   });
 
-  test('로그인 실패(401 INVALID_CREDENTIALS)는 핸들러를 호출하지 않는다', async () => {
+  test('ログイン失敗(401 INVALID_CREDENTIALS)ではハンドラーを呼ばない', async () => {
     const handler = vi.fn();
     const unregister = setUnauthorizedHandler(handler);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
@@ -324,7 +324,7 @@ describe('ログインが必要な応答(401)の通知', () => {
     }
   });
 
-  test('등록을 해제한 핸들러는 호출하지 않는다', async () => {
+  test('登録を解除したハンドラーは呼ばない', async () => {
     const handler = vi.fn();
     setUnauthorizedHandler(handler)();
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(401, { code: 'UNAUTHORIZED' })));
@@ -334,7 +334,7 @@ describe('ログインが必要な応答(401)の通知', () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
-  test('이전 핸들러의 해제가 나중에 등록된 핸들러를 지우지 않는다', async () => {
+  test('以前のハンドラーの解除が後から登録したハンドラーを消さない', async () => {
     const oldHandler = vi.fn();
     const newHandler = vi.fn();
     const unregisterOld = setUnauthorizedHandler(oldHandler);
@@ -358,17 +358,17 @@ describe('各API関数の401の通知', () => {
   // 照会のAPIも含め、すべてのAPI関数がapiFetchを通って401を通知することを確認する。
   const allApis = [
     {
-      name: '공고 목록 조회',
+      name: '求人一覧の取得',
       run: () => fetchJobPostings('', '', 0, 'createdAt,desc', null, null, null, null),
     },
-    { name: '지원 상태 요약 조회', run: () => fetchApplicationStatusSummary() },
-    { name: '지원 상태 이력 조회', run: () => fetchApplicationStatusHistory(1) },
-    { name: '기술 스택 조회', run: () => extractRequiredSkills(1, new AbortController().signal) },
-    { name: '메모 목록 조회', run: () => getJobPostingMemos(1) },
-    { name: '메모 등록', run: () => createJobPostingMemo(1, { content: 'memo' }) },
+    { name: '応募ステータス集計の取得', run: () => fetchApplicationStatusSummary() },
+    { name: '応募ステータス履歴の取得', run: () => fetchApplicationStatusHistory(1) },
+    { name: '技術スタックの取得', run: () => extractRequiredSkills(1, new AbortController().signal) },
+    { name: 'メモ一覧の取得', run: () => getJobPostingMemos(1) },
+    { name: 'メモ登録', run: () => createJobPostingMemo(1, { content: 'memo' }) },
   ];
 
-  test.each(allApis)('$name API가 401을 받으면 핸들러를 호출하고 오류를 던진다', async ({ run }) => {
+  test.each(allApis)('$nameのAPIが401を受けるとハンドラーを呼び、エラーを投げる', async ({ run }) => {
     const handler = vi.fn();
     const unregister = setUnauthorizedHandler(handler);
     vi.stubGlobal('fetch', vi.fn().mockImplementation(
@@ -402,7 +402,7 @@ describe('認証状態の変更とリクエスト', () => {
     });
   }
 
-  test('로그인 상태의 상태 변경 요청에는 예상 사용자 ID를 헤더로 넣는다', async () => {
+  test('ログイン中の状態変更リクエストには想定ユーザーのIDをヘッダーに入れる', async () => {
     switchAuthContext(7);
     vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => jsonResponse(200, {})));
 
@@ -413,7 +413,7 @@ describe('認証状態の変更とリクエスト', () => {
     expect(headersOfCall(1)?.[EXPECTED_USER_HEADER]).toBeUndefined();
   });
 
-  test('로그인하지 않은 상태에서는 예상 사용자 ID를 넣지 않는다', async () => {
+  test('未ログインの状態では想定ユーザーのIDを入れない', async () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => jsonResponse(200, {})));
 
     await apiFetch('/api/auth/login', { method: 'POST', body: '{}' });
@@ -421,7 +421,7 @@ describe('認証状態の変更とリクエスト', () => {
     expect(headersOfCall(0)?.[EXPECTED_USER_HEADER]).toBeUndefined();
   });
 
-  test('진행 중인 요청은 인증 상태가 바뀌면 취소되고 AuthContextChangedError를 던진다', async () => {
+  test('進行中のリクエストは認証状態が変わると取り消され、AuthContextChangedErrorを投げる', async () => {
     switchAuthContext(1);
     vi.stubGlobal('fetch', vi.fn().mockImplementation(pendingUntilAborted));
 
@@ -431,7 +431,7 @@ describe('認証状態の変更とリクエスト', () => {
     await expect(request).rejects.toBeInstanceOf(AuthContextChangedError);
   });
 
-  test('인증 상태가 바뀐 뒤 실패한 요청은 네트워크 오류 대신 AuthContextChangedError를 던진다', async () => {
+  test('認証状態が変わった後に失敗したリクエストはネットワークエラーの代わりにAuthContextChangedErrorを投げる', async () => {
     switchAuthContext(1);
     let failRequest!: (error: unknown) => void;
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise((_, reject) => {
@@ -446,7 +446,7 @@ describe('認証状態の変更とリクエスト', () => {
     await expect(request).rejects.toBeInstanceOf(AuthContextChangedError);
   });
 
-  test('응답이 도착했을 때 인증 상태가 바뀌어 있으면 응답을 반환하지 않는다', async () => {
+  test('応答が届いたときに認証状態が変わっていれば応答を返さない', async () => {
     switchAuthContext(1);
     const response = deferred<Response>();
     // 中断に応じず、後から応答が届く場合を再現する。
@@ -454,12 +454,12 @@ describe('認証状態の変更とリクエスト', () => {
 
     const request = apiFetch('/api/job-postings');
     switchAuthContext(2);
-    response.resolve(jsonResponse(200, { content: ['user1의 공고'] }));
+    response.resolve(jsonResponse(200, { content: ['user1の求人'] }));
 
     await expect(request).rejects.toBeInstanceOf(AuthContextChangedError);
   });
 
-  test('B로 전환한 뒤 A 때 보낸 요청의 401이 늦게 도착해도 핸들러를 호출하지 않는다', async () => {
+  test('Bへ切り替えた後にAのときのリクエストの401が遅れて届いてもハンドラーを呼ばない', async () => {
     const handler = vi.fn();
     const unregister = setUnauthorizedHandler(handler);
     switchAuthContext(1);
@@ -478,7 +478,7 @@ describe('認証状態の変更とリクエスト', () => {
     }
   });
 
-  test('같은 인증 상태에서 401이 여러 번 도착해도 핸들러가 인증 상태를 바꾸면 한 번만 호출된다', async () => {
+  test('同じ認証状態で401が複数届いても、ハンドラーが認証状態を変えれば一度だけ呼ばれる', async () => {
     // 3-5のハンドラーと同じく、ログアウト状態に切り替える。
     const handler = vi.fn(() => switchAuthContext(null));
     const unregister = setUnauthorizedHandler(handler);
@@ -503,7 +503,7 @@ describe('認証状態の変更とリクエスト', () => {
     }
   });
 
-  test('호출한 쪽이 취소한 요청은 기존처럼 AbortError를 그대로 전달한다', async () => {
+  test('呼び出し側が取り消したリクエストは従来どおりAbortErrorをそのまま伝える', async () => {
     switchAuthContext(1);
     vi.stubGlobal('fetch', vi.fn().mockImplementation(pendingUntilAborted));
     const controller = new AbortController();
@@ -516,7 +516,7 @@ describe('認証状態の変更とリクエスト', () => {
     expect(error).toHaveProperty('name', 'AbortError');
   });
 
-  test('인증 상태가 바뀐 뒤 새로 보낸 요청은 정상적으로 처리된다', async () => {
+  test('認証状態が変わった後に新しく送ったリクエストは正しく処理される', async () => {
     switchAuthContext(1);
     switchAuthContext(2);
     vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => jsonResponse(200, {})));

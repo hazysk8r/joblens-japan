@@ -9,15 +9,15 @@ import jakarta.validation.constraints.Size;
 
 public record SignupRequest(
 
-        @NotBlank(message = "이메일은 필수입니다.")
-        @Email(message = "이메일 형식이 올바르지 않습니다.")
+        @NotBlank(message = "メールアドレスを入力してください。")
+        @Email(message = "メールアドレスの形式が正しくありません。")
         @Size(max = 254, message = "メールアドレスは254文字以内で入力してください。")
         String email,
 
         // BCryptは72バイトまでしか扱えないため、文字数に加えてUTF-8のバイト数も制限する。
-        @NotBlank(message = "비밀번호는 필수입니다.")
-        @Size(min = 8, max = 64, message = "비밀번호는 8자 이상 64자 이하로 입력해주세요.")
-        @MaxUtf8Bytes(value = 72, message = "비밀번호가 너무 깁니다. 한글 등은 1자를 3바이트로 계산하며, 최대 72바이트까지 입력할 수 있습니다.")
+        @NotBlank(message = "パスワードを入力してください。")
+        @Size(min = 8, max = 64, message = "パスワードは8文字以上64文字以下で入力してください。")
+        @MaxUtf8Bytes(value = 72, message = "パスワードが長すぎます。日本語などは1文字を3バイトとして数え、最大72バイトまで入力できます。")
         String password
 ) {
 

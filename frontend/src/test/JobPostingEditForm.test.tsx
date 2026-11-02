@@ -7,12 +7,12 @@ import JobPostingEditForm from '../components/JobPostingEditForm';
 import type { JobPosting } from '../types/jobPosting';
 
 const fields = [
-  ['companyName', '회사명'],
-  ['title', '공고 제목'],
-  ['sourceUrl', '공고 URL'],
-  ['originalText', '공고 원문'],
-  ['salaryMin', '최저 월급'],
-  ['salaryMax', '최고 월급'],
+  ['companyName', '会社名'],
+  ['title', '求人タイトル'],
+  ['sourceUrl', '求人URL'],
+  ['originalText', '求人原文'],
+  ['salaryMin', '最低月給'],
+  ['salaryMax', '最高月給'],
   ['applicationDeadline', '締切日'],
 ] as const;
 
@@ -78,10 +78,10 @@ describe('JobPostingEditFormのフィールドエラー', () => {
 
     expect(screen.queryByText('未知のエラー')).not.toBeInTheDocument();
     if (fieldErrors.title) {
-      expect(screen.getByLabelText('공고 제목')).toHaveAccessibleDescription(fieldErrors.title);
+      expect(screen.getByLabelText('求人タイトル')).toHaveAccessibleDescription(fieldErrors.title);
     } else {
-      expect(screen.getByLabelText('공고 제목')).not.toHaveAttribute('aria-invalid');
-      expect(screen.getByLabelText('공고 제목')).not.toHaveAttribute('aria-describedby');
+      expect(screen.getByLabelText('求人タイトル')).not.toHaveAttribute('aria-invalid');
+      expect(screen.getByLabelText('求人タイトル')).not.toHaveAttribute('aria-describedby');
     }
     for (const [field, label] of fields) {
       if (field !== 'title') {
@@ -108,8 +108,8 @@ describe('JobPostingEditFormのフィールドエラー', () => {
       expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-invalid');
       expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-describedby');
     }
-    await user.clear(screen.getByLabelText('공고 제목'));
-    await user.type(screen.getByLabelText('공고 제목'), '保存前の下書き');
+    await user.clear(screen.getByLabelText('求人タイトル'));
+    await user.type(screen.getByLabelText('求人タイトル'), '保存前の下書き');
 
     const refreshedPosting = { ...posting, title: 'サーバーの新しいタイトル', originalText: 'サーバーの新しい原文', version: 9 };
     rerender(
@@ -122,9 +122,9 @@ describe('JobPostingEditFormのフィールドエラー', () => {
         onCancel={onCancel}
       />,
     );
-    expect(screen.getByLabelText('공고 제목')).toHaveAccessibleDescription('最初のタイトルエラー');
-    await user.type(screen.getByLabelText('공고 제목'), 'を継続');
-    expect(screen.getByLabelText('공고 제목')).toHaveAccessibleDescription('最初のタイトルエラー');
+    expect(screen.getByLabelText('求人タイトル')).toHaveAccessibleDescription('最初のタイトルエラー');
+    await user.type(screen.getByLabelText('求人タイトル'), 'を継続');
+    expect(screen.getByLabelText('求人タイトル')).toHaveAccessibleDescription('最初のタイトルエラー');
 
     rerender(
       <JobPostingEditForm
@@ -137,9 +137,9 @@ describe('JobPostingEditFormのフィールドエラー', () => {
       />,
     );
     expect(screen.queryByText('最初のタイトルエラー')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('공고 제목')).not.toHaveAttribute('aria-invalid');
-    expect(screen.getByLabelText('공고 제목')).not.toHaveAttribute('aria-describedby');
-    expect(screen.getByLabelText('최고 월급')).toHaveAccessibleDescription('更新された最高月給エラー');
+    expect(screen.getByLabelText('求人タイトル')).not.toHaveAttribute('aria-invalid');
+    expect(screen.getByLabelText('求人タイトル')).not.toHaveAttribute('aria-describedby');
+    expect(screen.getByLabelText('最高月給')).toHaveAccessibleDescription('更新された最高月給エラー');
 
     rerender(
       <JobPostingEditForm
@@ -156,9 +156,9 @@ describe('JobPostingEditFormのフィールドエラー', () => {
       expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-invalid');
       expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-describedby');
     }
-    expect(screen.getByLabelText('공고 제목')).toHaveValue('保存前の下書きを継続');
-    expect(screen.getByLabelText('공고 원문')).toHaveValue(posting.originalText);
-    await user.click(screen.getByRole('button', { name: '저장' }));
+    expect(screen.getByLabelText('求人タイトル')).toHaveValue('保存前の下書きを継続');
+    expect(screen.getByLabelText('求人原文')).toHaveValue(posting.originalText);
+    await user.click(screen.getByRole('button', { name: '保存' }));
     expect(onSave).toHaveBeenCalledWith(
       posting.id,
       {
@@ -203,9 +203,9 @@ describe('JobPostingEditFormのフィールドエラー', () => {
     const firstMessage = first.getByText('一つ目のタイトルエラー');
     const secondMessage = second.getByText('二つ目のタイトルエラー');
     expect(firstMessage.id).not.toBe(secondMessage.id);
-    expect(first.getByLabelText('공고 제목')).toHaveAttribute('aria-describedby', firstMessage.id);
-    expect(second.getByLabelText('공고 제목')).toHaveAttribute('aria-describedby', secondMessage.id);
-    expect(first.getByLabelText('공고 제목')).toHaveAccessibleDescription('一つ目のタイトルエラー');
-    expect(second.getByLabelText('공고 제목')).toHaveAccessibleDescription('二つ目のタイトルエラー');
+    expect(first.getByLabelText('求人タイトル')).toHaveAttribute('aria-describedby', firstMessage.id);
+    expect(second.getByLabelText('求人タイトル')).toHaveAttribute('aria-describedby', secondMessage.id);
+    expect(first.getByLabelText('求人タイトル')).toHaveAccessibleDescription('一つ目のタイトルエラー');
+    expect(second.getByLabelText('求人タイトル')).toHaveAccessibleDescription('二つ目のタイトルエラー');
   });
 });

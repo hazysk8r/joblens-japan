@@ -45,8 +45,8 @@ function JobPostingEditForm({
   // 編集中にPropsが更新されても、開始時のVersionをDraftと一緒に保持する。
   const [editVersion] = useState(expectedVersion ?? jobPosting.version);
   /*
-   * 이 입력값들은 수정 폼에서만 사용하므로
-   * App이 아니라 수정 폼 컴포넌트에서 관리한다.
+   * これらの入力値は編集フォームでのみ使うため、
+   * Appではなく編集フォームのコンポーネントで管理する。
    */
   const [editForm, setEditForm] =
     useState<EditFormState>({
@@ -101,12 +101,12 @@ function JobPostingEditForm({
       editForm.originalText.trim();
 
     /*
-     * required만으로는 공백 문자열을
-     * 완전히 막을 수 없으므로 trim() 후 확인한다.
+     * requiredだけでは空白のみの文字列を
+     * 完全に防げないため、trim()の後で確認する。
      */
     if (!title || !originalText) {
       setValidationError(
-        '공고 제목과 공고 원문을 입력해 주세요.',
+        '求人タイトルと求人原文を入力してください。',
       );
       return;
     }
@@ -129,8 +129,8 @@ function JobPostingEditForm({
     };
 
     /*
-     * 실제 API 호출은 부모인 App이 담당한다.
-     * 자식은 정리된 입력 데이터를 부모에게 전달한다.
+     * 実際のAPI呼び出しは親のAppが担当する。
+     * 子は整理した入力データを親に渡す。
      */
     await onSave(jobPosting.id, request, editVersion);
   };
@@ -141,7 +141,7 @@ function JobPostingEditForm({
         <label
           htmlFor={`edit-company-${jobPosting.id}`}
         >
-          회사명
+          会社名
         </label>
 
         <input
@@ -165,7 +165,7 @@ function JobPostingEditForm({
         <label
           htmlFor={`edit-title-${jobPosting.id}`}
         >
-          공고 제목
+          求人タイトル
         </label>
 
         <input
@@ -189,7 +189,7 @@ function JobPostingEditForm({
         <label
           htmlFor={`edit-url-${jobPosting.id}`}
         >
-          공고 URL
+          求人URL
         </label>
 
         <input
@@ -213,7 +213,7 @@ function JobPostingEditForm({
         <label
           htmlFor={`edit-text-${jobPosting.id}`}
         >
-          공고 원문
+          求人原文
         </label>
 
         <textarea
@@ -234,7 +234,7 @@ function JobPostingEditForm({
       </div>
 
       <div>
-        <label htmlFor={`edit-salaryMin-${jobPosting.id}`}>최저 월급</label>
+        <label htmlFor={`edit-salaryMin-${jobPosting.id}`}>最低月給</label>
         <select
           id={`edit-salaryMin-${jobPosting.id}`}
           {...getFieldErrorAttributes('salaryMin')}
@@ -250,7 +250,7 @@ function JobPostingEditForm({
           }}
           disabled={saving}
         >
-          <option value="">미지정</option>
+          <option value="">指定なし</option>
 
           {SALARY_OPTIONS.map((salary) => (
             <option
@@ -269,7 +269,7 @@ function JobPostingEditForm({
       </div>
 
       <div>
-        <label htmlFor={`edit-salaryMax-${jobPosting.id}`}>최고 월급</label>
+        <label htmlFor={`edit-salaryMax-${jobPosting.id}`}>最高月給</label>
         <select
           id={`edit-salaryMax-${jobPosting.id}`}
           {...getFieldErrorAttributes('salaryMax')}
@@ -285,7 +285,7 @@ function JobPostingEditForm({
           }}
           disabled={saving}
         >
-          <option value="">미지정</option>
+          <option value="">指定なし</option>
 
           {SALARY_OPTIONS.map((salary) => (
             <option
@@ -331,7 +331,7 @@ function JobPostingEditForm({
         type="submit"
         disabled={saving}
       >
-        {saving ? '저장 중...' : '저장'}
+        {saving ? '保存中…' : '保存'}
       </button>
 
       <button
@@ -339,7 +339,7 @@ function JobPostingEditForm({
         disabled={saving}
         onClick={onCancel}
       >
-        취소
+        キャンセル
       </button>
     </form>
   );

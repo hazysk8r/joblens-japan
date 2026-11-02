@@ -142,7 +142,7 @@ function HomePage() {
   const [appliedKeyword, setAppliedKeyword] = useState(keywordFromUrl);
   const [jobPostings, setJobPostings] = useState<JobPosting[]>([]);
   const [loading, setLoading] = useState(true);
-  // false = 현재 목록 API 요청이 진행 중이지 않음, true = 현재 목록 API 요청 진행 중
+  // false = 一覧APIのリクエストは進行中でない、true = 一覧APIのリクエストが進行中
   const [error, setError] = useState<string | null>(null);
   // 更新失敗時も一覧と編集フォームを維持し、入力内容が失われないようにするため、
   // 一覧取得エラーとは別にMutation用のエラー状態を管理する。
@@ -233,8 +233,8 @@ function HomePage() {
   }, []);
 
   /**
-     * 검색어를 받아 백엔드 API를 호출하고,
-     * 응답의 content를 화면 상태에 저장한다.
+     * 検索キーワードを受け取ってバックエンドAPIを呼び出し、
+     * 応答のcontentを画面の状態に保存する。
      */
   const loadJobPostings = useCallback(async (
     searchKeyword: string,
@@ -299,8 +299,8 @@ function HomePage() {
         }
       }
       /*
-      * 공고 목록뿐 아니라 백엔드가 반환한 페이지 정보도
-      * React 상태에 저장한다.
+      * 求人一覧だけでなく、バックエンドが返したページ情報も
+      * Reactの状態に保存する。
       */
       applyListPage(page, requestId);
       return { status: 'updated', content: page.content };
@@ -315,7 +315,7 @@ function HomePage() {
       const message =
         caughtError instanceof Error
           ? caughtError.message
-          : '채용공고를 불러오는 중 알 수 없는 오류가 발생했습니다.';
+          : '求人の読み込み中に不明なエラーが発生しました。';
 
       // 競合復旧の失敗では既存一覧と別セッションの入力を維持する。
       if (!background) {
@@ -401,7 +401,7 @@ function HomePage() {
         const message =
           caughtError instanceof Error
             ? caughtError.message
-            : '채용공고를 불러오는 중 알 수 없는 오류가 발생했습니다.';
+            : '求人の読み込み中に不明なエラーが発生しました。';
 
         setError(message);
       } finally {
@@ -443,7 +443,7 @@ function HomePage() {
       const message =
         caughtError instanceof Error
           ? caughtError.message
-          : '지원 상태 요약을 불러오는 데 실패하였습니다.';
+          : '応募状況の取得に失敗しました。';
       setSummaryError(message);
     } finally {
       if (summaryMountedRef.current && requestId === latestSummaryRequestIdRef.current) {
@@ -504,7 +504,7 @@ function HomePage() {
         const message =
           caughtError instanceof Error
             ? caughtError.message
-            : '초기 데이터를 불러오는 중 알 수 없는 오류가 발생했습니다.';
+            : '初期データの読み込み中に不明なエラーが発生しました。';
 
         setError(message);
       } finally {
@@ -561,7 +561,7 @@ function HomePage() {
       );
     }
 
-    // 새로운 검색이므로 page=0은 URL에서 생략한다.
+    // 新しい検索のため、page=0はURLから省略する。
     setSearchParams(nextSearchParams);
 
     setAppliedKeyword(nextKeyword);
@@ -572,8 +572,8 @@ function HomePage() {
     setAppliedDeadlineTo(nextDeadlineTo);
 
     /*
-    * 새로운 검색을 시작할 때는
-    * 이전 페이지 위치와 관계없이 첫 페이지부터 조회한다.
+    * 新しい検索を始めるときは、
+    * 前のページ位置に関係なく最初のページから取得する。
     */
     setLoading(true);
     setError(null);
@@ -659,8 +659,8 @@ function HomePage() {
     );
 
     /*
-     * 사용자가 취소를 누르면
-     * DELETE API를 호출하지 않는다.
+     * ユーザーがキャンセルを押した場合は、
+     * DELETE APIを呼び出さない。
      */
     if (!confirmed) {
       return;
@@ -679,7 +679,7 @@ function HomePage() {
       const message =
         caughtError instanceof Error
           ? caughtError.message
-          : '삭제 중 알 수 없는 오류가 발생했습니다.';
+          : '削除中に不明なエラーが発生しました。';
       setError(message);
     } finally {
       setDeletingId(null);
@@ -748,8 +748,8 @@ function HomePage() {
     const message = result.status === 'updated'
       ? '現在の一覧で最新の求人を確認できませんでした。検索条件を確認して再取得してください。'
       : result.status === 'superseded'
-        ? '다른 조회가 진행되었습니다. 최신 공고를 다시 불러온 후 수정해 주세요.'
-        : '최신 공고를 불러오지 못했습니다. 다시 불러온 후 수정해 주세요.';
+        ? '別の検索が実行されました。最新の求人を再読み込みしてから編集してください。'
+        : '最新の求人を読み込めませんでした。再読み込みしてから編集してください。';
 
     setEditRecoveries((previous) => ({
       ...previous,
@@ -795,7 +795,7 @@ function HomePage() {
       ) {
         // 再取得が失敗しても、競合したセッションとDraftは再利用しない。
         if (finishEditingSession(session.sessionId)) {
-          setMutationError('다른 화면에서 채용공고가 수정되었습니다.');
+          setMutationError('別の画面で求人が編集されました。');
         }
 
         await refreshEditRecovery(session.jobPostingId);
@@ -806,7 +806,7 @@ function HomePage() {
       const message = 
         caughtError instanceof Error
           ? caughtError.message
-          : '수정 중 알 수 없는 오류가 발생했습니다.';
+          : '編集中に不明なエラーが発生しました。';
       if (editingSessionRef.current?.sessionId === session.sessionId) {
         setMutationError(message);
         setEditFieldErrors(caughtError instanceof ApiError
@@ -847,7 +847,7 @@ function HomePage() {
          * 古いJobPosting情報を画面に残さないようにする。
          */
         setMutationError(
-          '다른 화면에서 채용공고가 수정되었습니다.',
+          '別の画面で求人が編集されました。',
         );
 
         await loadJobPostings(...latestListQueryRef.current);
@@ -860,7 +860,7 @@ function HomePage() {
       const message =
         caughtError instanceof Error
           ? caughtError.message
-          : '상태 업데이트에 실패하였습니다.';
+          : 'ステータスの更新に失敗しました。';
       setMutationError(message);
       return false;
     } finally {
@@ -926,20 +926,20 @@ function HomePage() {
 
       <hr />
 
-      <h2>채용공고 검색</h2>
+      <h2>求人検索</h2>
 
       <form onSubmit={handleSubmit}>
         <div className="search-main-row">
-          <label htmlFor='search'>검색어</label>
+          <label htmlFor='search'>検索キーワード</label>
           <input
             id='search'
             type="text"
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
-            placeholder="AWS, Java, 회사명 검색"
+            placeholder="AWS, Java, 会社名で検索"
           />
 
-          <label htmlFor="status">상태</label>
+          <label htmlFor="status">ステータス</label>
           <select
             id="status"
             value={status}
@@ -948,22 +948,22 @@ function HomePage() {
             }
           >
             <option value="">
-              전체
+              すべて
             </option>
             <option value="SAVED">
-              저장
+              保存済み
             </option>
             <option value="APPLIED">
-              지원완료
+              応募済み
             </option>
             <option value="INTERVIEWING">
-              면접진행중
+              面接中
             </option>
             <option value="OFFERED">
-              오퍼수령
+              内定
             </option>
             <option value="REJECTED">
-              거절됨
+              不採用
             </option>
 
           </select>
@@ -972,7 +972,7 @@ function HomePage() {
             type="submit"
             disabled={loading}
           >
-            {loading ? '검색 중...' : '검색'}
+            {loading ? '検索中…' : '検索'}
           </button>
         </div>
 
@@ -996,7 +996,7 @@ function HomePage() {
             id="advanced-search-filters"
             className="advanced-filter"
           >
-            <label htmlFor="search-salaryMin">최저 월급</label>
+            <label htmlFor="search-salaryMin">最低月給</label>
             <select
               id="search-salaryMin"
               value={salaryMin ?? ""}
@@ -1008,7 +1008,7 @@ function HomePage() {
                 );
               }}
             >
-              <option value="">미지정</option>
+              <option value="">指定なし</option>
 
               {SALARY_OPTIONS.map((salary) => (
                 <option
@@ -1024,7 +1024,7 @@ function HomePage() {
               ))}
             </select>
 
-            <label htmlFor="search-salaryMax">최고 월급</label>
+            <label htmlFor="search-salaryMax">最高月給</label>
             <select
               id="search-salaryMax"
               value={salaryMax ?? ""}
@@ -1036,7 +1036,7 @@ function HomePage() {
                 );
               }}
             >
-              <option value="">미지정</option>
+              <option value="">指定なし</option>
               {SALARY_OPTIONS.map((salary) => (
                 <option
                   key={salary}
@@ -1076,9 +1076,9 @@ function HomePage() {
               }
             />
 
-            <label htmlFor="sorting">정렬</label>
+            <label htmlFor="sorting">並び替え</label>
             <select
-              // 새로운 정렬값을 먼저 보관(nextSorting), UI와 이후의 렌더링을 위한 상태 저장(setSorting)
+              // 新しい並び順を先に保持し(nextSorting)、UIと以降のレンダリングのために状態へ保存する(setSorting)
               id="sorting"
               value={sorting}
               onChange={(event) => {
@@ -1088,7 +1088,7 @@ function HomePage() {
 
                 setLoading(true);
                 setError(null);
-                // 지금 당장 API 요청에 사용할 값
+                // 今すぐAPIリクエストに使う値
                 void loadJobPostings(
                   appliedKeyword,
                   appliedStatus,
@@ -1102,13 +1102,13 @@ function HomePage() {
               }}
             >
               <option value='createdAt,desc'>
-                최신순
+                新しい順
               </option>
               <option value='createdAt,asc'>
-                오래된순
+                古い順
               </option>
               <option value='companyName,asc'>
-                회사명순
+                会社名順
               </option>
             </select>
           </div>
@@ -1117,14 +1117,14 @@ function HomePage() {
 
       {loading ? (
         <p role="status">
-          채용공고를 불러오는 중...
+          求人を読み込み中…
         </p>
       ) : error ? (
         <p role="alert">
           {error}
         </p>
       ) : visibleJobPostings.length === 0 ? (
-        <p>검색 결과가 없습니다.</p>
+        <p>検索結果はありません。</p>
       ) : (
         <>
           {mutationError && (
@@ -1187,7 +1187,7 @@ function HomePage() {
             onClick={handlePreviousPage}
             disabled={first || loading}
           >
-            이전
+            前へ
           </button>
 
           <span>
@@ -1199,7 +1199,7 @@ function HomePage() {
             onClick={handleNextPage}
             disabled={last || loading}
           >
-            다음
+            次へ
           </button>
         </div>
       )}

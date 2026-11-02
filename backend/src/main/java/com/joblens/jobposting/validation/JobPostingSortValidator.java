@@ -9,7 +9,7 @@ import com.joblens.jobposting.exception.InvalidSortFieldException;
 
 @Component
 public class JobPostingSortValidator {
-  // Validator 객체들이 하나의 목록을 공유하며, 다른 Set으로 교체를 막고, Set안의 내용 수정을 막기 위함
+  // Validatorのオブジェクトが1つの一覧を共有し、別のSetへの差し替えとSetの中身の変更を防ぐため
   private static final Set<String> ALLOWED_SORT_FIELDS = 
     Set.of("createdAt", "companyName");
   public void validate(Sort sort) {

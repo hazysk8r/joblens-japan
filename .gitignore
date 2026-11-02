@@ -7,7 +7,7 @@
 *.jar
 *.war
 
-# 프로젝트 실행에 필요한 Gradle Wrapper JAR은 추적
+# プロジェクトの実行に必要なGradle WrapperのJARは追跡する
 !**/gradle/wrapper/gradle-wrapper.jar
 
 # VS Code workspace settings

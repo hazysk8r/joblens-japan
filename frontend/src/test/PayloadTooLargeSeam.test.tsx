@@ -29,9 +29,9 @@ async function submitPosting() {
   const onCreated = vi.fn();
   const user = userEvent.setup();
   render(<JobPostingCreateForm onCreated={onCreated} />);
-  await user.type(screen.getByLabelText('공고 제목'), 'エンジニア');
-  await user.type(screen.getByLabelText('공고 원문'), '非常に長い求人原文');
-  await user.click(screen.getByRole('button', { name: '등록' }));
+  await user.type(screen.getByLabelText('求人タイトル'), 'エンジニア');
+  await user.type(screen.getByLabelText('求人原文'), '非常に長い求人原文');
+  await user.click(screen.getByRole('button', { name: '登録' }));
   return onCreated;
 }
 
@@ -43,7 +43,7 @@ afterEach(() => {
 });
 
 describe('求人登録が本文サイズの上限で拒否された場合', () => {
-  test('413 JSON을 받으면 Nginx의 메시지를 표시하고 입력값을 유지한다', async () => {
+  test('413のJSONを受けるとNginxのメッセージを表示し入力値を維持する', async () => {
     document.cookie = 'XSRF-TOKEN=token-1; path=/';
     stubCreateResponse(() => new Response(JSON.stringify({
       status: 413,
@@ -56,12 +56,12 @@ describe('求人登録が本文サイズの上限で拒否された場合', () =
     const onCreated = await submitPosting();
 
     expect(await screen.findByRole('alert')).toHaveTextContent(PAYLOAD_TOO_LARGE_MESSAGE);
-    expect(screen.getByLabelText('공고 제목')).toHaveValue('エンジニア');
-    expect(screen.getByLabelText('공고 원문')).toHaveValue('非常に長い求人原文');
+    expect(screen.getByLabelText('求人タイトル')).toHaveValue('エンジニア');
+    expect(screen.getByLabelText('求人原文')).toHaveValue('非常に長い求人原文');
     expect(onCreated).not.toHaveBeenCalled();
   });
 
-  test('413 본문이 JSON이 아니어도 기본 메시지를 표시한다', async () => {
+  test('413の本文がJSONでなくても既定のメッセージを表示する', async () => {
     document.cookie = 'XSRF-TOKEN=token-1; path=/';
     // Nginxの設定ミスなどで、既定のHTMLのエラーページが返った場合。
     stubCreateResponse(() => new Response('<html><body>413 Request Entity Too Large</body></html>', {
@@ -71,8 +71,8 @@ describe('求人登録が本文サイズの上限で拒否された場合', () =
 
     const onCreated = await submitPosting();
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('채용공고 등록에 실패했습니다.');
-    expect(screen.getByLabelText('공고 원문')).toHaveValue('非常に長い求人原文');
+    expect(await screen.findByRole('alert')).toHaveTextContent('求人の登録に失敗しました。');
+    expect(screen.getByLabelText('求人原文')).toHaveValue('非常に長い求人原文');
     expect(onCreated).not.toHaveBeenCalled();
   });
 });

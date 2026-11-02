@@ -18,7 +18,7 @@ function AuthCheckStatus({
       ) : (
         <div role="alert">
           {/* 未ログインとは区別し、サーバー障害や通信エラーであることを伝える。 */}
-          <p>로그인 상태를 확인하지 못했습니다. 네트워크 연결을 확인한 뒤 다시 시도해주세요.</p>
+          <p>ログイン状態を確認できませんでした。ネットワーク接続を確認してから、再度お試しください。</p>
           <button type="button" onClick={onRetry}>
             再試行
           </button>

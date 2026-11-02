@@ -24,27 +24,27 @@ const memo = {
 // 求人APIのエラー処理テストと同じ観点で、メモAPIの各関数を検証する。
 const memoOperations = [
   {
-    name: '메모 등록',
+    name: 'メモ登録',
     run: () => createJobPostingMemo(1, { content: 'memo' }),
-    fallback: '메모 등록에 실패했습니다.',
+    fallback: 'メモの登録に失敗しました。',
     successBody: memo,
   },
   {
-    name: '메모 목록 조회',
+    name: 'メモ一覧の取得',
     run: () => getJobPostingMemos(1),
-    fallback: '메모 내용 조회에 실패하였습니다.',
+    fallback: 'メモの取得に失敗しました。',
     successBody: [memo],
   },
   {
-    name: '메모 삭제',
+    name: 'メモを削除',
     run: () => deleteJobPostingMemo(1, 2),
-    fallback: '메모 삭제에 실패하였습니다.',
+    fallback: 'メモの削除に失敗しました。',
     successBody: undefined,
   },
   {
-    name: '메모 수정',
+    name: 'メモを編集',
     run: () => updateJobPostingMemo(1, 2, { content: 'memo' }),
-    fallback: '메모 수정에 실패하였습니다.',
+    fallback: 'メモの編集に失敗しました。',
     successBody: memo,
   },
 ];
@@ -53,14 +53,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('jobPostingMemoApi 오류 처리', () => {
+describe('jobPostingMemoApiのエラー処理', () => {
   test.each(memoOperations)(
-    '$name 실패 시 message, status, code, fieldErrors를 보존한다',
+    '$nameの失敗時にmessage、status、code、fieldErrorsを保持する',
     async ({ run }) => {
       const body = {
-        message: '입력값이 올바르지 않습니다.',
+        message: '入力値が正しくありません。',
         code: 'VALIDATION_FAILED',
-        fieldErrors: { content: '메모는 250자 이하로 작성해주세요' },
+        fieldErrors: { content: 'メモは250文字以内で入力してください。' },
       };
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
         new Response(JSON.stringify(body), { status: 400 }),
@@ -74,7 +74,7 @@ describe('jobPostingMemoApi 오류 처리', () => {
   );
 
   test.each(memoOperations)(
-    '$name: 오류 응답이 JSON이 아니면 기본 메시지만 사용하고 응답 본문을 메시지에 넣지 않는다',
+    '$name: エラー応答がJSONでなければ既定のメッセージだけを使い、応答の本文をメッセージに入れない',
     async ({ run, fallback }) => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
         new Response('<html>Server error</html>', { status: 502 }),
@@ -94,7 +94,7 @@ describe('jobPostingMemoApi 오류 처리', () => {
   );
 
   test.each(memoOperations)(
-    '$name 성공 응답은 기존 결과를 반환한다',
+    '$nameの成功応答は従来の結果を返す',
     async ({ run, successBody }) => {
       const response = successBody === undefined
         ? new Response(null, { status: 204 })
@@ -106,7 +106,7 @@ describe('jobPostingMemoApi 오류 처리', () => {
   );
 
   test.each(memoOperations)(
-    '$name: HTTP 응답이 없는 네트워크 오류는 그대로 전달한다',
+    '$name: HTTP応答のないネットワークエラーはそのまま伝える',
     async ({ run }) => {
       const error = new TypeError('Failed to fetch');
       vi.stubGlobal('fetch', vi.fn().mockRejectedValue(error));

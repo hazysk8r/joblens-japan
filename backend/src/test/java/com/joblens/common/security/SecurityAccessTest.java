@@ -88,7 +88,7 @@ class SecurityAccessTest {
     // ---- アクセス制御 ----
 
     @Test
-    void 로그인하지_않고_공고_API를_호출하면_401_JSON을_반환한다() throws Exception {
+    void 未ログインで求人APIを呼ぶと_401のJSONを返す() throws Exception {
         mockMvc.perform(get("/api/job-postings"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value(401))
@@ -97,7 +97,7 @@ class SecurityAccessTest {
     }
 
     @Test
-    void 로그인한_상태로_공고_API를_호출하면_정상_처리된다() throws Exception {
+    void ログイン済みで求人APIを呼ぶと正しく処理される() throws Exception {
         Cookie session = loginAsNewUser();
 
         mockMvc.perform(get("/api/job-postings").cookie(session))
@@ -112,7 +112,7 @@ class SecurityAccessTest {
     }
 
     @Test
-    void 로그인하지_않아도_헬스체크는_200을_반환한다() throws Exception {
+    void 未ログインでもヘルスチェックは_200を返す() throws Exception {
         mockMvc.perform(get("/actuator/health"))
                 .andExpect(status().isOk());
     }
@@ -120,7 +120,7 @@ class SecurityAccessTest {
     // ---- CSRF ----
 
     @Test
-    void 로그인_전_첫_요청에서_CSRF_토큰_쿠키가_발급된다() throws Exception {
+    void ログイン前の最初のリクエストでCSRFトークンのCookieが発行される() throws Exception {
         fetchCsrfCookie();
     }
 
@@ -134,7 +134,7 @@ class SecurityAccessTest {
 
     @ParameterizedTest
     @MethodSource("stateChangingRequests")
-    void CSRF_토큰_없이_상태를_바꾸는_요청을_보내면_403을_반환한다(
+    void CSRFトークンなしで状態を変えるリクエストを送ると_403を返す(
             MockHttpServletRequestBuilder request
     ) throws Exception {
         Cookie session = loginAsNewUser();
@@ -148,7 +148,7 @@ class SecurityAccessTest {
     }
 
     @Test
-    void CSRF_토큰_없이_로그인하면_403을_반환한다() throws Exception {
+    void CSRFトークンなしでログインすると_403を返す() throws Exception {
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -162,7 +162,7 @@ class SecurityAccessTest {
     }
 
     @Test
-    void 발급받은_CSRF_토큰을_헤더에_넣으면_가입부터_공고_등록까지_처리된다() throws Exception {
+    void 発行されたCSRFトークンをヘッダーに入れると登録から求人登録まで処理される() throws Exception {
         Cookie csrfCookie = fetchCsrfCookie();
 
         // ブラウザと同じく、Cookieで受け取ったトークンをヘッダーにも設定して送信する。

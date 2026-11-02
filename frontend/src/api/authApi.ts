@@ -26,7 +26,7 @@ async function readUser(response: Response): Promise<User> {
 
   if (!isUser(body)) {
     // 成功応答なのに形式が違う場合は、サーバーの処理結果が分からないものとして扱う。
-    throw new Error('서버 응답을 확인할 수 없습니다.');
+    throw new Error('サーバーの応答を確認できませんでした。');
   }
   return body;
 }
@@ -48,7 +48,7 @@ export async function fetchMe(): Promise<User | null> {
   if (!response.ok) {
     throw await parseApiError(
       response,
-      '로그인 상태를 확인하지 못했습니다.',
+      'ログイン状態を確認できませんでした.',
     );
   }
 
@@ -81,7 +81,7 @@ export async function login(
   email: string,
   password: string,
 ): Promise<User> {
-  return postCredentials('/api/auth/login', email, password, '로그인에 실패했습니다.');
+  return postCredentials('/api/auth/login', email, password, 'ログインに失敗しました。');
 }
 
 // サーバーのセッションを終了する。成功すると204が返り、CSRFトークンのCookieも削除される。

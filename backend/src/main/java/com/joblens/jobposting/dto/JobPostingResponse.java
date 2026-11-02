@@ -5,7 +5,7 @@ import com.joblens.jobposting.domain.ApplicationStatus;
 
 import java.time.Instant;
 import java.time.LocalDate;
-//엔티티를 API에서 그대로 반환하지 않고 응답 DTO로 변환
+// エンティティをAPIからそのまま返さず、応答DTOに変換する
 public record JobPostingResponse(
         Long id,
         String companyName,

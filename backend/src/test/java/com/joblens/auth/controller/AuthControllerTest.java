@@ -97,7 +97,7 @@ class AuthControllerTest {
     // ---- 会員登録 ----
 
     @Test
-    void 올바른_이메일과_비밀번호로_가입하면_201과_사용자_정보를_반환한다() throws Exception {
+    void 正しいメールアドレスとパスワードで登録すると_201とユーザー情報を返す() throws Exception {
         mockMvc.perform(post("/api/auth/signup")
                         .with(doubleSubmitCsrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -110,7 +110,7 @@ class AuthControllerTest {
     }
 
     @Test
-    void 가입하면_자동으로_로그인되어_me를_조회할_수_있다() throws Exception {
+    void 登録すると自動でログインされ_meを取得できる() throws Exception {
         MvcResult result = signup("user@example.com", PASSWORD);
         assertEquals(201, result.getResponse().getStatus());
 
@@ -120,7 +120,7 @@ class AuthControllerTest {
     }
 
     @Test
-    void 비밀번호는_원문이_아닌_해시로_저장된다() throws Exception {
+    void パスワードは平文ではなくハッシュで保存される() throws Exception {
         signup("user@example.com", PASSWORD);
 
         String storedHash = jdbcTemplate.queryForObject(
@@ -133,7 +133,7 @@ class AuthControllerTest {
     }
 
     @Test
-    void 이메일은_앞뒤_공백을_제거하고_소문자로_저장한다() throws Exception {
+    void メールアドレスは前後の空白を除き小文字で保存する() throws Exception {
         MvcResult result = signup("  User@Example.COM  ", PASSWORD);
 
         assertEquals(201, result.getResponse().getStatus());
@@ -146,7 +146,7 @@ class AuthControllerTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"user@example.com", "USER@example.com"})
-    void 이미_가입된_이메일이면_대소문자가_달라도_409를_반환한다(String duplicatedEmail) throws Exception {
+    void 登録済みのメールアドレスなら大文字小文字が違っても_409を返す(String duplicatedEmail) throws Exception {
         signup("user@example.com", PASSWORD);
 
         mockMvc.perform(post("/api/auth/signup")
@@ -159,7 +159,7 @@ class AuthControllerTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"", "   ", "not-an-email"})
-    void 이메일_형식이_올바르지_않으면_400을_반환한다(String invalidEmail) throws Exception {
+    void メールアドレスの形式が正しくなければ_400を返す(String invalidEmail) throws Exception {
         mockMvc.perform(post("/api/auth/signup")
                         .with(doubleSubmitCsrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -171,7 +171,7 @@ class AuthControllerTest {
 
     @ParameterizedTest
     @ValueSource(ints = {7, 65})
-    void 비밀번호가_8자_미만이거나_64자를_넘으면_400을_반환한다(int length) throws Exception {
+    void パスワードが8文字未満または64文字超なら_400を返す(int length) throws Exception {
         mockMvc.perform(post("/api/auth/signup")
                         .with(doubleSubmitCsrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -182,21 +182,21 @@ class AuthControllerTest {
     }
 
     @Test
-    void 한글_비밀번호가_72바이트_이하면_가입하고_로그인할_수_있다() throws Exception {
+    void 日本語のパスワードが72バイト以下なら登録してログインできる() throws Exception {
         // ハングル1文字はUTF-8で3バイトのため、24文字でちょうど72バイトになる。
-        String password = "가".repeat(24);
+        String password = "あ".repeat(24);
 
         assertEquals(201, signup("user@example.com", password).getResponse().getStatus());
         assertEquals(200, login("user@example.com", password).getResponse().getStatus());
     }
 
     @Test
-    void 비밀번호가_64자_이하라도_72바이트를_넘으면_400을_반환하고_가입하지_않는다() throws Exception {
+    void パスワードが64文字以下でも72バイト超なら_400を返し登録しない() throws Exception {
         // 25文字(75バイト)は文字数の上限内だが、BCryptが扱えるバイト数を超える。
         mockMvc.perform(post("/api/auth/signup")
                         .with(doubleSubmitCsrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(credentials("user@example.com", "가".repeat(25))))
+                        .content(credentials("user@example.com", "あ".repeat(25))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.fieldErrors.password").exists());
@@ -206,7 +206,7 @@ class AuthControllerTest {
     }
 
     @Test
-    void 세션_컬럼의_이전_길이_100자를_넘는_이메일로_가입하고_로그인할_수_있다() throws Exception {
+    void セッション列の以前の長さ100文字を超えるメールアドレスで登録してログインできる() throws Exception {
         // ローカル部64文字・ドメイン131文字の、形式として正しい196文字のメールアドレス。
         String longEmail = "a".repeat(64) + "@" + "b".repeat(63) + "." + "c".repeat(63) + ".com";
         assertTrue(longEmail.length() > 100);
@@ -234,7 +234,7 @@ class AuthControllerTest {
     private static final String LOGIN_PASSWORD_TOO_LONG_MESSAGE = "パスワードは64文字以内で入力してください。";
 
     @Test
-    void 가입할_수_있는_가장_긴_이메일과_비밀번호로_로그인할_수_있다() throws Exception {
+    void 登録できる最長のメールアドレスとパスワードでログインできる() throws Exception {
         // ログインの上限が会員登録より小さいと、登録できたのにログインできないユーザーが生まれる。
         assertEquals(254, LONGEST_SIGNUP_EMAIL.length());
 
@@ -243,7 +243,7 @@ class AuthControllerTest {
     }
 
     @Test
-    void 로그인_비밀번호가_64자를_넘으면_400을_반환한다() throws Exception {
+    void ログインのパスワードが64文字超なら_400を返す() throws Exception {
         mockMvc.perform(post("/api/auth/login")
                         .with(doubleSubmitCsrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -254,7 +254,7 @@ class AuthControllerTest {
     }
 
     @Test
-    void 로그인_이메일이_254자를_넘으면_400을_반환한다() throws Exception {
+    void ログインのメールアドレスが254文字超なら_400を返す() throws Exception {
         mockMvc.perform(post("/api/auth/login")
                         .with(doubleSubmitCsrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -265,7 +265,7 @@ class AuthControllerTest {
     }
 
     @Test
-    void 가입_이메일이_254자를_넘으면_400을_반환한다() throws Exception {
+    void 登録のメールアドレスが254文字超なら_400を返す() throws Exception {
         // 形式として正しい255文字のメールアドレス。@Emailではなく長さの上限だけに当たる。
         String tooLongEmail = "a".repeat(64) + "@" + "b".repeat(63) + "." + "c".repeat(63) + "." + "d".repeat(58) + ".com";
         assertEquals(255, tooLongEmail.length());
@@ -282,7 +282,7 @@ class AuthControllerTest {
     // ---- ログイン ----
 
     @Test
-    void 올바른_이메일과_비밀번호로_로그인하면_200과_세션_쿠키를_반환한다() throws Exception {
+    void 正しいメールアドレスとパスワードでログインすると_200とセッションCookieを返す() throws Exception {
         signup("user@example.com", PASSWORD);
 
         MvcResult result = login("user@example.com", PASSWORD);
@@ -297,7 +297,7 @@ class AuthControllerTest {
     }
 
     @Test
-    void 로그인하면_세션_ID가_바뀌고_이전_세션은_사용할_수_없다() throws Exception {
+    void ログインするとセッションIDが変わり以前のセッションは使えない() throws Exception {
         MvcResult signupResult = signup("user@example.com", PASSWORD);
         Cookie previousSession = sessionCookie(signupResult);
 
@@ -313,7 +313,7 @@ class AuthControllerTest {
     }
 
     @Test
-    void 비밀번호가_틀린_경우와_없는_이메일인_경우_같은_401_응답을_반환한다() throws Exception {
+    void パスワードの誤りと存在しないメールアドレスで同じ_401応答を返す() throws Exception {
         signup("user@example.com", PASSWORD);
 
         MvcResult wrongPassword = login("user@example.com", "wrong-password");
@@ -343,14 +343,14 @@ class AuthControllerTest {
     // ---- ログイン状態の確認・ログアウト ----
 
     @Test
-    void 로그인하지_않고_me를_조회하면_401을_반환한다() throws Exception {
+    void 未ログインでmeを取得すると_401を返す() throws Exception {
         mockMvc.perform(get("/api/auth/me"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
     }
 
     @Test
-    void 로그아웃하면_같은_세션으로_me를_조회할_수_없다() throws Exception {
+    void ログアウトすると同じセッションでmeを取得できない() throws Exception {
         signup("user@example.com", PASSWORD);
         Cookie session = sessionCookie(login("user@example.com", PASSWORD));
 
@@ -366,7 +366,7 @@ class AuthControllerTest {
      * 次のログインの前にトークンを取り直す。その前提となるサーバーの動作を固定する。
      */
     @Test
-    void 로그아웃하면_CSRF_토큰_쿠키를_지우고_이후_요청에서_새_토큰을_발급한다() throws Exception {
+    void ログアウトするとCSRFトークンのCookieを消し以降のリクエストで新しいトークンを発行する() throws Exception {
         signup("user@example.com", PASSWORD);
         Cookie session = sessionCookie(login("user@example.com", PASSWORD));
 

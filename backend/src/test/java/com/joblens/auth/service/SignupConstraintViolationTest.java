@@ -60,7 +60,7 @@ class SignupConstraintViolationTest {
     }
 
     @Test
-    void 동시_가입으로_이메일_고유_제약에_걸리면_중복_이메일_오류를_반환한다() throws Exception {
+    void 同時登録でメールアドレスの一意制約に違反すると重複エラーを返す() throws Exception {
         signup().andExpect(status().isCreated());
         // 事前の重複確認を通過したあとで、別のリクエストが先に登録した場合を再現する。実際のDB制約に当てる。
         doReturn(false).when(userRepository).existsByEmail(anyString());
@@ -71,7 +71,7 @@ class SignupConstraintViolationTest {
     }
 
     @Test
-    void 이메일_고유_제약이_아닌_위반을_중복_이메일로_바꾸지_않는다() throws Exception {
+    void メールアドレスの一意制約ではない違反を重複に変えない() throws Exception {
         doThrow(new DataIntegrityViolationException("other constraint"))
                 .when(userRepository).saveAndFlush(any());
 

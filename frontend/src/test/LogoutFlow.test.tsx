@@ -106,7 +106,7 @@ afterEach(() => {
 });
 
 describe('アカウント表示とログアウト', () => {
-  test('로그인한 화면 상단에 이메일과 로그아웃 버튼을 표시한다', async () => {
+  test('ログイン後の画面上部にメールアドレスとログアウトボタンを表示する', async () => {
     vi.mocked(fetchMe).mockResolvedValue(userA);
 
     renderApp('/');
@@ -115,7 +115,7 @@ describe('アカウント表示とログアウト', () => {
     expect(screen.getByRole('button', { name: 'ログアウト' })).toBeEnabled();
   });
 
-  test('로그아웃하면 돌아갈 경로 없이 로그인 화면으로 가고, 로그아웃 안내를 표시한다', async () => {
+  test('ログアウトすると戻り先なしでログイン画面へ行き、ログアウトの案内を表示する', async () => {
     vi.mocked(fetchMe).mockResolvedValueOnce(userA).mockResolvedValue(null);
     vi.mocked(logout).mockResolvedValue(undefined);
     const user = userEvent.setup();
@@ -129,7 +129,7 @@ describe('アカウント表示とログアウト', () => {
     expect(screen.getByText('ログアウトしました。')).toBeInTheDocument();
   });
 
-  test('로그아웃 요청 중에는 버튼이 비활성화되어 두 번 보내지 않는다', async () => {
+  test('ログアウトのリクエスト中はボタンが無効になり二重に送らない', async () => {
     const response = deferred<void>();
     vi.mocked(fetchMe).mockResolvedValueOnce(userA).mockResolvedValue(null);
     vi.mocked(logout).mockReturnValue(response.promise);
@@ -151,16 +151,16 @@ describe('アカウント表示とログアウト', () => {
 
   test.each([
     {
-      name: '서버가 거절함(4xx)',
-      failure: () => new ApiError('요청을 확인할 수 없습니다. 페이지를 새로고침한 후 다시 시도해주세요.', 403, 'CSRF_TOKEN_INVALID'),
-      message: '요청을 확인할 수 없습니다.',
+      name: 'サーバーが拒否(4xx)',
+      failure: () => new ApiError('リクエストを確認できませんでした。ページを再読み込みしてから、再度お試しください。', 403, 'CSRF_TOKEN_INVALID'),
+      message: 'リクエストを確認できませんでした。',
     },
     {
-      name: '응답이 없고 아직 로그인 상태',
+      name: '応答がなくまだログイン状態',
       failure: () => new TypeError('Failed to fetch'),
       message: 'ログアウトできませんでした。',
     },
-  ])('$name: 로그아웃하지 못하면 화면에 머물며 실패를 알린다', async ({ failure, message }) => {
+  ])('$name: ログアウトできないと画面に留まり失敗を伝える', async ({ failure, message }) => {
     // 確認(/me)でも、まだユーザーAのままだった場合。
     vi.mocked(fetchMe).mockResolvedValue(userA);
     vi.mocked(logout).mockRejectedValue(failure());
@@ -175,7 +175,7 @@ describe('アカウント表示とログアウト', () => {
     expect(screen.getByRole('button', { name: 'ログアウト' })).toBeEnabled();
   });
 
-  test('로그아웃 후 다른 사용자가 로그인하면 / 로 간다', async () => {
+  test('ログアウト後に別のユーザーがログインすると/へ行く', async () => {
     vi.mocked(fetchMe).mockResolvedValueOnce(userA).mockResolvedValue(null);
     vi.mocked(logout).mockResolvedValue(undefined);
     vi.mocked(login).mockResolvedValue(userB);
@@ -192,14 +192,14 @@ describe('アカウント表示とログアウト', () => {
 });
 
 describe('ユーザーの切り替わり', () => {
-  test('A에서 B로 바로 바뀌면 화면을 새로 만들고, A의 검색 조건이 담긴 URL을 초기화한다', async () => {
+  test('AからBへ直接変わると画面を作り直し、Aの検索条件が入ったURLを初期化する', async () => {
     // ログアウトの応答がなく、確認すると別のタブでBがログインしていた場合(AからBへ直接切り替わる)。
     vi.mocked(fetchMe).mockResolvedValueOnce(userA).mockResolvedValue(userB);
     vi.mocked(logout).mockRejectedValue(new TypeError('Failed to fetch'));
     const user = userEvent.setup();
 
     renderApp('/?keyword=A-private');
-    const searchBox = await screen.findByLabelText('검색어');
+    const searchBox = await screen.findByLabelText('検索キーワード');
     // Aの画面は、URLの検索語で一覧を取得している。
     await waitFor(() => expect(vi.mocked(fetchJobPostings).mock.calls.map(([keyword]) => keyword))
       .toContain('A-private'));
@@ -212,28 +212,28 @@ describe('ユーザーの切り替わり', () => {
 
     await waitFor(() => expect(currentLocation()).toBe('/'));
     expect(await screen.findByText('user-b@example.com')).toBeInTheDocument();
-    expect(screen.getByLabelText('검색어')).toHaveValue('');
+    expect(screen.getByLabelText('検索キーワード')).toHaveValue('');
     // Bの画面は、Aの検索語を使わずに取得し直す。
     await waitFor(() => expect(fetchJobPostings).toHaveBeenCalled());
     expect(vi.mocked(fetchJobPostings).mock.calls.every(([keyword]) => keyword === '')).toBe(true);
   });
 
   // URLを初期化する移動が起きない場合(すでに / にいる場合)でも、画面は作り直す。
-  test('이미 / 에 있을 때 A에서 B로 바뀌어도, 입력 중이던 내용을 남기지 않고 화면을 새로 만든다', async () => {
+  test('すでに/にいるときAからBへ変わっても、入力中の内容を残さず画面を作り直す', async () => {
     vi.mocked(fetchMe).mockResolvedValueOnce(userA).mockResolvedValue(userB);
     vi.mocked(logout).mockRejectedValue(new TypeError('Failed to fetch'));
     const user = userEvent.setup();
 
     renderApp('/');
-    await user.type(await screen.findByLabelText('검색어'), 'A-typing');
+    await user.type(await screen.findByLabelText('検索キーワード'), 'A-typing');
     await user.click(screen.getByRole('button', { name: 'ログアウト' }));
 
     expect(await screen.findByText('user-b@example.com')).toBeInTheDocument();
     expect(currentLocation()).toBe('/');
-    expect(screen.getByLabelText('검색어')).toHaveValue('');
+    expect(screen.getByLabelText('検索キーワード')).toHaveValue('');
   });
 
-  test('A의 세션이 만료된 뒤 B가 로그인하면 A의 돌아갈 경로가 아니라 / 로 간다', async () => {
+  test('Aのセッション切れの後にBがログインすると、Aの戻り先ではなく/へ行く', async () => {
     vi.mocked(fetchMe).mockResolvedValue(userA);
     vi.mocked(login).mockResolvedValue(userB);
 
@@ -247,7 +247,7 @@ describe('ユーザーの切り替わり', () => {
     expect(await screen.findByText('user-b@example.com')).toBeInTheDocument();
   });
 
-  test('A의 세션이 만료된 뒤 A가 다시 로그인하면 원래 경로로 돌아간다', async () => {
+  test('Aのセッション切れの後にAが再ログインすると元のパスへ戻る', async () => {
     vi.mocked(fetchMe).mockResolvedValue(userA);
     vi.mocked(login).mockResolvedValue(userA);
 
@@ -255,7 +255,7 @@ describe('ユーザーの切り替わり', () => {
     await screen.findByText('user-a@example.com');
     await expireSession();
     await waitFor(() => expect(currentLocation()).toBe('/login'));
-    expect(screen.getByText('세션이 만료되었습니다. 다시 로그인해주세요.')).toBeInTheDocument();
+    expect(screen.getByText('セッションの有効期限が切れました。再度ログインしてください。')).toBeInTheDocument();
     await submitLogin(userA.email);
 
     await waitFor(() => expect(currentLocation()).toBe('/job-postings/new?source=a'));
@@ -284,7 +284,7 @@ describe('ユーザーの切り替わり', () => {
       sessionStorage.clear();
     });
 
-    test('A의 세션 만료 후 새로고침하고 B가 로그인해도 A의 돌아갈 경로가 아니라 / 로 간다', async () => {
+    test('Aのセッション切れの後に再読み込みしてBがログインしても、Aの戻り先ではなく/へ行く', async () => {
       await reloadLoginAfterExpiry('/?keyword=A-private');
       vi.mocked(login).mockResolvedValue(userB);
 
@@ -292,10 +292,10 @@ describe('ユーザーの切り替わり', () => {
 
       await waitFor(() => expect(currentLocation()).toBe('/'));
       expect(await screen.findByText('user-b@example.com')).toBeInTheDocument();
-      expect(screen.getByLabelText('검색어')).toHaveValue('');
+      expect(screen.getByLabelText('検索キーワード')).toHaveValue('');
     });
 
-    test('A의 세션 만료 후 새로고침하고 A가 다시 로그인하면 원래 경로로 돌아간다', async () => {
+    test('Aのセッション切れの後に再読み込みしてAが再ログインすると元のパスへ戻る', async () => {
       await reloadLoginAfterExpiry('/job-postings/new?source=a');
       vi.mocked(login).mockResolvedValue(userA);
 
@@ -304,7 +304,7 @@ describe('ユーザーの切り替わり', () => {
       await waitFor(() => expect(currentLocation()).toBe('/job-postings/new?source=a'));
     });
 
-    test('sessionStorage를 쓸 수 없어도 로그인과 사용자 전환은 동작한다', async () => {
+    test('sessionStorageを使えなくてもログインとユーザーの切り替えは動作する', async () => {
       vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
         throw new DOMException('denied', 'SecurityError');
       });
@@ -337,7 +337,7 @@ describe('他のタブでの変更', () => {
     });
   }
 
-  test('다른 탭에서 로그아웃하면, 확인하는 동안 화면을 가리고 돌아갈 경로 없이 로그인 화면으로 간다', async () => {
+  test('別のタブでログアウトすると、確認の間は画面を隠し、戻り先なしでログイン画面へ行く', async () => {
     const me = deferred<null>();
     vi.mocked(fetchMe).mockResolvedValueOnce(userA).mockReturnValueOnce(me.promise);
 
@@ -357,7 +357,7 @@ describe('他のタブでの変更', () => {
     expect(screen.getByText('別のタブでログアウトしました。')).toBeInTheDocument();
   });
 
-  test('다른 탭에서 B로 로그인하면, A의 URL을 초기화하고 B의 화면으로 바뀐다', async () => {
+  test('別のタブでBとしてログインすると、AのURLを初期化してBの画面に変わる', async () => {
     vi.mocked(fetchMe).mockResolvedValueOnce(userA).mockResolvedValue(userB);
 
     renderApp('/?keyword=A-private');
@@ -367,6 +367,6 @@ describe('他のタブでの変更', () => {
     await waitFor(() => expect(currentLocation()).toBe('/'));
     expect(await screen.findByText('user-b@example.com')).toBeInTheDocument();
     expect(screen.queryByText('user-a@example.com')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('검색어')).toHaveValue('');
+    expect(screen.getByLabelText('検索キーワード')).toHaveValue('');
   });
 });

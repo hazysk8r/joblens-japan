@@ -10,7 +10,7 @@ afterEach(() => {
   vi.resetModules();
 });
 
-test('crypto.randomUUID가 없는 HTTP 환경에서도 apiClient를 불러와 인증 상태를 전환할 수 있다', async () => {
+test('crypto.randomUUIDがないHTTP環境でもapiClientを読み込み、認証状態を切り替えられる', async () => {
   // 安全でないコンテキストのブラウザと同じく、getRandomValuesだけを持つcryptoにする。
   const realCrypto = globalThis.crypto;
   vi.stubGlobal('crypto', {

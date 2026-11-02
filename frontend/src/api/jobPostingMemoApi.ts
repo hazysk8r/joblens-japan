@@ -22,7 +22,7 @@ export async function createJobPostingMemo(
   if (!response.ok) {
     throw await parseApiError(
       response,
-      '메모 등록에 실패했습니다.',
+      'メモの登録に失敗しました。',
     );
   }
 
@@ -41,7 +41,7 @@ export async function getJobPostingMemos(
   if (!response.ok) {
     throw await parseApiError(
       response,
-      '메모 내용 조회에 실패하였습니다.',
+      'メモの取得に失敗しました。',
     );
   }
 
@@ -62,7 +62,7 @@ export async function deleteJobPostingMemo(
   if (!response.ok) {
     throw await parseApiError(
       response,
-      '메모 삭제에 실패하였습니다.',
+      'メモの削除に失敗しました。',
     );
   }
 }
@@ -86,7 +86,7 @@ export async function updateJobPostingMemo(
   if (!response.ok) {
     throw await parseApiError(
       response,
-      '메모 수정에 실패하였습니다.',
+      'メモの編集に失敗しました。',
     );
   }
 

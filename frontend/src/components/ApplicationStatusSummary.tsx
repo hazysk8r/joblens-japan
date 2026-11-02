@@ -21,12 +21,12 @@ function ApplicationStatusSummary({
       aria-labelledby="application-status-summary-title"
     >
       <h2 id="application-status-summary-title">
-        지원현황
+        応募状況
       </h2>
 
       {loading && (
         <p className="application-status-summary-message" role="status">
-          {summary ? '지원현황을 갱신하는 중입니다.' : '지원현황을 불러오는 중입니다.'}
+          {summary ? '応募状況を更新しています。' : '応募状況を読み込んでいます。'}
         </p>
       )}
 
@@ -34,7 +34,7 @@ function ApplicationStatusSummary({
         <div className="application-status-summary-error" role="alert">
           <p>{error}</p>
           {summary && (
-            <p>이전에 조회한 집계입니다. 최신 지원현황을 확인하려면 다시 시도해 주세요.</p>
+            <p>以前に取得した集計です。最新の応募状況を確認するには、再試行してください。</p>
           )}
         </div>
       )}
@@ -46,30 +46,30 @@ function ApplicationStatusSummary({
           onClick={onRetry}
           disabled={loading}
         >
-          지원현황 다시 시도
+          応募状況を再試行
         </button>
       )}
 
       {summary && (
         <>
           <p>
-            <span>저장:</span>{' '}<strong>{summary.saved}</strong>
+            <span>保存済み:</span>{' '}<strong>{summary.saved}</strong>
           </p>
 
           <p>
-            <span>지원완료:</span>{' '}<strong>{summary.applied}</strong>
+            <span>応募済み:</span>{' '}<strong>{summary.applied}</strong>
           </p>
 
           <p>
-            <span>면접 진행 중:</span>{' '}<strong>{summary.interviewing}</strong>
+            <span>面接中:</span>{' '}<strong>{summary.interviewing}</strong>
           </p>
 
           <p>
-            <span>오퍼 수령:</span>{' '}<strong>{summary.offered}</strong>
+            <span>内定:</span>{' '}<strong>{summary.offered}</strong>
           </p>
 
           <p>
-            <span>거절됨:</span>{' '}<strong>{summary.rejected}</strong>
+            <span>不採用:</span>{' '}<strong>{summary.rejected}</strong>
           </p>
         </>
       )}

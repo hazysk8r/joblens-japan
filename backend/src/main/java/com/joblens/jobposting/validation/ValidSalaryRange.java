@@ -14,11 +14,11 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME) // Application実行中にもAnnotation情報を読めるようにするため
 @Constraint(validatedBy = SalaryRangeValidator.class) // 実際の検証は SalaryRangeValidator に任せる
 
-// 해당 DTO의 급여 범위 검증 대상임을 알려주는 역할
+// 該当するDTOが月給範囲の検証対象であることを示す役割
 public @interface ValidSalaryRange {
 
   String message()
-    default "최소 급여는 최대 급여보다 클 수 없습니다.";
+    default "最低月給を最高月給より大きくすることはできません。";
   
   Class<?>[] groups() default {};
 

@@ -125,7 +125,7 @@ afterEach(() => {
 });
 
 describe('会員登録の成功', () => {
-  test('가입하면 로그인 상태가 되어 돌아갈 경로(쿼리 포함)로 이동한다', async () => {
+  test('登録するとログイン状態になり、戻り先(クエリを含む)へ移動する', async () => {
     vi.mocked(signup).mockResolvedValue(newUser);
 
     renderApp({ pathname: '/signup', state: { from: '/job-postings/new?source=mail' } });
@@ -135,7 +135,7 @@ describe('会員登録の成功', () => {
     expect(await screen.findByRole('heading', { name: '求人登録' })).toBeInTheDocument();
   });
 
-  test('이메일은 앞뒤 공백을 제거하고, 비밀번호는 그대로 전달한다', async () => {
+  test('メールアドレスは前後の空白を除き、パスワードはそのまま渡す', async () => {
     vi.mocked(signup).mockResolvedValue(newUser);
 
     renderApp();
@@ -144,7 +144,7 @@ describe('会員登録の成功', () => {
     await waitFor(() => expect(signup).toHaveBeenCalledWith('new@example.com', ' pass word '));
   });
 
-  test('돌아갈 경로가 사이트 밖이면 가입 후 / 로 간다', async () => {
+  test('戻り先がサイトの外なら登録後に/へ行く', async () => {
     vi.mocked(signup).mockResolvedValue(newUser);
 
     renderApp({ pathname: '/signup', state: { from: '//evil.com/job-postings/new' } });
@@ -156,12 +156,12 @@ describe('会員登録の成功', () => {
 
 describe('入力チェック(クライアント)', () => {
   test.each([
-    { name: '이메일 없음', input: { email: '' }, label: 'メールアドレス' },
-    { name: '비밀번호 7자', input: { password: 'a'.repeat(7) }, label: 'パスワード' },
-    { name: '공백만인 비밀번호', input: { password: ' '.repeat(10) }, label: 'パスワード' },
-    { name: '한글 25자(75바이트)', input: { password: '가'.repeat(25) }, label: 'パスワード' },
-    { name: '확인 불일치', input: { passwordConfirmation: 'password124' }, label: 'パスワード（確認）' },
-  ])('$name: 요청을 보내지 않고 해당 칸에 오류를 표시한다', async ({ input, label }) => {
+    { name: 'メールアドレスなし', input: { email: '' }, label: 'メールアドレス' },
+    { name: 'パスワード7文字', input: { password: 'a'.repeat(7) }, label: 'パスワード' },
+    { name: '空白だけのパスワード', input: { password: ' '.repeat(10) }, label: 'パスワード' },
+    { name: '日本語25文字(75バイト)', input: { password: 'あ'.repeat(25) }, label: 'パスワード' },
+    { name: '確認の不一致', input: { passwordConfirmation: 'password124' }, label: 'パスワード（確認）' },
+  ])('$name: リクエストを送らず該当の欄にエラーを表示する', async ({ input, label }) => {
     renderApp();
     // メールアドレスを空にする場合は、入力を省略する。
     const user = userEvent.setup();
@@ -178,15 +178,15 @@ describe('入力チェック(クライアント)', () => {
 });
 
 describe('サーバーが返した失敗', () => {
-  test('400 필드 오류는 각 입력칸에 표시하고 입력값을 유지한다', async () => {
-    vi.mocked(signup).mockRejectedValue(new ApiError('입력값이 올바르지 않습니다.', 400, 'VALIDATION_FAILED', {
-      email: '이메일 형식이 올바르지 않습니다.',
+  test('400の項目エラーは各入力欄に表示し、入力値を維持する', async () => {
+    vi.mocked(signup).mockRejectedValue(new ApiError('入力値が正しくありません。', 400, 'VALIDATION_FAILED', {
+      email: 'メールアドレスの形式が正しくありません。',
     }));
 
     renderApp();
     await fillAndSubmit({ email: 'not-an-email' });
 
-    await waitFor(() => expect(fieldErrorOf('メールアドレス')).toBe('이메일 형식이 올바르지 않습니다.'));
+    await waitFor(() => expect(fieldErrorOf('メールアドレス')).toBe('メールアドレスの形式が正しくありません。'));
     expect(screen.getByLabelText('メールアドレス')).toHaveAttribute('aria-invalid', 'true');
     expect(screen.getByLabelText('パスワード')).toHaveValue('password123');
     expect(currentLocation()).toBe('/signup');
@@ -195,35 +195,35 @@ describe('サーバーが返した失敗', () => {
   // 画面にない項目のエラーだけが返ると、どこにも表示されず「押しても何も起きない」状態になる。
   test.each<{ name: string; fieldErrors: Record<string, string>; emailError: string | null }>([
     {
-      name: '화면에 없는 항목의 오류만 있는 경우',
-      fieldErrors: { agreedToTerms: '이용약관에 동의해주세요.' },
+      name: '画面にない項目のエラーだけがある場合',
+      fieldErrors: { agreedToTerms: '利用規約に同意してください。' },
       emailError: null,
     },
     {
-      name: '화면에 있는 항목과 없는 항목의 오류가 섞인 경우',
-      fieldErrors: { email: '이메일 형식이 올바르지 않습니다.', agreedToTerms: '이용약관에 동의해주세요.' },
-      emailError: '이메일 형식이 올바르지 않습니다.',
+      name: '画面にある項目とない項目のエラーが混在する場合',
+      fieldErrors: { email: 'メールアドレスの形式が正しくありません。', agreedToTerms: '利用規約に同意してください。' },
+      emailError: 'メールアドレスの形式が正しくありません。',
     },
-  ])('$name: 폼 아래에 일반 안내를 표시하고, 화면에 없는 항목의 메시지는 표시하지 않는다', async ({ fieldErrors, emailError }) => {
+  ])('$name: フォームの下に全体の案内を表示し、画面にない項目のメッセージは表示しない', async ({ fieldErrors, emailError }) => {
     vi.mocked(signup).mockRejectedValue(
-      new ApiError('입력값이 올바르지 않습니다.', 400, 'VALIDATION_FAILED', fieldErrors),
+      new ApiError('入力値が正しくありません。', 400, 'VALIDATION_FAILED', fieldErrors),
     );
 
     renderApp();
     await fillAndSubmit();
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('입력값이 올바르지 않습니다.');
-    expect(screen.queryByText('이용약관에 동의해주세요.')).not.toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent('入力値が正しくありません。');
+    expect(screen.queryByText('利用規約に同意してください。')).not.toBeInTheDocument();
     expect(fieldErrorOf('メールアドレス')).toBe(emailError);
   });
 
-  test('이미 가입된 이메일(409)이면 이메일 칸에 표시하고, 돌아갈 경로를 유지한 로그인 링크를 보여 준다', async () => {
-    vi.mocked(signup).mockRejectedValue(new ApiError('이미 가입된 이메일입니다.', 409, 'EMAIL_ALREADY_EXISTS'));
+  test('登録済みのメールアドレス(409)ならメール欄に表示し、戻り先を維持したログインリンクを表示する', async () => {
+    vi.mocked(signup).mockRejectedValue(new ApiError('このメールアドレスはすでに登録されています。', 409, 'EMAIL_ALREADY_EXISTS'));
 
     renderApp({ pathname: '/signup', state: { from: '/job-postings/new' } });
     const user = await fillAndSubmit();
 
-    await waitFor(() => expect(fieldErrorOf('メールアドレス')).toContain('이미 가입된 이메일입니다.'));
+    await waitFor(() => expect(fieldErrorOf('メールアドレス')).toContain('このメールアドレスはすでに登録されています。'));
     // パスワードは新しく決めている途中のため、失敗しても消さない。
     expect(screen.getByLabelText('パスワード')).toHaveValue('password123');
 
@@ -236,7 +236,7 @@ describe('サーバーが返した失敗', () => {
     expect(currentState()).toBe(JSON.stringify({ from: '/job-postings/new' }));
   });
 
-  test('서버에 연결하지 못하면 연결 실패 안내를 표시하고 화면에 머문다', async () => {
+  test('サーバーに接続できないと接続失敗の案内を表示し、画面に留まる', async () => {
     vi.mocked(signup).mockRejectedValue(new TypeError('Failed to fetch'));
 
     renderApp();
@@ -248,7 +248,7 @@ describe('サーバーが返した失敗', () => {
 });
 
 describe('送信中', () => {
-  test('요청 중에는 버튼이 비활성화되어 두 번 보내지 않는다', async () => {
+  test('リクエスト中はボタンが無効になり二重に送らない', async () => {
     const response = deferred<typeof newUser>();
     vi.mocked(signup).mockReturnValue(response.promise);
 
@@ -268,21 +268,21 @@ describe('送信中', () => {
 });
 
 describe('ログイン状態による表示', () => {
-  test('로그인 상태를 확인하는 중에는 폼 대신 로딩을 표시한다', () => {
+  test('ログイン状態の確認中はフォームの代わりに読み込みを表示する', () => {
     renderAppWithState({ status: 'loading' });
 
     expect(screen.getByRole('status')).toHaveTextContent('ログイン状態を確認しています');
     expect(screen.queryByLabelText('メールアドレス')).not.toBeInTheDocument();
   });
 
-  test('로그인 상태 확인에 실패하면 폼 대신 오류와 재시도 버튼을 표시한다', () => {
+  test('ログイン状態の確認に失敗するとフォームの代わりにエラーと再試行ボタンを表示する', () => {
     renderAppWithState({ status: 'error' });
 
     expect(screen.getByRole('button', { name: '再試行' })).toBeInTheDocument();
     expect(screen.queryByLabelText('メールアドレス')).not.toBeInTheDocument();
   });
 
-  test('이미 로그인한 상태로 접근하면 / 로 간다', async () => {
+  test('ログイン済みでアクセスすると/へ行く', async () => {
     renderAppWithState({ status: 'authenticated', user: newUser });
 
     await waitFor(() => expect(currentLocation()).toBe('/'));
@@ -290,7 +290,7 @@ describe('ログイン状態による表示', () => {
 });
 
 describe('ログイン画面との行き来', () => {
-  test('로그인 화면의 회원가입 링크로 이동하면 돌아갈 경로를 유지한다', async () => {
+  test('ログイン画面の会員登録リンクで移動すると戻り先を維持する', async () => {
     const user = userEvent.setup();
     renderApp({ pathname: '/login', state: { from: '/job-postings/new' } });
 
@@ -301,7 +301,7 @@ describe('ログイン画面との行き来', () => {
     expect(screen.getByRole('heading', { name: '会員登録' })).toBeInTheDocument();
   });
 
-  test('회원가입 화면의 로그인 링크로 이동하면 돌아갈 경로를 유지한다', async () => {
+  test('会員登録画面のログインリンクで移動すると戻り先を維持する', async () => {
     const user = userEvent.setup();
     renderApp({ pathname: '/signup', state: { from: '/job-postings/new' } });
 

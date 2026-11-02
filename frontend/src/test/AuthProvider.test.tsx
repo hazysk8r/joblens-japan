@@ -32,7 +32,7 @@ function jsonResponse(status: number, body: unknown): Response {
 }
 
 const user = (id: number) => ({ id, email: `user${id}@example.com` });
-const meUnauthorized = () => jsonResponse(401, { code: 'UNAUTHORIZED', message: '로그인이 필요합니다.' });
+const meUnauthorized = () => jsonResponse(401, { code: 'UNAUTHORIZED', message: 'ログインが必要です。' });
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -83,7 +83,7 @@ afterEach(() => {
 });
 
 describe('起動時のログイン状態の確認', () => {
-  test('/me가 사용자를 반환하면 authenticated가 되고, 이후 변경 요청에 그 사용자 ID가 붙는다', async () => {
+  test('/meがユーザーを返すとauthenticatedになり、以降の変更リクエストにそのユーザーIDが付く', async () => {
     stubFetch((url) => (url === '/api/auth/me' ? jsonResponse(200, user(7)) : jsonResponse(201, {})));
 
     const { result } = renderAuth();
@@ -92,7 +92,7 @@ describe('起動時のログイン状態の確認', () => {
     await expect(expectedUserOfNextMutation()).resolves.toBe('7');
   });
 
-  test('/me가 401이면 만료가 아닌 anonymous가 되고, 변경 요청에 예상 사용자 헤더가 붙지 않는다', async () => {
+  test('/meが401なら期限切れではなくanonymousになり、変更リクエストに想定ユーザーのヘッダーが付かない', async () => {
     stubFetch((url) => (url === '/api/auth/me' ? meUnauthorized() : jsonResponse(201, {})));
 
     const { result } = renderAuth();
@@ -101,8 +101,8 @@ describe('起動時のログイン状態の確認', () => {
     await expect(expectedUserOfNextMutation()).resolves.toBeUndefined();
   });
 
-  test('/me가 500이면 anonymous가 아니라 error가 되고, retry 후 성공하면 authenticated가 된다', async () => {
-    const responses = [jsonResponse(500, { message: '서버 오류' }), jsonResponse(200, user(7))];
+  test('/meが500ならanonymousではなくerrorになり、retry後に成功するとauthenticatedになる', async () => {
+    const responses = [jsonResponse(500, { message: 'サーバーエラー' }), jsonResponse(200, user(7))];
     stubFetch(() => responses.shift()!);
 
     const { result } = renderAuth();
@@ -115,7 +115,7 @@ describe('起動時のログイン状態の確認', () => {
     await waitFor(() => expect(result.current.state).toEqual({ status: 'authenticated', user: user(7) }));
   });
 
-  test('/me가 오프라인으로 실패하면 error가 된다', async () => {
+  test('/meがオフラインで失敗するとerrorになる', async () => {
     stubFetch(() => Promise.reject(new TypeError('Failed to fetch')));
 
     const { result } = renderAuth();
@@ -123,7 +123,7 @@ describe('起動時のログイン状態の確認', () => {
     await waitFor(() => expect(result.current.state).toEqual({ status: 'error' }));
   });
 
-  test('/me가 끝나기 전에는 loading이고, /me 외의 요청은 보내지 않는다', async () => {
+  test('/meが終わる前はloadingで、/me以外のリクエストは送らない', async () => {
     const me = deferred<Response>();
     stubFetch(() => me.promise);
 
@@ -135,7 +135,7 @@ describe('起動時のログイン状態の確認', () => {
     expect(fetchedUrls().every((url) => url === '/api/auth/me')).toBe(true);
   });
 
-  test('StrictMode에서도 최종 사용자와 예상 사용자 헤더가 일치한다', async () => {
+  test('StrictModeでも最終的なユーザーと想定ユーザーのヘッダーが一致する', async () => {
     stubFetch((url) => (url === '/api/auth/me' ? jsonResponse(200, user(9)) : jsonResponse(201, {})));
 
     const { result } = renderAuth({ reactStrictMode: true });
@@ -160,7 +160,7 @@ const authOperations: {
     url: '/api/auth/login',
     run: (auth, email, password) => auth.login(email, password),
     successResponse: (id) => jsonResponse(200, user(id)),
-    certainFailure: () => jsonResponse(401, { code: 'INVALID_CREDENTIALS', message: '이메일 또는 비밀번호가 올바르지 않습니다.' }),
+    certainFailure: () => jsonResponse(401, { code: 'INVALID_CREDENTIALS', message: 'メールアドレスまたはパスワードが正しくありません。' }),
     certainFailureCode: 'INVALID_CREDENTIALS',
   },
   {
@@ -168,13 +168,13 @@ const authOperations: {
     url: '/api/auth/signup',
     run: (auth, email, password) => auth.signup(email, password),
     successResponse: (id) => jsonResponse(201, user(id)),
-    certainFailure: () => jsonResponse(409, { code: 'EMAIL_ALREADY_EXISTS', message: '이미 가입된 이메일입니다.' }),
+    certainFailure: () => jsonResponse(409, { code: 'EMAIL_ALREADY_EXISTS', message: 'このメールアドレスはすでに登録されています。' }),
     certainFailureCode: 'EMAIL_ALREADY_EXISTS',
   },
 ];
 
 describe.each(authOperations)('$name', ({ url, run, successResponse, certainFailure, certainFailureCode }) => {
-  test('시작하면 진행 중이던 요청이 취소되고, 성공 후의 변경 요청에는 새 사용자 ID가 붙는다', async () => {
+  test('開始すると進行中のリクエストが取り消され、成功後の変更リクエストには新しいユーザーIDが付く', async () => {
     stubFetch((requestUrl, init) => {
       if (requestUrl === '/api/auth/me') return meUnauthorized();
       if (requestUrl === url) return successResponse(3);
@@ -199,7 +199,7 @@ describe.each(authOperations)('$name', ({ url, run, successResponse, certainFail
     await expect(expectedUserOfNextMutation()).resolves.toBe('3');
   });
 
-  test('이전 요청은 응답을 기다리지 않고 시작한 시점에 취소된다', async () => {
+  test('以前のリクエストは応答を待たず、開始した時点で取り消される', async () => {
     const authResponse = deferred<Response>();
     stubFetch((requestUrl, init) => {
       if (requestUrl === '/api/auth/me') return meUnauthorized();
@@ -226,7 +226,7 @@ describe.each(authOperations)('$name', ({ url, run, successResponse, certainFail
   });
 
   // 認証はログインしていない状態で始まるため、その間の401は新しいことを示さず、無視する。
-  test('진행 중(로그인 전 상태)에 다른 요청의 401이 와도 무시하고, 인증 결과를 그대로 따른다', async () => {
+  test('進行中(ログイン前の状態)に別のリクエストの401が来ても無視し、認証の結果にそのまま従う', async () => {
     const authResponse = deferred<Response>();
     stubFetch((requestUrl) => {
       if (requestUrl === '/api/auth/me') return meUnauthorized();
@@ -255,7 +255,7 @@ describe.each(authOperations)('$name', ({ url, run, successResponse, certainFail
     expect(result.current.state).toEqual({ status: 'authenticated', user: user(3) });
   });
 
-  test('서버가 실패를 반환하면 anonymous를 유지하고 오류를 전달하며, /me 확인과 만료 처리는 하지 않는다', async () => {
+  test('サーバーが失敗を返すとanonymousを維持してエラーを伝え、/meの確認と期限切れの処理はしない', async () => {
     stubFetch((requestUrl) => (requestUrl === '/api/auth/me' ? meUnauthorized() : certainFailure()));
     const { result } = renderAuth();
     await waitFor(() => expect(result.current.state.status).toBe('anonymous'));
@@ -272,11 +272,11 @@ describe.each(authOperations)('$name', ({ url, run, successResponse, certainFail
   });
 
   // 5xxは、サーバーで処理が終わった後にも起こり得る(例: セッション作成後の500、プロキシの502・504)。
-  test.each([500, 502, 504])('서버가 %i를 반환하면 다시 보내지 않고 /me로 확인해 상태를 정한다', async (status) => {
+  test.each([500, 502, 504])('サーバーが%iを返すと再送せず、/meで確認して状態を決める', async (status) => {
     const meResponses = [meUnauthorized(), jsonResponse(200, user(6))];
     stubFetch((requestUrl) => (requestUrl === '/api/auth/me'
       ? meResponses.shift()!
-      : jsonResponse(status, { message: '서버 오류' })));
+      : jsonResponse(status, { message: 'サーバーエラー' })));
     const { result } = renderAuth();
     await waitFor(() => expect(result.current.state.status).toBe('anonymous'));
 
@@ -288,7 +288,7 @@ describe.each(authOperations)('$name', ({ url, run, successResponse, certainFail
     expect(result.current.state).toEqual({ status: 'authenticated', user: user(6) });
   });
 
-  test('CSRF 토큰을 받지 못해 요청을 보내지 않았으면 /me 확인 없이 오류를 전달한다', async () => {
+  test('CSRFトークンを受け取れずリクエストを送らなかった場合は、/meの確認なしでエラーを伝える', async () => {
     stubFetch(() => meUnauthorized());
     const { result } = renderAuth();
     await waitFor(() => expect(result.current.state.status).toBe('anonymous'));
@@ -306,7 +306,7 @@ describe.each(authOperations)('$name', ({ url, run, successResponse, certainFail
     expect(result.current.state.status).toBe('anonymous');
   });
 
-  test('응답을 받지 못하면 요청을 다시 보내지 않고 /me로 확인해 상태를 정한다', async () => {
+  test('応答を受け取れないとリクエストを再送せず、/meで確認して状態を決める', async () => {
     const meResponses = [meUnauthorized(), jsonResponse(200, user(5))];
     stubFetch((requestUrl) => (requestUrl === '/api/auth/me'
       ? meResponses.shift()!
@@ -323,7 +323,7 @@ describe.each(authOperations)('$name', ({ url, run, successResponse, certainFail
     expect(result.current.state).toEqual({ status: 'authenticated', user: user(5) });
   });
 
-  test('응답을 받지 못했고 /me도 로그인 전이면 원래 오류를 전달하고 anonymous를 유지한다', async () => {
+  test('応答を受け取れず/meもログイン前なら、元のエラーを伝えてanonymousを維持する', async () => {
     const networkError = new TypeError('Failed to fetch');
     stubFetch((requestUrl) => (requestUrl === '/api/auth/me' ? meUnauthorized() : Promise.reject(networkError)));
     const { result } = renderAuth();
@@ -346,7 +346,7 @@ describe('古い認証作業の結果(世代が変わらない場合)', () => {
     const first = deferred<Response>();
     const second = deferred<Response>();
     const meResponses: (Response | Promise<Response>)[] = [
-      jsonResponse(500, { message: '서버 오류' }),
+      jsonResponse(500, { message: 'サーバーエラー' }),
       first.promise,
       second.promise,
     ];
@@ -363,11 +363,11 @@ describe('古い認証作業の結果(世代が変わらない場合)', () => {
     return { ...rendered, first, second };
   }
 
-  test('새 작업이 진행 중일 때 오래된 작업이 실패해도 상태를 바꾸지 않는다', async () => {
+  test('新しい処理の進行中に古い処理が失敗しても状態を変えない', async () => {
     const { result, first, second } = await renderWithTwoRetries();
 
     await act(async () => {
-      first.resolve(jsonResponse(500, { message: '서버 오류' }));
+      first.resolve(jsonResponse(500, { message: 'サーバーエラー' }));
       await first.promise;
     });
     expect(result.current.state).toEqual({ status: 'loading' });
@@ -376,10 +376,10 @@ describe('古い認証作業の結果(世代が変わらない場合)', () => {
     await waitFor(() => expect(result.current.state).toEqual({ status: 'authenticated', user: user(2) }));
   });
 
-  test('새 작업이 실패한 뒤 도착한 오래된 작업의 성공은 상태를 덮어쓰지 않는다', async () => {
+  test('新しい処理の失敗後に届いた古い処理の成功は状態を上書きしない', async () => {
     const { result, first, second } = await renderWithTwoRetries();
 
-    second.resolve(jsonResponse(500, { message: '서버 오류' }));
+    second.resolve(jsonResponse(500, { message: 'サーバーエラー' }));
     await waitFor(() => expect(result.current.state).toEqual({ status: 'error' }));
     await act(async () => {
       first.resolve(jsonResponse(200, user(1)));
@@ -393,13 +393,13 @@ describe('古い認証作業の結果(世代が変わらない場合)', () => {
 
 describe('古い認証作業の結果', () => {
   test.each([
-    { name: '성공', staleResponse: () => jsonResponse(200, user(1)) },
-    { name: '실패', staleResponse: () => jsonResponse(500, { message: '서버 오류' }) },
-  ])('오래된 작업의 결과($name)는 새 작업의 결과를 덮어쓰지 않는다', async ({ staleResponse }) => {
+    { name: '成功', staleResponse: () => jsonResponse(200, user(1)) },
+    { name: '失敗', staleResponse: () => jsonResponse(500, { message: 'サーバーエラー' }) },
+  ])('古い処理の結果($name)は新しい処理の結果を上書きしない', async ({ staleResponse }) => {
     const first = deferred<Response>();
     const second = deferred<Response>();
     const meResponses: (Response | Promise<Response>)[] = [
-      jsonResponse(500, { message: '서버 오류' }),
+      jsonResponse(500, { message: 'サーバーエラー' }),
       first.promise,
       second.promise,
     ];
@@ -451,7 +451,7 @@ describe('ログアウト', () => {
     return error;
   }
 
-  test('성공하면 /me로 확인(토큰 재발급)한 뒤 loggedOut이 되고, 이후 요청에 예상 사용자 헤더가 붙지 않는다', async () => {
+  test('成功すると/meで確認(トークン再発行)してからloggedOutになり、以降のリクエストに想定ユーザーのヘッダーが付かない', async () => {
     const { result } = await renderLoggedIn((url) => (
       url === '/api/auth/logout' ? new Response(null, { status: 204 }) : meUnauthorized()
     ));
@@ -464,9 +464,9 @@ describe('ログアウト', () => {
     await expect(expectedUserOfNextMutation()).resolves.toBeUndefined();
   });
 
-  test('4xx로 거절되면 로그인 상태를 유지하고 오류를 전달하며, /me로 상태를 확인하지 않는다', async () => {
+  test('4xxで拒否されるとログイン状態を維持してエラーを伝え、/meで状態を確認しない', async () => {
     const { result } = await renderLoggedIn((url) => (
-      url === '/api/auth/logout' ? jsonResponse(400, { message: '요청이 올바르지 않습니다.' }) : jsonResponse(201, {})
+      url === '/api/auth/logout' ? jsonResponse(400, { message: 'リクエストが正しくありません。' }) : jsonResponse(201, {})
     ));
 
     const error = await logoutOf(result);
@@ -478,9 +478,9 @@ describe('ログアウト', () => {
   });
 
   test.each([
-    { name: '500', logoutResponse: () => jsonResponse(500, { message: '서버 오류' }) },
-    { name: '응답 없음', logoutResponse: () => Promise.reject(new TypeError('Failed to fetch')) },
-  ])('$name: /me가 로그인 안 됨이면 로그아웃을 확정한다', async ({ logoutResponse }) => {
+    { name: '500', logoutResponse: () => jsonResponse(500, { message: 'サーバーエラー' }) },
+    { name: '応答なし', logoutResponse: () => Promise.reject(new TypeError('Failed to fetch')) },
+  ])('$name: /meが未ログインならログアウトを確定する', async ({ logoutResponse }) => {
     const { result } = await renderLoggedIn((url) => (
       url === '/api/auth/logout' ? logoutResponse() : meUnauthorized()
     ));
@@ -491,7 +491,7 @@ describe('ログアウト', () => {
     expect(result.current.state).toEqual({ status: 'anonymous', reason: 'loggedOut' });
   });
 
-  test('응답이 없고 /me가 원래 사용자면 로그인 상태를 유지하고 오류를 전달한다', async () => {
+  test('応答がなく/meが元のユーザーなら、ログイン状態を維持してエラーを伝える', async () => {
     const { result } = await renderLoggedIn((url) => (
       url === '/api/auth/logout' ? Promise.reject(new TypeError('Failed to fetch')) : jsonResponse(200, user(1))
     ));
@@ -503,7 +503,7 @@ describe('ログアウト', () => {
     await expect(expectedUserOfNextMutation()).resolves.toBe('1');
   });
 
-  test('응답이 없고 /me가 다른 사용자면 그 사용자로 맞춘다(이전 사용자의 화면을 유지하지 않음)', async () => {
+  test('応答がなく/meが別のユーザーなら、そのユーザーに合わせる(以前のユーザーの画面を維持しない)', async () => {
     const { result } = await renderLoggedIn((url) => {
       if (url === '/api/auth/logout') return Promise.reject(new TypeError('Failed to fetch'));
       if (url === '/api/auth/me') return jsonResponse(200, user(2));
@@ -516,7 +516,7 @@ describe('ログアウト', () => {
     await expect(expectedUserOfNextMutation()).resolves.toBe('2');
   });
 
-  test('204를 받은 뒤 /me 확인에 실패해도 로그아웃을 확정한다', async () => {
+  test('204を受け取った後に/meの確認に失敗してもログアウトを確定する', async () => {
     const { result } = await renderLoggedIn((url) => (
       url === '/api/auth/logout' ? new Response(null, { status: 204 }) : Promise.reject(new TypeError('Failed to fetch'))
     ));
@@ -527,7 +527,7 @@ describe('ログアウト', () => {
     expect(result.current.state).toEqual({ status: 'anonymous', reason: 'loggedOut' });
   });
 
-  test('응답이 없고 /me 확인도 실패하면 로그인 상태를 유지하고 오류를 전달한다', async () => {
+  test('応答がなく/meの確認も失敗すると、ログイン状態を維持してエラーを伝える', async () => {
     const { result } = await renderLoggedIn((url) => (
       url === '/api/auth/logout' || url === '/api/auth/me'
         ? Promise.reject(new TypeError('Failed to fetch'))
@@ -541,7 +541,7 @@ describe('ログアウト', () => {
     await expect(expectedUserOfNextMutation()).resolves.toBe('1');
   });
 
-  test('204를 받은 시점에 진행 중이던 이전 요청은 /me 확인을 기다리지 않고 취소된다', async () => {
+  test('204を受け取った時点で進行中の以前のリクエストは、/meの確認を待たず取り消される', async () => {
     const me = deferred<Response>();
     const { result } = await renderLoggedIn((url, init) => {
       if (url === '/api/auth/logout') return new Response(null, { status: 204 });
@@ -566,7 +566,7 @@ describe('ログアウト', () => {
     expect(result.current.state).toEqual({ status: 'anonymous', reason: 'loggedOut' });
   });
 
-  test('로그아웃 응답 전에 다른 요청의 401이 와도 만료가 아니라 loggedOut으로 처리한다', async () => {
+  test('ログアウトの応答前に別のリクエストの401が来ても、期限切れではなくloggedOutとして処理する', async () => {
     const logoutResponse = deferred<Response>();
     const { result } = await renderLoggedIn((url) => {
       if (url === '/api/auth/logout') return logoutResponse.promise;
@@ -592,7 +592,7 @@ describe('ログアウト', () => {
 });
 
 describe('セッション切れ(保護APIの401)', () => {
-  test('401이 여러 개 와도 재확인은 한 번만 일어나고, 나머지 요청은 AuthContextChangedError가 된다', async () => {
+  test('401が複数来ても再確認は一度だけで、残りのリクエストはAuthContextChangedErrorになる', async () => {
     const first = deferred<Response>();
     const second = deferred<Response>();
     // 起動時はログイン済み、再確認ではセッションが切れている。
@@ -620,7 +620,7 @@ describe('セッション切れ(保護APIの401)', () => {
     await expect(expectedUserOfNextMutation()).resolves.toBeUndefined();
   });
 
-  test('Provider가 해제된 뒤 도착한 /me 결과는 apiClient의 인증 상태를 바꾸지 않는다', async () => {
+  test('Providerの解除後に届いた/meの結果はapiClientの認証状態を変えない', async () => {
     const me = deferred<Response>();
     stubFetch((url) => (url === '/api/auth/me' ? me.promise : jsonResponse(201, {})));
     const { unmount } = renderAuth();
@@ -635,7 +635,7 @@ describe('セッション切れ(保護APIの401)', () => {
     await expect(expectedUserOfNextMutation()).resolves.toBeUndefined();
   });
 
-  test('Provider가 해제되면 401 핸들러도 해제된다', async () => {
+  test('Providerが解除されると401ハンドラーも解除される', async () => {
     // ログアウト状態の401は無視されるため、ログイン状態で確認する。
     stubFetch(() => jsonResponse(200, user(1)));
     const { result, unmount } = renderAuth();
@@ -690,7 +690,7 @@ describe('他のタブとの同期と再確認', () => {
     localStorage.clear();
   });
 
-  test('다른 탭에서 로그아웃하면 확인 중을 거쳐 loggedOutElsewhere가 되고, 이전 요청은 취소된다', async () => {
+  test('別のタブでログアウトすると確認中を経てloggedOutElsewhereになり、以前のリクエストは取り消される', async () => {
     const me = deferred<Response>();
     const { result } = await renderLoggedInThen(() => me.promise);
     // 通知の時点でまだ応答が届いていない、前のユーザーのリクエスト。
@@ -713,9 +713,9 @@ describe('他のタブとの同期と再確認', () => {
   });
 
   test.each([
-    { name: '다른 사용자 B로 로그인', meUser: 2 },
-    { name: '같은 사용자 A로 다시 로그인', meUser: 1 },
-  ])('다른 탭에서의 변경($name): 그 사용자로 맞춘다', async ({ meUser }) => {
+    { name: '別のユーザーBでログイン', meUser: 2 },
+    { name: '同じユーザーAで再ログイン', meUser: 1 },
+  ])('別のタブでの変更($name): そのユーザーに合わせる', async ({ meUser }) => {
     const { result } = await renderLoggedInThen(() => jsonResponse(200, user(meUser)));
 
     signalFromOtherTab();
@@ -724,7 +724,7 @@ describe('他のタブとの同期と再確認', () => {
     await expect(expectedUserOfNextMutation()).resolves.toBe(String(meUser));
   });
 
-  test('알림을 받았는데 /me 확인에 실패하면 error가 된다', async () => {
+  test('通知を受けて/meの確認に失敗するとerrorになる', async () => {
     const { result } = await renderLoggedInThen(() => Promise.reject(new TypeError('Failed to fetch')));
 
     signalFromOtherTab();
@@ -732,7 +732,7 @@ describe('他のタブとの同期と再確認', () => {
     await waitFor(() => expect(result.current.state).toEqual({ status: 'error' }));
   });
 
-  test('401을 받으면 바로 만료 처리하지 않고, /me가 다른 사용자면 그 사용자로 맞춘다', async () => {
+  test('401を受けてもすぐ期限切れにせず、/meが別のユーザーならそのユーザーに合わせる', async () => {
     const { result } = await renderLoggedInThen(() => jsonResponse(200, user(2)));
     stubFetch((url) => (url === '/api/auth/me' ? jsonResponse(200, user(2)) : meUnauthorized()));
 
@@ -743,7 +743,7 @@ describe('他のタブとの同期と再確認', () => {
     await waitFor(() => expect(result.current.state).toEqual({ status: 'authenticated', user: user(2) }));
   });
 
-  test('401을 받고 /me도 로그인 안 됨이면 expired가 된다', async () => {
+  test('401を受けて/meも未ログインならexpiredになる', async () => {
     const { result } = await renderLoggedInThen(() => meUnauthorized());
     stubFetch(() => meUnauthorized());
 
@@ -754,11 +754,11 @@ describe('他のタブとの同期と再確認', () => {
     await waitFor(() => expect(result.current.state).toEqual({ status: 'anonymous', reason: 'expired' }));
   });
 
-  test('변경 요청이 서버에서 409 AUTH_CONTEXT_CHANGED를 받으면 /me로 확인해 실제 사용자로 맞춘다', async () => {
+  test('変更リクエストがサーバーから409 AUTH_CONTEXT_CHANGEDを受けると、/meで確認して実際のユーザーに合わせる', async () => {
     const { result } = await renderLoggedInThen(() => jsonResponse(200, user(2)));
     stubFetch((url) => (url === '/api/auth/me'
       ? jsonResponse(200, user(2))
-      : jsonResponse(409, { code: 'AUTH_CONTEXT_CHANGED', message: '다른 탭에서 로그인 계정이 바뀌었습니다.' })));
+      : jsonResponse(409, { code: 'AUTH_CONTEXT_CHANGED', message: '別のタブでログインアカウントが変更されました。' })));
 
     await act(async () => {
       await apiFetch('/api/job-postings', { method: 'POST', body: '{}' });
@@ -767,7 +767,7 @@ describe('他のタブとの同期と再確認', () => {
     await waitFor(() => expect(result.current.state).toEqual({ status: 'authenticated', user: user(2) }));
   });
 
-  test('재확인 중에 다시 알림이 오면, 나중 확인의 결과를 따른다', async () => {
+  test('再確認中にまた通知が来たら、後の確認の結果に従う', async () => {
     const first = deferred<Response>();
     const second = deferred<Response>();
     const responses = [first.promise, second.promise];
@@ -787,7 +787,7 @@ describe('他のタブとの同期と再確認', () => {
   });
 
   // retryは世代を切り替えないため、古い再確認の結果を止めるのは作業番号だけになる。
-  test('재확인 뒤에 재시도가 시작되면, 늦게 도착한 재확인 결과는 반영하지 않는다', async () => {
+  test('再確認の後に再試行が始まったら、遅れて届いた再確認の結果は反映しない', async () => {
     const recheckMe = deferred<Response>();
     const retryMe = deferred<Response>();
     const responses = [recheckMe.promise, retryMe.promise];
@@ -810,7 +810,7 @@ describe('他のタブとの同期と再確認', () => {
     await waitFor(() => expect(result.current.state).toEqual({ status: 'authenticated', user: user(2) }));
   });
 
-  test('재확인의 결과로는 다른 탭에 알림을 보내지 않는다(탭끼리 반복해서 알리지 않음)', async () => {
+  test('再確認の結果では別のタブに通知しない(タブ同士で繰り返し通知しない)', async () => {
     const { result } = await renderLoggedInThen(() => jsonResponse(200, user(2)));
     localStorage.setItem(AUTH_CHANGED_KEY, 'from-other-tab');
 
@@ -821,10 +821,10 @@ describe('他のタブとの同期と再確認', () => {
   });
 
   test.each([
-    { name: '로그인', url: '/api/auth/login', run: (auth: AuthContextValue) => auth.login('u@example.com', 'password123'), ok: () => jsonResponse(200, user(5)) },
-    { name: '회원가입', url: '/api/auth/signup', run: (auth: AuthContextValue) => auth.signup('u@example.com', 'password123'), ok: () => jsonResponse(201, user(5)) },
-  ])('이 탭에서의 $name: 성공하면 다른 탭에 알리고, 서버가 거절하면 알리지 않는다', async ({ url, run, ok }) => {
-    const responses = [jsonResponse(400, { message: '입력값이 올바르지 않습니다.' }), ok()];
+    { name: 'ログイン', url: '/api/auth/login', run: (auth: AuthContextValue) => auth.login('u@example.com', 'password123'), ok: () => jsonResponse(200, user(5)) },
+    { name: '会員登録', url: '/api/auth/signup', run: (auth: AuthContextValue) => auth.signup('u@example.com', 'password123'), ok: () => jsonResponse(201, user(5)) },
+  ])('このタブでの$name: 成功すると別のタブに通知し、サーバーが拒否すると通知しない', async ({ url, run, ok }) => {
+    const responses = [jsonResponse(400, { message: '入力値が正しくありません。' }), ok()];
     stubFetch((requestUrl) => (requestUrl === url ? responses.shift()! : meUnauthorized()));
     const { result } = renderAuth();
     await waitFor(() => expect(result.current.state.status).toBe('anonymous'));
@@ -840,7 +840,7 @@ describe('他のタブとの同期と再確認', () => {
     expect(localStorage.getItem(AUTH_CHANGED_KEY)).toBeTruthy();
   });
 
-  test('이 탭에서 로그아웃을 확정하면 다른 탭에 알린다', async () => {
+  test('このタブでログアウトを確定すると別のタブに通知する', async () => {
     const { result } = await renderLoggedInThen(() => meUnauthorized());
     stubFetch((url) => (url === '/api/auth/logout' ? new Response(null, { status: 204 }) : meUnauthorized()));
 
@@ -852,7 +852,7 @@ describe('他のタブとの同期と再確認', () => {
     expect(localStorage.getItem(AUTH_CHANGED_KEY)).toBeTruthy();
   });
 
-  test('로그아웃 응답 전에 다른 요청의 401로 loggedOut이 되어도 다른 탭에 알린다', async () => {
+  test('ログアウトの応答前に別のリクエストの401でloggedOutになっても別のタブに通知する', async () => {
     const logoutResponse = deferred<Response>();
     const { result } = await renderLoggedInThen(() => meUnauthorized());
     stubFetch((url) => (url === '/api/auth/logout' ? logoutResponse.promise : meUnauthorized()));
@@ -876,7 +876,7 @@ describe('他のタブとの同期と再確認', () => {
     await expect(done).resolves.toBeInstanceOf(AuthContextChangedError);
   });
 
-  test('로그인하지 않은 상태에서 온 401은 상태를 바꾸지 않고 재확인도 하지 않는다', async () => {
+  test('未ログインの状態で来た401は状態を変えず、再確認もしない', async () => {
     stubFetch(() => meUnauthorized());
     const { result } = renderAuth();
     await waitFor(() => expect(result.current.state).toEqual({ status: 'anonymous', reason: 'initial' }));
@@ -891,10 +891,10 @@ describe('他のタブとの同期と再確認', () => {
     expect(meCalls()).toBe(callsBefore);
   });
 
-  test('로그아웃에 실패한 뒤의 진짜 세션 만료는 loggedOut이 아니라 expired로 처리한다', async () => {
+  test('ログアウト失敗後の本当のセッション切れはloggedOutではなくexpiredとして処理する', async () => {
     const { result } = await renderLoggedInThen(() => meUnauthorized());
     stubFetch((url) => (url === '/api/auth/logout'
-      ? jsonResponse(400, { message: '요청이 올바르지 않습니다.' })
+      ? jsonResponse(400, { message: 'リクエストが正しくありません。' })
       : meUnauthorized()));
     await act(async () => {
       await result.current.logout().catch(() => undefined);
@@ -909,7 +909,7 @@ describe('他のタブとの同期と再確認', () => {
     await waitFor(() => expect(result.current.state).toEqual({ status: 'anonymous', reason: 'expired' }));
   });
 
-  test('이 탭에서 로그인하는 중에 다른 탭의 알림이 오면, 로그인은 AuthContextChangedError로 끝나고 상태는 확인 결과를 따른다', async () => {
+  test('このタブでログイン中に別のタブの通知が来ると、ログインはAuthContextChangedErrorで終わり、状態は確認の結果に従う', async () => {
     const loginResponse = deferred<Response>();
     let meCall = 0;
     stubFetch((url) => {
@@ -933,7 +933,7 @@ describe('他のタブとの同期と再確認', () => {
     await waitFor(() => expect(result.current.state).toEqual({ status: 'authenticated', user: user(2) }));
   });
 
-  test('Provider가 해제되면 다른 탭의 알림과 409 알림을 더 이상 받지 않는다', async () => {
+  test('Providerが解除されると別のタブの通知と409の通知をこれ以上受けない', async () => {
     const { unmount } = await renderLoggedInThen(() => jsonResponse(200, user(2)));
     unmount();
 

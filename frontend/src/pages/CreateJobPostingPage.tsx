@@ -26,8 +26,6 @@ function CreateJobPostingPage() {
       </header>
 
       <section className="create-page-content">
-        <h2>求人登録</h2>
-
         <JobPostingCreateForm
           onCreated={handleJobPostingCreated}
         />

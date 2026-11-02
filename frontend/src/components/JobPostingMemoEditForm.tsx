@@ -46,14 +46,14 @@ function JobPostingMemoEditForm({
 
     if (!content) {
       setErrorMessage(
-        '메모 내용을 입력해주세요',
+        'メモ内容を入力してください。',
       );
       return;
     }
 
     if (content.length > 250) {
       setErrorMessage(
-        '메모는 최대 250자까지 입력 가능합니다.',
+        'メモは250文字以内で入力してください。',
       );
       return;
     }
@@ -75,7 +75,7 @@ function JobPostingMemoEditForm({
             `edit-content-${jobPostingMemo.id}`
           }
         >
-          메모 수정
+          メモを編集
         </label>
 
         <textarea
@@ -109,8 +109,8 @@ function JobPostingMemoEditForm({
         disabled={saving}
       >
         {saving
-          ? '저장 중...'
-          : '저장'}
+          ? '保存中…'
+          : '保存'}
       </button>
 
       <button
@@ -118,7 +118,7 @@ function JobPostingMemoEditForm({
         disabled={saving}
         onClick={onCancel}
       >
-        취소
+        キャンセル
       </button>
     </form>
   );

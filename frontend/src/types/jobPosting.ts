@@ -1,4 +1,4 @@
-// Status(ApplicationStatus) 타입 추가
+// Status(ApplicationStatus)の型を追加
 export type ApplicationStatus =
   | 'SAVED'
   | 'APPLIED'
@@ -6,7 +6,7 @@ export type ApplicationStatus =
   | 'OFFERED'
   | 'REJECTED';
 
-// ApplicationStatus or ""(전체), 이상한 필터가 입력되는 것 방지
+// ApplicationStatusまたは""(すべて)。不正なフィルターの入力を防ぐ
 export type StatusFilter =
   ApplicationStatus | "";
 
@@ -26,7 +26,7 @@ export type JobPostingSorting =
   | 'companyName,asc';
 
 
-// Status(ApplicationStatus) 요약
+// Status(ApplicationStatus)の集計
 export interface ApplicationStatusSummaryResponse {
   saved: number;
   applied: number;
@@ -35,10 +35,10 @@ export interface ApplicationStatusSummaryResponse {
   rejected: number;
 }
 
-// SalaryFilter 추가
+// SalaryFilterを追加
 export type SalaryFilter = number | null;
 
-//백엔드의 JSON 응답 구조를 typescript로 표현한 것
+// バックエンドのJSON応答の構造をTypeScriptで表現したもの
 export interface JobPosting {
   id: number;
   companyName: string | null;
@@ -64,7 +64,7 @@ export interface PageResponse<T> {
 }
 
 /**
-* 채용공고 등록 API에 전달할 요청 데이터다.
+* 求人登録APIに渡すリクエストデータ。
 */
 export interface CreateJobPostingRequest {
   companyName: string | null;

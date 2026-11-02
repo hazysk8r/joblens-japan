@@ -25,7 +25,7 @@ import java.time.LocalDate;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class JobPosting {
-    //PostgreSQL의 BIGSERIAL 사용
+    // PostgreSQLのBIGSERIALを使用
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -91,11 +91,11 @@ public class JobPosting {
     }
 
      /**
-    * 채용공고의 내용을 변경한다.
+    * 求人の内容を変更する。
     *
-    * 엔티티의 각 필드에 public setter를 제공하지 않아,
-    * 외부 코드가 상태를 임의로 변경하지 못하게 한다.
-    * 의미가 명확한 도메인 메서드를 통해서만 상태를 변경한다.
+    * エンティティの各フィールドにpublicのsetterを用意せず、
+    * 外部のコードが状態を勝手に変更できないようにする。
+    * 意味が明確なドメインメソッドを通じてのみ状態を変更する。
     */
     public void update(
             String companyName,

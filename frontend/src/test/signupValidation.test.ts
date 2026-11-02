@@ -23,11 +23,11 @@ function errorsOf(input: Partial<typeof valid>) {
 }
 
 describe('メールアドレス', () => {
-  test.each(['', '   '])('비어 있으면(%j) 오류', (email) => {
+  test.each(['', '   '])('空なら(%j)エラー', (email) => {
     expect(errorsOf({ email })).toHaveProperty('email');
   });
 
-  test('앞뒤 공백을 제거한 길이가 254자면 통과하고 255자면 오류', () => {
+  test('前後の空白を除いた長さが254文字なら通り、255文字ならエラー', () => {
     const local = 'a'.repeat(64);
     const domainOf = (length: number) => `${'b'.repeat(length - 4)}.com`;
     const email254 = `${local}@${domainOf(254 - 65)}`;
@@ -38,34 +38,34 @@ describe('メールアドレス', () => {
     expect(errorsOf({ email: email255 })).toHaveProperty('email');
   });
 
-  test('형식은 검사하지 않는다(서버가 판정)', () => {
+  test('形式は検査しない(サーバーが判定)', () => {
     expect(errorsOf({ email: 'not-an-email' })).not.toHaveProperty('email');
   });
 });
 
 describe('パスワード', () => {
-  test.each([7, 65])('%i자면 오류', (length) => {
+  test.each([7, 65])('%i文字ならエラー', (length) => {
     expect(errorsOf({ password: 'a'.repeat(length) })).toHaveProperty('password');
   });
 
-  test.each([8, 64])('%i자면 통과', (length) => {
+  test.each([8, 64])('%i文字なら通る', (length) => {
     expect(errorsOf({ password: 'a'.repeat(length) })).toEqual({});
   });
 
-  test('공백만으로 된 비밀번호는 8자 이상이어도 오류(서버의 @NotBlank)', () => {
+  test('空白だけのパスワードは8文字以上でもエラー(サーバーの@NotBlank)', () => {
     expect(errorsOf({ password: ' '.repeat(10) })).toHaveProperty('password');
   });
 
-  test('공백이 포함된 비밀번호는 그대로 허용한다', () => {
+  test('空白を含むパスワードはそのまま許可する', () => {
     expect(errorsOf({ password: ' pass word ' })).toEqual({});
   });
 
-  test('한글 24자(72바이트)는 통과하고 25자(75바이트)는 64자 이하여도 오류', () => {
-    expect(errorsOf({ password: '가'.repeat(24) })).toEqual({});
-    expect(errorsOf({ password: '가'.repeat(25) })).toHaveProperty('password');
+  test('日本語24文字(72バイト)は通り、25文字(75バイト)は64文字以下でもエラー', () => {
+    expect(errorsOf({ password: 'あ'.repeat(24) })).toEqual({});
+    expect(errorsOf({ password: 'あ'.repeat(25) })).toHaveProperty('password');
   });
 
-  test('글자 수는 서버(Java)와 같이 UTF-16 단위로 센다', () => {
+  test('文字数はサーバー(Java)と同じくUTF-16単位で数える', () => {
     // 絵文字は1文字でもUTF-16では2単位、UTF-8では4バイト。
     // 4文字は8単位なので最小の長さを満たし、16バイトでバイト数の上限内。
     expect(errorsOf({ password: '😀'.repeat(4) })).toEqual({});
@@ -74,11 +74,11 @@ describe('パスワード', () => {
 });
 
 describe('パスワード(確認)', () => {
-  test('비밀번호와 다르면 오류', () => {
+  test('パスワードと違えばエラー', () => {
     expect(errorsOf({ passwordConfirmation: 'password124' })).toHaveProperty('passwordConfirmation');
   });
 
-  test('모두 올바르면 오류가 없다', () => {
+  test('すべて正しければエラーはない', () => {
     expect(validateSignup(valid)).toEqual({});
   });
 });

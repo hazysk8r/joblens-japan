@@ -10,7 +10,7 @@ describe('リンクとして開けるURL', () => {
     'https://example.jp/求人/123',
     'https://日本語.jp/jobs',
     'https://example.com/search?q=a|b',
-  ])('%s는 링크로 연다', (url) => {
+  ])('%sはリンクとして開く', (url) => {
     expect(isHttpUrl(url)).toBe(true);
   });
 
@@ -28,7 +28,7 @@ describe('リンクとして開けるURL', () => {
     '//example.com',
     '',
     'https://',
-  ])('%s는 링크로 열지 않는다', (url) => {
+  ])('%sはリンクとして開かない', (url) => {
     expect(isHttpUrl(url)).toBe(false);
   });
 });

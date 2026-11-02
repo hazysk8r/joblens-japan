@@ -25,7 +25,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class JobPostingMemo {
-  //BigSerial 사용
+  // BigSerialを使用
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;

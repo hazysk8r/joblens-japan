@@ -7,7 +7,7 @@ export function useAuth(): AuthContextValue {
   const value = useContext(AuthContext);
 
   if (value === null) {
-    throw new Error('useAuth는 AuthProvider 안에서 사용해야 합니다.');
+    throw new Error('useAuthはAuthProviderの中で使用してください。');
   }
   return value;
 }

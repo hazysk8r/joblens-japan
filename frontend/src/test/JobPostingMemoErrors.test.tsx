@@ -13,10 +13,10 @@ import {
 
 vi.mock('../api/jobPostingMemoApi');
 
-const contentFieldError = '메모는 250자 이하로 작성해주세요';
+const contentFieldError = 'メモは250文字以内で入力してください。';
 
 function validationError(fieldErrors: Record<string, string>) {
-  return new ApiError('입력값이 올바르지 않습니다.', 400, 'VALIDATION_FAILED', fieldErrors);
+  return new ApiError('入力値が正しくありません。', 400, 'VALIDATION_FAILED', fieldErrors);
 }
 
 afterEach(() => {
@@ -24,16 +24,16 @@ afterEach(() => {
   vi.resetAllMocks();
 });
 
-describe('메모 등록 폼의 오류 표시', () => {
+describe('メモ登録フォームのエラー表示', () => {
   async function submitMemo() {
     const user = userEvent.setup();
     render(<JobPostingMemoCreateForm jobPostingId={1} onCreated={vi.fn()} />);
 
-    await user.type(screen.getByLabelText('메모내용'), 'memo');
-    await user.click(screen.getByRole('button', { name: '등록' }));
+    await user.type(screen.getByLabelText('メモ内容'), 'memo');
+    await user.click(screen.getByRole('button', { name: '登録' }));
   }
 
-  test('서버가 content 검증 오류를 반환하면 전체 메시지 대신 필드 메시지를 표시한다', async () => {
+  test('サーバーがcontentの検証エラーを返すと、全体のメッセージの代わりに項目のメッセージを表示する', async () => {
     vi.mocked(createJobPostingMemo).mockRejectedValue(
       validationError({ content: contentFieldError }),
     );
@@ -41,22 +41,22 @@ describe('메모 등록 폼의 오류 표시', () => {
     await submitMemo();
 
     expect(await screen.findByRole('alert')).toHaveTextContent(contentFieldError);
-    expect(screen.queryByText('입력값이 올바르지 않습니다.')).not.toBeInTheDocument();
+    expect(screen.queryByText('入力値が正しくありません。')).not.toBeInTheDocument();
   });
 
-  test('필드 오류가 없으면 서버 메시지를 표시한다', async () => {
+  test('項目のエラーがなければサーバーのメッセージを表示する', async () => {
     vi.mocked(createJobPostingMemo).mockRejectedValue(
-      new ApiError('채용공고를 찾을 수 없습니다. id=1', 404, 'JOB_POSTING_NOT_FOUND'),
+      new ApiError('求人が見つかりません。id=1', 404, 'JOB_POSTING_NOT_FOUND'),
     );
 
     await submitMemo();
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('채용공고를 찾을 수 없습니다. id=1');
+    expect(await screen.findByRole('alert')).toHaveTextContent('求人が見つかりません。id=1');
   });
 });
 
-describe('메모 수정의 오류 표시', () => {
-  test('서버가 content 검증 오류를 반환하면 수정 오류로 필드 메시지를 표시하고 편집 상태를 유지한다', async () => {
+describe('メモ編集のエラー表示', () => {
+  test('サーバーがcontentの検証エラーを返すと、編集エラーとして項目のメッセージを表示し編集状態を維持する', async () => {
     vi.mocked(updateJobPostingMemo).mockRejectedValue(
       validationError({ content: contentFieldError }),
     );
@@ -73,9 +73,9 @@ describe('메모 수정의 오류 표시', () => {
     expect(result.current.editingMemoId).toBe(2);
   });
 
-  test('필드 오류가 없으면 서버 메시지를 수정 오류로 표시한다', async () => {
+  test('項目のエラーがなければサーバーのメッセージを編集エラーとして表示する', async () => {
     vi.mocked(updateJobPostingMemo).mockRejectedValue(
-      new ApiError('메모를 찾을 수 없습니다.', 404, 'MEMO_NOT_FOUND'),
+      new ApiError('メモが見つかりません。', 404, 'MEMO_NOT_FOUND'),
     );
     const { result } = renderHook(() => useJobPostingMemos(1));
 
@@ -83,6 +83,6 @@ describe('메모 수정의 오류 표시', () => {
       await result.current.saveMemoEdit(2, { content: 'memo' });
     });
 
-    expect(result.current.memoUpdateError).toBe('메모를 찾을 수 없습니다.');
+    expect(result.current.memoUpdateError).toBe('メモが見つかりません。');
   });
 });

@@ -89,12 +89,12 @@ public class JobPostingService {
     }
     
     /**
-     * 기존 채용공고를 수정한다.
+     * 既存の求人を編集する。
      *
-     * @Transactional이 적용된 상태에서 조회한 엔티티를 변경하면
-     * JPA의 변경 감지(Dirty Checking)가 동작하여 UPDATE SQL을 실행한다.
+     * @Transactionalが適用された状態で取得したエンティティを変更すると、
+     * JPAの変更検知(Dirty Checking)が働いてUPDATE SQLを実行する。
      *
-     * 따라서 별도로 repository.save(jobPosting)를 호출하지 않아도 된다.
+     * そのため、別途repository.save(jobPosting)を呼び出さなくてもよい。
      */
     @Transactional
     public JobPostingResponse update(
@@ -124,10 +124,10 @@ public class JobPostingService {
     }
 
     /**
-     * 채용공고를 삭제한다.
+     * 求人を削除する。
      *
-     * 먼저 조회하는 이유는 존재하지 않는 ID를 삭제했을 때
-     * 조용히 성공 처리하지 않고 404를 반환하기 위해서다.
+     * 先に取得する理由は、存在しないIDを削除したときに
+     * 黙って成功扱いにせず、404を返すため。
      */
     @Transactional
     public void delete(Long userId, Long id) {
@@ -136,9 +136,9 @@ public class JobPostingService {
     }
 
     /**
-     * ID 조회와 예외 처리를 한곳에 모은 내부 메서드다.
+     * ID検索と例外処理を一か所にまとめた内部メソッド。
      *
-     * 수정, 삭제, 단건 조회에서 같은 조회 코드를 반복하지 않도록 한다.
+     * 編集、削除、単件取得で同じ検索コードを繰り返さないようにする。
      */
     /*
      * 他のユーザーの求人は、存在しない求人と同じ404にする。
@@ -164,10 +164,10 @@ public class JobPostingService {
     }
 
     /**
-     * 채용공고를 페이지 단위로 조회한다.
+     * 求人をページ単位で取得する。
      *
-     * keyword가 없으면 전체 공고를 조회하고,
-     * keyword가 있으면 제목·회사명·원문에서 검색한다.
+     * keywordがない場合は全件を取得し、
+     * keywordがある場合はタイトル・会社名・原文から検索する。
      */
     public PageResponse<JobPostingResponse> findAll(
             Long userId,
@@ -184,18 +184,18 @@ public class JobPostingService {
             throw new InvalidPageException();
         }
 
-        // pageable에서 sort만 꺼냄
+        // pageableからsortだけを取り出す
         Sort requestedSort = pageable.getSort();
-        // validator에서 검증
+        // validatorで検証する
         jobPostingSortValidator.validate(requestedSort);
-        // 사용자가 요청한 정렬 뒤에 id 정렬 추가
+        // ユーザーが指定した並び順の後ろにidの並び順を追加する
         Sort finalSort = requestedSort.and(
             Sort.by(
                 requestedSort.iterator().next().getDirection(),
                 "id"
             )
         );
-        // 기존 pageable의 page 및 size는 유지, sort만 finalsort로 바꾼 새로운 pageable 생성
+        // 既存のpageableのpageとsizeは維持し、sortだけをfinalsortに変えた新しいpageableを作る
         Pageable finalPageable = PageRequest.of(
             pageable.getPageNumber(),
             pageable.getPageSize(),
@@ -218,8 +218,8 @@ public class JobPostingService {
         Page<JobPosting> jobPostingPage = jobPostingRepository.findAll(spec, finalPageable);
 
         /*
-        * Page<JobPosting>을 Page<JobPostingResponse>로 변환한다.
-        * 페이지 번호와 전체 개수 같은 정보는 그대로 유지된다.
+        * Page<JobPosting>をPage<JobPostingResponse>に変換する。
+        * ページ番号や全件数などの情報はそのまま維持される。
         */
         Page<JobPostingResponse> responsePage =
                 jobPostingPage.map(JobPostingResponse::from);
@@ -228,9 +228,9 @@ public class JobPostingService {
     }
     /**
      * orElseThrow()
-     * 데이터 있음 → JobPosting 반환
-     * 데이터 없음 → JobPostingNotFoundException 발생
-     * 공통 메서드 사용하도록 수정함
+     * データあり → JobPostingを返す
+     * データなし → JobPostingNotFoundExceptionが発生
+     * 共通メソッドを使うように修正
      */
     public JobPostingResponse findById(Long userId, Long id) {
         JobPosting jobPosting = findEntityById(userId, id);

@@ -8,23 +8,23 @@ describe('ログイン後の戻り先', () => {
     '/job-postings/new',
     '/?keyword=AWS&status=APPLIED',
     '/job-postings/new#memo',
-  ])('사이트 안의 경로 %s는 그대로 돌아간다', (from) => {
+  ])('サイト内のパス%sへはそのまま戻る', (from) => {
     expect(redirectPathFromState({ from })).toBe(from);
   });
 
-  test('로그인 화면으로 보낼 때 저장한 경로를 그대로 읽을 수 있다', () => {
+  test('ログイン画面へ送るときに保存したパスをそのまま読める', () => {
     const state = loginRedirectState({ pathname: '/job-postings/new', search: '?x=1', hash: '#top' });
 
     expect(redirectPathFromState(state)).toBe('/job-postings/new?x=1#top');
   });
 
   test.each([
-    { name: 'state 없음', state: undefined },
+    { name: 'stateなし', state: undefined },
     { name: 'null', state: null },
-    { name: '문자열 state', state: '/job-postings/new' },
-    { name: 'from 없음', state: {} },
-    { name: 'from이 숫자', state: { from: 1 } },
-  ])('state가 올바른 형태가 아니면($name) / 로 간다', ({ state }) => {
+    { name: '文字列のstate', state: '/job-postings/new' },
+    { name: 'fromなし', state: {} },
+    { name: 'fromが数値', state: { from: 1 } },
+  ])('stateが正しい形でないと($name)/へ行く', ({ state }) => {
     expect(redirectPathFromState(state)).toBe('/');
   });
 
@@ -39,11 +39,11 @@ describe('ログイン後の戻り先', () => {
     'javascript:alert(1)',
     'evil.com/path',
     '',
-  ])('사이트 밖이거나 경로가 아닌 값 %s는 / 로 간다', (from) => {
+  ])('サイトの外やパスでない値%sでは/へ行く', (from) => {
     expect(redirectPathFromState({ from })).toBe('/');
   });
 
-  test.each(['/login', '/login?x=1', '/login/'])('로그인 화면(%s)으로는 돌아가지 않는다', (from) => {
+  test.each(['/login', '/login?x=1', '/login/'])('ログイン画面(%s)へは戻らない', (from) => {
     expect(redirectPathFromState({ from })).toBe('/');
   });
 });

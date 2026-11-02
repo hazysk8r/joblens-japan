@@ -85,7 +85,7 @@ afterEach(() => {
 });
 
 describe('画面から通信までのつながり', () => {
-  test('회원가입 화면에서 가입하면 실제 요청이 올바르게 나가고, 이후 요청에 새 사용자 ID가 붙는다', async () => {
+  test('会員登録画面で登録すると実際のリクエストが正しく送られ、以降のリクエストに新しいユーザーIDが付く', async () => {
     // 起動時の/meでサーバーが発行したCSRFトークンのCookie。
     document.cookie = 'XSRF-TOKEN=token-1; path=/';
     stubServer('/api/auth/signup', () => jsonResponse(201, { id: 11, email: 'new@example.com' }));
@@ -105,7 +105,7 @@ describe('画面から通信までのつながり', () => {
     await expect(expectedUserOfNextMutation()).resolves.toBe('11');
   });
 
-  test('로그인 화면에서 로그인하면 실제 요청이 올바르게 나가고, 이후 요청에 새 사용자 ID가 붙는다', async () => {
+  test('ログイン画面でログインすると実際のリクエストが正しく送られ、以降のリクエストに新しいユーザーIDが付く', async () => {
     document.cookie = 'XSRF-TOKEN=token-1; path=/';
     stubServer('/api/auth/login', () => jsonResponse(200, { id: 12, email: 'user@example.com' }));
     const user = userEvent.setup();
@@ -180,7 +180,7 @@ describe('ログアウトから次のログインまでのつながり', () => {
     expect(await screen.findByText('user-b@example.com')).toBeInTheDocument();
   }
 
-  test('로그아웃 직후 새로고침 없이 로그인해도 첫 시도에 새 토큰으로 성공한다', async () => {
+  test('ログアウト直後に再読み込みせずログインしても、最初の試行で新しいトークンで成功する', async () => {
     document.cookie = 'XSRF-TOKEN=token-1; path=/';
     stubServerWithLogout();
 
@@ -193,7 +193,7 @@ describe('ログアウトから次のログインまでのつながり', () => {
     expect(loginRequests[0].headers).toMatchObject({ [CSRF_HEADER]: 'token-2' });
   });
 
-  test('로그아웃 204 후 /me 확인이 실패해도, 통신이 회복되면 첫 로그인 시도가 성공한다', async () => {
+  test('ログアウトの204の後に/meの確認が失敗しても、通信が回復すれば最初のログインの試行が成功する', async () => {
     document.cookie = 'XSRF-TOKEN=token-1; path=/';
     // ログアウト直後の確認(/me)だけが通信エラーになり、トークンを受け取れない。
     stubServerWithLogout({ failMeAfterLogout: 1 });
@@ -221,7 +221,7 @@ describe('サーバーが別のユーザーへの切り替わりを検出した�
    * サーバーは画面のユーザー(X-Expected-User-Id)とセッションのユーザーが違うため409を返す。
    * (サーバー側の動作はバックエンドのExpectedUserCheckTestで確認している。)
    */
-  test('변경 요청이 409 AUTH_CONTEXT_CHANGED를 받으면 /me로 확인해 B로 바뀌고 URL을 초기화한다', async () => {
+  test('変更リクエストが409 AUTH_CONTEXT_CHANGEDを受けると、/meで確認してBに変わりURLを初期化する', async () => {
     let sessionUser = { id: 1, email: 'user-a@example.com' };
     vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
       if (url === '/api/auth/me') return jsonResponse(200, sessionUser);
@@ -229,7 +229,7 @@ describe('サーバーが別のユーザーへの切り替わりを検出した�
       if (url.startsWith('/api/job-postings?')) return jsonResponse(200, emptyPage);
       const headers = (init?.headers ?? {}) as Record<string, string>;
       if (init?.method === 'POST' && headers[EXPECTED_USER_HEADER] !== String(sessionUser.id)) {
-        return jsonResponse(409, { code: 'AUTH_CONTEXT_CHANGED', message: '다른 탭에서 로그인 계정이 바뀌어 요청을 처리하지 않았습니다.' });
+        return jsonResponse(409, { code: 'AUTH_CONTEXT_CHANGED', message: '別のタブでログインアカウントが変更されたため、リクエストを処理しませんでした。' });
       }
       return jsonResponse(201, {});
     }));

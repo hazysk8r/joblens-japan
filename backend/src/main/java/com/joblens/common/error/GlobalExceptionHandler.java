@@ -40,8 +40,8 @@ public class GlobalExceptionHandler {
     private static final String SQL_STATE_FOREIGN_KEY_VIOLATION = "23503";
 
     /**
-     * JobPostingNotFoundException이 발생하면
-     * 서버 오류인 500 대신 리소스가 없다는 의미의 404를 반환한다.
+     * JobPostingNotFoundExceptionが発生した場合は、
+     * サーバーエラーの500ではなく、リソースがないことを表す404を返す。
      */
     @ExceptionHandler(JobPostingNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleJobPostingNotFound(
@@ -63,10 +63,10 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Controller의 @Valid 검증에 실패했을 때 발생하는 예외를 처리.
+     * Controllerの@Validによる検証に失敗したときに発生する例外を処理する。
      *
-     * 예를 들어 title이 비어 있으면 Service까지 요청이 전달되지 않고
-     * 이 메서드에서 400 Bad Request 응답을 만든다.
+     * たとえばtitleが空の場合は、Serviceまでリクエストが渡らず、
+     * このメソッドで400 Bad Requestの応答を作る。
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidation(
@@ -77,8 +77,8 @@ public class GlobalExceptionHandler {
 
         for (FieldError fieldError : exception.getBindingResult().getFieldErrors()) {
             /*
-             * 하나의 필드에 여러 오류가 있더라도 첫 번째 메시지를 유지한다.
-             * putIfAbsent를 사용하면 뒤의 오류가 앞의 오류를 덮어쓰지 않는다.
+             * 1つの項目に複数のエラーがあっても、最初のメッセージを保持する。
+             * putIfAbsentを使うと、後のエラーが先のエラーを上書きしない。
              */
             fieldErrors.putIfAbsent(
                     fieldError.getField(),
@@ -90,7 +90,7 @@ public class GlobalExceptionHandler {
                 Instant.now(),
                 HttpStatus.BAD_REQUEST.value(),
                 "VALIDATION_FAILED",
-                "입력값이 올바르지 않습니다.",
+                "入力値が正しくありません。",
                 request.getRequestURI(),
                 fieldErrors
         );
@@ -109,7 +109,7 @@ public class GlobalExceptionHandler {
                 Instant.now(),
                 HttpStatus.BAD_REQUEST.value(),
                 "INVALID_REQUEST_BODY",
-                "요청 본문의 형식이나 값이 올바르지 않습니다.",
+                "リクエスト本文の形式または値が正しくありません。",
                 request.getRequestURI(),
                 Map.of()
         );
@@ -128,7 +128,7 @@ public class GlobalExceptionHandler {
                 Instant.now(),
                 HttpStatus.BAD_REQUEST.value(),
                 "INVALID_PARAMETER_TYPE",
-                "요청 경로나 검색 조건의 값이 올바르지 않습니다.",
+                "リクエストのパスまたは検索条件の値が正しくありません。",
                 request.getRequestURI(),
                 Map.of()
         );
@@ -339,7 +339,7 @@ public class GlobalExceptionHandler {
                 Instant.now(),
                 HttpStatus.UNAUTHORIZED.value(),
                 "INVALID_CREDENTIALS",
-                "이메일 또는 비밀번호가 올바르지 않습니다.",
+                "メールアドレスまたはパスワードが正しくありません。",
                 request.getRequestURI(),
                 Map.of()
         );
@@ -354,9 +354,9 @@ public class GlobalExceptionHandler {
 /**
  * Controller
 → Service
-→ Repository에서 ID 조회
-→ 데이터 없음
-→ JobPostingNotFoundException 발생
-→ GlobalExceptionHandler가 잡음
-→ HTTP 404 JSON 응답 반환
+→ RepositoryでIDを検索
+→ データなし
+→ JobPostingNotFoundExceptionが発生
+→ GlobalExceptionHandlerが捕捉
+→ HTTP 404のJSON応答を返す
  */

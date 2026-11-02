@@ -38,7 +38,7 @@ public class ApiSecurityErrorHandler implements AuthenticationEntryPoint, Access
             HttpServletResponse response,
             AuthenticationException authException
     ) throws IOException {
-        write(request, response, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "로그인이 필요합니다.");
+        write(request, response, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "ログインが必要です。");
     }
 
     @Override
@@ -49,11 +49,11 @@ public class ApiSecurityErrorHandler implements AuthenticationEntryPoint, Access
     ) throws IOException {
         if (accessDeniedException instanceof CsrfException) {
             write(request, response, HttpStatus.FORBIDDEN,
-                    "CSRF_TOKEN_INVALID", "요청을 확인할 수 없습니다. 페이지를 새로고침한 후 다시 시도해주세요.");
+                    "CSRF_TOKEN_INVALID", "リクエストを確認できませんでした。ページを再読み込みしてから、再度お試しください。");
             return;
         }
 
-        write(request, response, HttpStatus.FORBIDDEN, "FORBIDDEN", "접근 권한이 없습니다.");
+        write(request, response, HttpStatus.FORBIDDEN, "FORBIDDEN", "アクセス権限がありません。");
     }
 
     private void write(

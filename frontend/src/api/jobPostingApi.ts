@@ -16,10 +16,10 @@ import { apiFetch } from './apiClient';
 import { parseApiError } from './apiError';
 
 /**
- * 백엔드의 채용공고 목록 API를 호출한다.
+ * バックエンドの求人一覧APIを呼び出す。
  *
- * keyword가 비어 있으면 전체 목록을 조회하고,
- * 값이 있으면 해당 키워드로 검색한다.
+ * keywordが空の場合は全件を取得し、
+ * 値がある場合はそのキーワードで検索する。
  */
 export async function fetchJobPostings(
   keyword: string,
@@ -33,8 +33,8 @@ export async function fetchJobPostings(
 ): Promise<PageResponse<JobPosting>> {
   const params = new URLSearchParams({
     /*
-     * React가 관리하는 현재 페이지 번호를 API에 전달한다.
-     * 백엔드의 페이지 번호는 0부터 시작한다.
+     * Reactが管理している現在のページ番号をAPIに渡す。
+     * バックエンドのページ番号は0から始まる。
      */
     page: page.toString(),
     size: '5',
@@ -76,7 +76,7 @@ export async function fetchJobPostings(
   if (!response.ok) {
     throw await parseApiError(
       response,
-      '채용공고 조회에 실패했습니다.',
+      '求人の取得に失敗しました。',
     );
   }
 
@@ -84,7 +84,7 @@ export async function fetchJobPostings(
 }
 
 /**
- * 새로운 채용공고를 백엔드에 등록한다.
+ * 新しい求人をバックエンドに登録する。
  */
 export async function createJobPosting(
   request:CreateJobPostingRequest,
@@ -95,8 +95,8 @@ export async function createJobPosting(
       'Content-Type': 'application/json',
     },
     /*
-     * JavaScript 객체를 HTTP 요청 본문으로 보내기 위해
-     * JSON 문자열로 변환한다.
+     * JavaScriptのオブジェクトをHTTPリクエストの本文として送るため、
+     * JSON文字列に変換する。
      */
     body: JSON.stringify(request),
   });
@@ -104,7 +104,7 @@ export async function createJobPosting(
   if (!response.ok) {
     throw await parseApiError(
       response,
-      '채용공고 등록에 실패했습니다.',
+      '求人の登録に失敗しました。',
     );
   }
 
@@ -112,7 +112,7 @@ export async function createJobPosting(
 }
 
 /**
- * 지정한 ID의 채용공고를 삭제한다.
+ * 指定したIDの求人を削除する。
  */
 export async function deleteJobPosting(
   id: number,
@@ -127,13 +127,13 @@ export async function deleteJobPosting(
   if (!response.ok) {
     throw await parseApiError(
       response,
-      '채용공고 삭제에 실패했습니다.',
+      '求人の削除に失敗しました。',
     );
   }
 
   /*
-   * 삭제 성공 응답은 204 No Content이므로
-   * response.json()을 호출하지 않는다.
+   * 削除成功の応答は204 No Contentのため、
+   * response.json()を呼び出さない。
    */
 }
 
@@ -157,7 +157,7 @@ export async function updateJobPosting(
   if (!response.ok) {
     throw await parseApiError(
       response,
-      '채용공고 수정에 실패했습니다.',
+      '求人の編集に失敗しました。',
     );
   }
 
@@ -184,7 +184,7 @@ export async function updateApplicationStatus(
   if (!response.ok) {
     throw await parseApiError(
       response,
-      '지원 상태 변경에 실패하였습니다.',
+      '応募ステータスの変更に失敗しました。',
     );
   }
 
@@ -200,7 +200,7 @@ export async function fetchApplicationStatusSummary(
   if (!response.ok) {
     throw await parseApiError(
       response,
-      '지원 상태 요약을 불러오는 데 실패하였습니다.',
+      '応募状況の取得に失敗しました。',
     );
   }
 
@@ -238,7 +238,7 @@ export async function extractRequiredSkills(
   if (!response.ok) {
     throw await parseApiError(
       response,
-      '기술 스택 조회에 실패하였습니다.',
+      '技術スタックの取得に失敗しました。',
     );
   }
 

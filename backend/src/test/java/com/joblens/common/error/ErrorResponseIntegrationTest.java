@@ -161,13 +161,13 @@ class ErrorResponseIntegrationTest {
     // ---- Springが処理する例外 ----
 
     @Test
-    void 없는_경로는_404를_공통_형식으로_반환한다() throws Exception {
+    void 存在しないパスは_404を共通形式で返す() throws Exception {
         JsonNode body = assertErrorFormat(send("GET", "/api/unknown", null, null), 404, "NOT_FOUND", "/api/unknown");
         assertEquals(CLIENT_ERROR_MESSAGE, body.get("message").asString());
     }
 
     @Test
-    void 지원하지_않는_메서드는_405와_Allow_헤더를_반환한다() throws Exception {
+    void 対応していないメソッドは_405とAllowヘッダーを返す() throws Exception {
         HttpResponse<String> response = send("DELETE", "/api/auth/me", null, null);
 
         assertErrorFormat(response, 405, "METHOD_NOT_ALLOWED", "/api/auth/me");
@@ -175,7 +175,7 @@ class ErrorResponseIntegrationTest {
     }
 
     @Test
-    void 지원하지_않는_Content_Type은_415를_공통_형식으로_반환한다() throws Exception {
+    void 対応していないContent_Typeは_415を共通形式で返す() throws Exception {
         assertErrorFormat(send("POST", "/api/job-postings", "text/plain", "hello"),
                 415, "UNSUPPORTED_MEDIA_TYPE", "/api/job-postings");
     }
@@ -183,7 +183,7 @@ class ErrorResponseIntegrationTest {
     // ---- 未処理の例外 ----
 
     @Test
-    void 처리되지_않은_예외는_내부_정보_없이_500을_반환한다() throws Exception {
+    void 処理されない例外は内部情報なしで_500を返す() throws Exception {
         JsonNode body = assertErrorFormat(send("GET", "/api/test-errors/runtime", null, null),
                 500, "INTERNAL_SERVER_ERROR", "/api/test-errors/runtime");
         assertEquals(SERVER_ERROR_MESSAGE, body.get("message").asString());
@@ -198,14 +198,14 @@ class ErrorResponseIntegrationTest {
             "{\"title\":\"t\",\"originalText\":\"a\\u0000b\"}",
             "{\"title\":\"t\",\"originalText\":\"o\",\"applicationDeadline\":\"+99999999-01-01\"}",
     })
-    void DB가_받을_수_없는_값으로_공고를_등록하면_400을_반환하고_저장하지_않는다(String body) throws Exception {
+    void DBが受け取れない値で求人を登録すると_400を返し保存しない(String body) throws Exception {
         assertErrorFormat(sendJson("POST", "/api/job-postings", body),
                 400, "INVALID_REQUEST_VALUE", "/api/job-postings");
         assertEquals(0, postingCount());
     }
 
     @Test
-    void 메모에_NUL_문자가_있으면_400을_반환한다() throws Exception {
+    void メモにNUL文字があると_400を返す() throws Exception {
         HttpResponse<String> created = sendJson("POST", "/api/job-postings", "{\"title\":\"t\",\"originalText\":\"o\"}");
         long id = objectMapper.readTree(created.body()).get("id").asLong();
         String path = "/api/job-postings/" + id + "/notes";
@@ -214,7 +214,7 @@ class ErrorResponseIntegrationTest {
     }
 
     @Test
-    void 검색어에_NUL_문자가_있으면_400을_반환한다() throws Exception {
+    void 検索キーワードにNUL文字があると_400を返す() throws Exception {
         assertErrorFormat(send("GET", "/api/job-postings?keyword=a%00b", null, null),
                 400, "INVALID_REQUEST_VALUE", "/api/job-postings");
     }
@@ -222,13 +222,13 @@ class ErrorResponseIntegrationTest {
     // ---- 他のデータとの衝突(SQLState 23505・23503) ----
 
     @Test
-    void 고유_제약_충돌은_409를_반환한다() throws Exception {
+    void 一意制約の競合は_409を返す() throws Exception {
         assertErrorFormat(send("GET", "/api/test-errors/unique?email=user@example.com", null, null),
                 409, "DATA_CONFLICT", "/api/test-errors/unique");
     }
 
     @Test
-    void 외래_키_충돌은_409를_반환한다() throws Exception {
+    void 外部キーの競合は_409を返す() throws Exception {
         assertErrorFormat(send("GET", "/api/test-errors/foreign-key", null, null),
                 409, "DATA_CONFLICT", "/api/test-errors/foreign-key");
     }
@@ -236,7 +236,7 @@ class ErrorResponseIntegrationTest {
     // ---- 入力の検証を通過したはずの値のDBエラーは、サーバーの不具合として扱う ----
 
     @Test
-    void CHECK_제약_위반은_제약_이름_없이_500을_반환하고_로그에_남긴다(CapturedOutput output) throws Exception {
+    void CHECK制約の違反は制約名なしで_500を返しログに残す(CapturedOutput output) throws Exception {
         HttpResponse<String> response = send("GET", "/api/test-errors/check?userId=" + userId, null, null);
 
         JsonNode body = assertErrorFormat(response, 500, "INTERNAL_SERVER_ERROR", "/api/test-errors/check");
@@ -248,7 +248,7 @@ class ErrorResponseIntegrationTest {
     // ---- 400・409はサーバーの障害と区別し、どのAPIで起きたかだけを警告として残す ----
 
     @Test
-    void DB가_받을_수_없는_값은_SQLState를_경고로_남기고_오류_로그는_남기지_않는다(CapturedOutput output) throws Exception {
+    void DBが受け取れない値はSQLStateを警告で残しエラーログは残さない(CapturedOutput output) throws Exception {
         sendJson("POST", "/api/job-postings", "{\"title\":\"a\\u0000b\",\"originalText\":\"o\"}");
 
         assertTrue(output.getOut().contains("POST /api/job-postings sqlState=22021"), output.getOut());
@@ -256,7 +256,7 @@ class ErrorResponseIntegrationTest {
     }
 
     @Test
-    void 데이터_충돌은_SQLState를_경고로_남기고_오류_로그는_남기지_않는다(CapturedOutput output) throws Exception {
+    void データの競合はSQLStateを警告で残しエラーログは残さない(CapturedOutput output) throws Exception {
         send("GET", "/api/test-errors/foreign-key", null, null);
 
         assertTrue(output.getOut().contains("GET /api/test-errors/foreign-key sqlState=23503"), output.getOut());
@@ -266,7 +266,7 @@ class ErrorResponseIntegrationTest {
     // ---- /errorへの転送ではセッションを読まない ----
 
     @Test
-    void 오류_응답_뒤에도_세션이_유지되고_다른_세션을_만들지_않는다() throws Exception {
+    void エラー応答の後もセッションが維持され別のセッションを作らない() throws Exception {
         assertEquals(500, send("GET", "/api/test-errors/runtime", null, null).statusCode());
 
         assertTrue(cookies.getCookieStore().getCookies().stream()
@@ -275,21 +275,21 @@ class ErrorResponseIntegrationTest {
     }
 
     @Test
-    void error를_직접_열어도_같은_형식의_500을_반환한다() throws Exception {
+    void errorを直接開いても同じ形式の_500を返す() throws Exception {
         assertErrorFormat(send("GET", "/error", null, null), 500, "INTERNAL_SERVER_ERROR", "");
     }
 
     // ---- ログイン ----
 
     @Test
-    void 로그인_이메일에_NUL_문자가_있으면_인증_실패가_아니라_400을_반환한다() throws Exception {
+    void ログインのメールアドレスにNUL文字があると認証失敗ではなく_400を返す() throws Exception {
         assertErrorFormat(sendJson("POST", "/api/auth/login",
                         "{\"email\":\"a\\u0000b@example.com\",\"password\":\"password123\"}"),
                 400, "INVALID_REQUEST_VALUE", "/api/auth/login");
     }
 
     @Test
-    void 잘못된_비밀번호는_계속_401을_반환한다() throws Exception {
+    void 誤ったパスワードは引き続き_401を返す() throws Exception {
         assertErrorFormat(sendJson("POST", "/api/auth/login",
                         "{\"email\":\"user@example.com\",\"password\":\"wrong-password\"}"),
                 401, "INVALID_CREDENTIALS", "/api/auth/login");
@@ -300,13 +300,13 @@ class ErrorResponseIntegrationTest {
     // 2147483647(page=2147483647&size=1)は、ちょうどInteger.MAX_VALUE。
     @ParameterizedTest
     @ValueSource(strings = {"page=21474836&size=100", "page=2147483647&size=1"})
-    void 오프셋이_DB에서_다룰_수_있는_범위면_빈_페이지를_반환한다(String query) throws Exception {
+    void オフセットがDBで扱える範囲なら空のページを返す(String query) throws Exception {
         assertEquals(200, send("GET", "/api/job-postings?" + query, null, null).statusCode());
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"page=21474837&size=100", "page=2147483647&size=100"})
-    void 오프셋이_범위를_넘으면_400을_반환한다(String query) throws Exception {
+    void オフセットが範囲を超えると_400を返す(String query) throws Exception {
         assertErrorFormat(send("GET", "/api/job-postings?" + query, null, null),
                 400, "INVALID_PAGE", "/api/job-postings");
     }
@@ -314,7 +314,7 @@ class ErrorResponseIntegrationTest {
     // ---- 認証前 ----
 
     @Test
-    void 로그인하지_않으면_없는_경로도_계속_401을_반환한다() throws Exception {
+    void 未ログインなら存在しないパスも引き続き_401を返す() throws Exception {
         cookies.getCookieStore().removeAll();
 
         assertErrorFormat(send("GET", "/api/unknown", null, null), 401, "UNAUTHORIZED", "/api/unknown");

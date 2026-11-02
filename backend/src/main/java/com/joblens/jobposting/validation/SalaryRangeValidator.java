@@ -3,7 +3,7 @@ package com.joblens.jobposting.validation;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
-// ValidSalaryRange가 범위 검증 대상임을 알려주면, 실제 비교를 수행하는 역할
+// ValidSalaryRangeで範囲検証の対象と示されたものを、実際に比較する役割
 public class SalaryRangeValidator implements ConstraintValidator<ValidSalaryRange, SalaryRangeTarget> {
   
   @Override 

@@ -33,12 +33,12 @@ afterEach(() => {
 });
 
 const operations = [
-  { name: '로그인', run: login, url: '/api/auth/login', successStatus: 200 },
-  { name: '회원가입', run: signup, url: '/api/auth/signup', successStatus: 201 },
+  { name: 'ログイン', run: login, url: '/api/auth/login', successStatus: 200 },
+  { name: '会員登録', run: signup, url: '/api/auth/signup', successStatus: 201 },
 ];
 
 describe.each(operations)('$name', ({ run, url, successStatus }) => {
-  test('JSON 본문 {email, password}를 POST로, CSRF 토큰과 함께 보낸다', async () => {
+  test('JSON本文{email, password}をPOSTで、CSRFトークンと一緒に送る', async () => {
     document.cookie = 'XSRF-TOKEN=token-1; path=/';
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
       jsonResponse(successStatus, { id: 1, email: 'user@example.com' }),
@@ -60,7 +60,7 @@ describe.each(operations)('$name', ({ run, url, successStatus }) => {
     });
   });
 
-  test('성공하면 서버가 돌려준 사용자를 반환한다', async () => {
+  test('成功するとサーバーが返したユーザーを返す', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
       jsonResponse(successStatus, { id: 7, email: 'user7@example.com' }),
     ));
@@ -70,11 +70,11 @@ describe.each(operations)('$name', ({ run, url, successStatus }) => {
   });
 
   test.each([
-    { status: 400, body: { code: 'VALIDATION_FAILED', message: '입력값이 올바르지 않습니다.', fieldErrors: { email: '이메일 형식이 올바르지 않습니다.' } } },
-    { status: 401, body: { code: 'INVALID_CREDENTIALS', message: '이메일 또는 비밀번호가 올바르지 않습니다.' } },
-    { status: 403, body: { code: 'CSRF_TOKEN_INVALID', message: '요청을 확인할 수 없습니다.' } },
-    { status: 409, body: { code: 'EMAIL_ALREADY_EXISTS', message: '이미 가입된 이메일입니다.' } },
-  ])('서버가 $status 응답을 반환하면 처리되지 않은 것이 확실한 ApiError를 던진다', async ({ status, body }) => {
+    { status: 400, body: { code: 'VALIDATION_FAILED', message: '入力値が正しくありません。', fieldErrors: { email: 'メールアドレスの形式が正しくありません。' } } },
+    { status: 401, body: { code: 'INVALID_CREDENTIALS', message: 'メールアドレスまたはパスワードが正しくありません。' } },
+    { status: 403, body: { code: 'CSRF_TOKEN_INVALID', message: 'リクエストを確認できませんでした。' } },
+    { status: 409, body: { code: 'EMAIL_ALREADY_EXISTS', message: 'このメールアドレスはすでに登録されています。' } },
+  ])('サーバーが$statusの応答を返すと、処理されていないことが確実なApiErrorを投げる', async ({ status, body }) => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => jsonResponse(status, body)));
 
     const error = await run('user@example.com', 'password123').catch((cause: unknown) => cause);
@@ -83,7 +83,7 @@ describe.each(operations)('$name', ({ run, url, successStatus }) => {
     expect(error).toMatchObject({ status, code: body.code, message: body.message });
   });
 
-  test('성공 응답의 본문 형식이 다르면 ApiError가 아닌 오류를 던진다(서버에서는 처리됐을 수 있음)', async () => {
+  test('成功応答の本文の形式が違うとApiErrorではないエラーを投げる(サーバーでは処理された可能性がある)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
       jsonResponse(successStatus, { id: '7', email: 'user7@example.com' }),
     ));
@@ -96,7 +96,7 @@ describe.each(operations)('$name', ({ run, url, successStatus }) => {
 });
 
 describe('ログアウト', () => {
-  test('POST /api/auth/logout를 CSRF 토큰과 함께 보내고, 204면 정상 종료한다', async () => {
+  test('POST /api/auth/logoutをCSRFトークンと一緒に送り、204なら正常に終わる', async () => {
     document.cookie = 'XSRF-TOKEN=token-1; path=/';
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
 
@@ -108,8 +108,8 @@ describe('ログアウト', () => {
     expect(init.headers).toMatchObject({ [CSRF_HEADER]: 'token-1' });
   });
 
-  test.each([403, 500])('서버가 %i 응답을 반환하면 상태 코드를 가진 ApiError를 던진다', async (status) => {
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => jsonResponse(status, { message: '실패' })));
+  test.each([403, 500])('サーバーが%iの応答を返すとステータスコードを持つApiErrorを投げる', async (status) => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => jsonResponse(status, { message: '失敗' })));
 
     const error = await logout().catch((cause: unknown) => cause);
 

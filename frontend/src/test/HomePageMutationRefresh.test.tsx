@@ -81,10 +81,10 @@ async function renderJava(initialEntry = '/?keyword=Java') {
 }
 
 async function searchAws(user: ReturnType<typeof userEvent.setup>) {
-  const input = screen.getByRole('textbox', { name: '검색어' });
+  const input = screen.getByRole('textbox', { name: '検索キーワード' });
   await user.clear(input);
   await user.type(input, 'AWS');
-  await user.click(screen.getByRole('button', { name: '검색' }));
+  await user.click(screen.getByRole('button', { name: '検索' }));
   await screen.findByRole('heading', { name: awsPosting.title, level: 2 });
 }
 
@@ -122,15 +122,15 @@ describe('更新完了後の一覧再取得', () => {
     expect(updateApplicationStatus).toHaveBeenCalledWith(javaPosting.id, { status: 'APPLIED' }, javaPosting.version);
 
     await user.click(screen.getByRole('button', { name: '＋ 詳細条件' }));
-    await user.selectOptions(screen.getByRole('combobox', { name: '상태' }), 'APPLIED');
-    await user.selectOptions(screen.getByRole('combobox', { name: '최저 월급' }), '300000');
-    await user.selectOptions(screen.getByRole('combobox', { name: '최고 월급' }), '700000');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'ステータス' }), 'APPLIED');
+    await user.selectOptions(screen.getByRole('combobox', { name: '最低月給' }), '300000');
+    await user.selectOptions(screen.getByRole('combobox', { name: '最高月給' }), '700000');
     fireEvent.change(screen.getByLabelText('締切日（以降）'), { target: { value: '2026-11-01' } });
     fireEvent.change(screen.getByLabelText('締切日（以前）'), { target: { value: '2026-12-31' } });
     await searchAws(user);
-    await user.selectOptions(screen.getByRole('combobox', { name: '정렬' }), 'companyName,asc');
-    await waitFor(() => expect(screen.getByRole('button', { name: '다음' })).toBeEnabled());
-    await user.click(screen.getByRole('button', { name: '다음' }));
+    await user.selectOptions(screen.getByRole('combobox', { name: '並び替え' }), 'companyName,asc');
+    await waitFor(() => expect(screen.getByRole('button', { name: '次へ' })).toBeEnabled());
+    await user.click(screen.getByRole('button', { name: '次へ' }));
     await screen.findByText('2 / 2');
 
     const callsBeforeCompletion = vi.mocked(fetchJobPostings).mock.calls.length;
@@ -143,9 +143,9 @@ describe('更新完了後の一覧再取得', () => {
     expect(screen.getByRole('heading', { name: awsPosting.title })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: javaPosting.title })).not.toBeInTheDocument();
     expect(screen.getByText('2 / 2')).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: '검색어' })).toHaveValue('AWS');
-    expect(screen.getByRole('combobox', { name: '상태' })).toHaveValue('APPLIED');
-    expect(screen.getByRole('combobox', { name: '정렬' })).toHaveValue('companyName,asc');
+    expect(screen.getByRole('textbox', { name: '検索キーワード' })).toHaveValue('AWS');
+    expect(screen.getByRole('combobox', { name: 'ステータス' })).toHaveValue('APPLIED');
+    expect(screen.getByRole('combobox', { name: '並び替え' })).toHaveValue('companyName,asc');
     expect(screen.getByLabelText('締切日（以降）')).toHaveValue('2026-11-01');
     expect(screen.getByLabelText('締切日（以前）')).toHaveValue('2026-12-31');
   });
@@ -155,7 +155,7 @@ describe('更新完了後の一覧再取得', () => {
     const user = userEvent.setup();
     vi.mocked(deleteJobPosting).mockReturnValueOnce(mutation.promise);
     await renderJava('/?keyword=Java&page=2');
-    await user.click(within(cardFor(javaPosting.title)).getByRole('button', { name: '삭제' }));
+    await user.click(within(cardFor(javaPosting.title)).getByRole('button', { name: '削除' }));
     expect(deleteJobPosting).toHaveBeenCalledWith(javaPosting.id);
 
     await searchAws(user);
@@ -166,7 +166,7 @@ describe('更新完了後の一覧再取得', () => {
     expect(fetchJobPostings).toHaveBeenLastCalledWith('AWS', '', 0, 'createdAt,desc', null, null, null, null);
     expect(screen.getByRole('heading', { name: awsPosting.title })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: javaPosting.title })).not.toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: '검색어' })).toHaveValue('AWS');
+    expect(screen.getByRole('textbox', { name: '検索キーワード' })).toHaveValue('AWS');
   });
 
   test('状態変更の競合復旧も完了時点の新しい検索条件で再取得する', async () => {
@@ -186,7 +186,7 @@ describe('更新完了後の一覧再取得', () => {
     expect(fetchJobPostings).toHaveBeenLastCalledWith('AWS', '', 0, 'createdAt,desc', null, null, null, null);
     expect(screen.getByRole('heading', { name: awsPosting.title })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: javaPosting.title })).not.toBeInTheDocument();
-    expect(screen.getByRole('alert')).toHaveTextContent('다른 화면에서 채용공고가 수정되었습니다.');
+    expect(screen.getByRole('alert')).toHaveTextContent('別の画面で求人が編集されました。');
     expect(updateApplicationStatus).toHaveBeenCalledTimes(1);
   });
 
@@ -200,7 +200,7 @@ describe('更新完了後の一覧再取得', () => {
     );
     vi.mocked(deleteJobPosting).mockResolvedValueOnce();
 
-    await user.click(within(cardFor(javaPosting.title)).getByRole('button', { name: '삭제' }));
+    await user.click(within(cardFor(javaPosting.title)).getByRole('button', { name: '削除' }));
 
     await screen.findByRole('heading', { name: previousPagePosting.title });
     expect(fetchJobPostings).toHaveBeenLastCalledWith('Java', '', 1, 'createdAt,desc', null, null, null, null);
@@ -215,12 +215,12 @@ describe('更新完了後の一覧再取得', () => {
     vi.mocked(deleteJobPosting).mockResolvedValueOnce();
     const callsBeforeDeletion = vi.mocked(fetchJobPostings).mock.calls.length;
 
-    await user.click(within(cardFor(javaPosting.title)).getByRole('button', { name: '삭제' }));
+    await user.click(within(cardFor(javaPosting.title)).getByRole('button', { name: '削除' }));
 
-    await screen.findByText('검색 결과가 없습니다.');
+    await screen.findByText('検索結果はありません。');
     expect(fetchJobPostings).toHaveBeenCalledTimes(callsBeforeDeletion + 1);
     expect(fetchJobPostings).toHaveBeenLastCalledWith('Java', '', 0, 'createdAt,desc', null, null, null, null);
-    expect(screen.queryByRole('button', { name: '다음' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '次へ' })).not.toBeInTheDocument();
   });
 
   test.each([
@@ -240,13 +240,13 @@ describe('更新完了後の一覧再取得', () => {
     if (kind === 'status') {
       await user.selectOptions(within(cardFor(javaPosting.title)).getByRole('combobox'), 'APPLIED');
     } else {
-      await user.click(within(cardFor(javaPosting.title)).getByRole('button', { name: '삭제' }));
+      await user.click(within(cardFor(javaPosting.title)).getByRole('button', { name: '削除' }));
     }
     await waitFor(() => expect(fetchJobPostings).toHaveBeenCalledTimes(2));
-    const input = screen.getByRole('textbox', { name: '검색어' });
+    const input = screen.getByRole('textbox', { name: '検索キーワード' });
     await user.clear(input);
     await user.type(input, 'AWS');
-    await user.click(screen.getByRole('button', { name: '검색' }));
+    await user.click(screen.getByRole('button', { name: '検索' }));
     await waitFor(() => expect(fetchJobPostings).toHaveBeenCalledTimes(3));
 
     // 新しい検索を先に完了し、更新後の古い一覧を最後に返す。
@@ -257,6 +257,6 @@ describe('更新完了後の一覧再取得', () => {
     expect(fetchJobPostings).toHaveBeenCalledTimes(3);
     expect(screen.getByRole('heading', { name: awsPosting.title })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: javaPosting.title })).not.toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: '검색어' })).toHaveValue('AWS');
+    expect(screen.getByRole('textbox', { name: '検索キーワード' })).toHaveValue('AWS');
   });
 });

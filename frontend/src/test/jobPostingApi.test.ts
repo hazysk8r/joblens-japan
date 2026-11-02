@@ -49,7 +49,7 @@ describe('jobPostingApi If-Match', () => {
     vi.unstubAllGlobals();
   });
 
-  test('일반 수정 요청에 현재 version을 If-Match 헤더로 전송한다', async() => {
+  test('通常の編集リクエストに現在のversionをIf-Matchヘッダーで送る', async() => {
     await updateJobPosting(
       1,
       {
@@ -77,7 +77,7 @@ describe('jobPostingApi If-Match', () => {
     );
   });
 
-  test('지원 상태 수정 요청에 현재 version을 If-Match 헤더로 전송한다', async () => {
+  test('応募ステータスの編集リクエストに現在のversionをIf-Matchヘッダーで送る', async () => {
     await updateApplicationStatus(
       1,
       {
@@ -118,11 +118,11 @@ const jobPosting = {
 
 const apiOperations = [
   {
-    name: '목록 조회',
+    name: '一覧の取得',
     run: () => fetchJobPostings(
       '', '', 0, 'createdAt,desc', null, null, null, null,
     ),
-    fallback: '채용공고 조회에 실패했습니다.',
+    fallback: '求人の取得に失敗しました。',
     successBody: {
       content: [jobPosting],
       page: 0,
@@ -134,39 +134,39 @@ const apiOperations = [
     },
   },
   {
-    name: '등록',
+    name: '登録',
     run: () => createJobPosting(request),
-    fallback: '채용공고 등록에 실패했습니다.',
+    fallback: '求人の登録に失敗しました。',
     successBody: jobPosting,
   },
   {
-    name: '삭제',
+    name: '削除',
     run: () => deleteJobPosting(1),
-    fallback: '채용공고 삭제에 실패했습니다.',
+    fallback: '求人の削除に失敗しました。',
     successBody: undefined,
   },
   {
-    name: '일반 수정',
+    name: '通常の編集',
     run: () => updateJobPosting(1, request, 3),
-    fallback: '채용공고 수정에 실패했습니다.',
+    fallback: '求人の編集に失敗しました。',
     successBody: jobPosting,
   },
   {
-    name: '지원 상태 변경',
+    name: '応募ステータスの変更',
     run: () => updateApplicationStatus(1, { status: 'APPLIED' }, 3),
-    fallback: '지원 상태 변경에 실패하였습니다.',
+    fallback: '応募ステータスの変更に失敗しました。',
     successBody: { ...jobPosting, applicationStatus: 'APPLIED' },
   },
   {
-    name: '지원 상태 요약 조회',
+    name: '応募ステータス集計の取得',
     run: () => fetchApplicationStatusSummary(),
-    fallback: '지원 상태 요약을 불러오는 데 실패하였습니다.',
+    fallback: '応募状況の取得に失敗しました。',
     successBody: {
       saved: 1, applied: 0, interviewing: 0, offered: 0, rejected: 0,
     },
   },
   {
-    name: '지원 상태 이력 조회',
+    name: '応募ステータス履歴の取得',
     run: () => fetchApplicationStatusHistory(1),
     fallback: '変更履歴の取得に失敗しました。',
     successBody: [{
@@ -177,27 +177,27 @@ const apiOperations = [
     }],
   },
   {
-    name: '기술 스택 조회',
+    name: '技術スタックの取得',
     run: () => extractRequiredSkills(1, new AbortController().signal),
-    fallback: '기술 스택 조회에 실패하였습니다.',
+    fallback: '技術スタックの取得に失敗しました。',
     successBody: ['Java', 'AWS'],
   },
 ];
 
-describe('jobPostingApi 공통 HTTP 오류 계약', () => {
+describe('jobPostingApiの共通HTTPエラーの契約', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
   test.each(apiOperations)(
-    '$name 실패 시 message, status, code, fieldErrors를 보존한다',
+    '$nameの失敗時にmessage、status、code、fieldErrorsを保持する',
     async ({ run }) => {
       const body = {
-        message: '입력 내용을 확인해 주세요.',
+        message: '入力内容を確認してください。',
         code: 'VALIDATION_ERROR',
         fieldErrors: {
-          salaryMin: '최소 급여를 확인해 주세요.',
-          salaryMax: '최대 급여를 확인해 주세요.',
+          salaryMin: '最低月給を確認してください。',
+          salaryMax: '最高月給を確認してください。',
         },
       };
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
@@ -212,7 +212,7 @@ describe('jobPostingApi 공통 HTTP 오류 계약', () => {
   );
 
   test.each(apiOperations)(
-    '$name의 오류 응답이 JSON이 아니면 작업별 기본 메시지를 사용한다',
+    '$nameのエラー応答がJSONでなければ処理ごとの既定のメッセージを使う',
     async ({ run, fallback }) => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
         new Response('<html>Server error</html>', { status: 502 }),
@@ -231,7 +231,7 @@ describe('jobPostingApi 공통 HTTP 오류 계약', () => {
   );
 
   test.each(apiOperations)(
-    '$name 성공 응답은 기존 결과를 반환한다',
+    '$nameの成功応答は従来の結果を返す',
     async ({ run, successBody }) => {
       const response = successBody === undefined
         ? new Response(null, { status: 204 })
@@ -243,7 +243,7 @@ describe('jobPostingApi 공통 HTTP 오류 계약', () => {
   );
 
   test.each(apiOperations)(
-    '$name에서 HTTP 응답이 없는 네트워크 오류는 그대로 전달한다',
+    '$nameでHTTP応答のないネットワークエラーはそのまま伝える',
     async ({ run }) => {
       const error = new TypeError('Failed to fetch');
       vi.stubGlobal('fetch', vi.fn().mockRejectedValue(error));
@@ -253,7 +253,7 @@ describe('jobPostingApi 공통 HTTP 오류 계약', () => {
   );
 
   test.each(apiOperations)(
-    '$name에서 AbortError는 그대로 전달한다',
+    '$nameでAbortErrorはそのまま伝える',
     async ({ run }) => {
       const error = new DOMException('The operation was aborted.', 'AbortError');
       vi.stubGlobal('fetch', vi.fn().mockRejectedValue(error));
@@ -262,9 +262,9 @@ describe('jobPostingApi 공통 HTTP 오류 계약', () => {
     },
   );
 
-  test('기술 스택 오류 응답의 본문을 읽다가 발생한 AbortError는 그대로 전달한다', async () => {
+  test('技術スタックのエラー応答の本文を読む途中で起きたAbortErrorはそのまま伝える', async () => {
     const error = new DOMException('The operation was aborted.', 'AbortError');
-    const response = new Response('{"message":"서버 오류"}', { status: 500 });
+    const response = new Response('{"message":"サーバーエラー"}', { status: 500 });
     vi.spyOn(response, 'json').mockRejectedValue(error);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response));
 
@@ -274,12 +274,12 @@ describe('jobPostingApi 공통 HTTP 오류 계약', () => {
   });
 
   test.each(apiOperations.filter(({ name }) => (
-    name === '일반 수정' || name === '지원 상태 변경'
+    name === '通常の編集' || name === '応募ステータスの変更'
   )))(
-    '$name의 412 응답은 기존 버전 충돌로 판정한다',
+    '$nameの412応答は従来のバージョン競合と判定する',
     async ({ run }) => {
       const body = {
-        message: '다른 요청이 먼저 공고를 수정했습니다.',
+        message: '別のリクエストが先に求人を編集しました。',
         code: 'JOB_POSTING_VERSION_CONFLICT',
       };
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
@@ -295,25 +295,25 @@ describe('jobPostingApi 공통 HTTP 오류 계약', () => {
   );
 });
 
-describe('parseApiError 응답 구조 검증', () => {
+describe('parseApiErrorの応答構造の検証', () => {
   test.each([
     ['null', null],
-    ['배열', [{ message: '목록 안의 메시지' }]],
-    ['문자열', '서버 오류'],
-    ['숫자', 400],
-    ['불리언', false],
-    ['빈 객체', {}],
-    ['올바르지 않은 속성 타입', { message: 123, code: false, fieldErrors: [] }],
-    ['빈 메시지', { message: ' \t\n ', code: '   ', fieldErrors: null }],
-  ])('%s 응답이면 기본 오류 메시지를 사용한다', async (_name, body) => {
+    ['配列', [{ message: '一覧の中のメッセージ' }]],
+    ['文字列', 'サーバーエラー'],
+    ['数値', 400],
+    ['真偽値', false],
+    ['空のオブジェクト', {}],
+    ['正しくない属性の型', { message: 123, code: false, fieldErrors: [] }],
+    ['空のメッセージ', { message: ' \t\n ', code: '   ', fieldErrors: null }],
+  ])('%sの応答なら既定のエラーメッセージを使う', async (_name, body) => {
     const error = await parseApiError(
       new Response(JSON.stringify(body), { status: 500 }),
-      '기본 오류 메시지',
+      '既定のエラーメッセージ',
     );
 
     expect(error).toBeInstanceOf(ApiError);
     expect(error).toMatchObject({
-      message: '기본 오류 메시지',
+      message: '既定のエラーメッセージ',
       status: 500,
       code: undefined,
       fieldErrors: {},
@@ -321,43 +321,43 @@ describe('parseApiError 응답 구조 검증', () => {
   });
 
   test.each([
-    ['빈 응답', ''],
-    ['잘못된 JSON', '{"message":'],
-  ])('%s에서도 HTTP status와 기본 메시지를 보존한다', async (_name, body) => {
+    ['空の応答', ''],
+    ['不正なJSON', '{"message":'],
+  ])('%sでもHTTP statusと既定のメッセージを保持する', async (_name, body) => {
     const error = await parseApiError(
       new Response(body, { status: 503 }),
-      '기본 오류 메시지',
+      '既定のエラーメッセージ',
     );
 
     expect(error).toMatchObject({
-      message: '기본 오류 메시지',
+      message: '既定のエラーメッセージ',
       status: 503,
       code: undefined,
       fieldErrors: {},
     });
   });
 
-  test('유효한 문자열의 원문과 화면에서 모르는 필드 이름을 보존한다', async () => {
+  test('有効な文字列の原文と、画面が知らない項目名を保持する', async () => {
     const body = {
-      message: '  입력 내용을 확인해 주세요.  ',
+      message: '  入力内容を確認してください。  ',
       code: ' VALIDATION_ERROR ',
       fieldErrors: {
-        salaryMin: ' 최소 급여 오류 ',
-        salaryMax: '최대 급여 오류',
-        futureField: '아직 화면에 없는 필드 오류',
+        salaryMin: ' 最低月給のエラー ',
+        salaryMax: '最高月給のエラー',
+        futureField: 'まだ画面にない項目のエラー',
         empty: '',
         blank: ' \t\n ',
         number: 100,
         boolean: false,
         null: null,
-        object: { message: '중첩 객체' },
-        array: ['배열 메시지'],
+        object: { message: '入れ子のオブジェクト' },
+        array: ['配列のメッセージ'],
       },
     };
 
     const error = await parseApiError(
       new Response(JSON.stringify(body), { status: 400 }),
-      '기본 오류 메시지',
+      '既定のエラーメッセージ',
     );
 
     expect(error).toMatchObject({
@@ -377,25 +377,25 @@ describe('parseApiError 응답 구조 검증', () => {
 
   test.each([
     { name: 'null', fieldErrors: null },
-    { name: '빈 배열', fieldErrors: [] },
-    { name: '배열', fieldErrors: ['오류'] },
-    { name: '문자열', fieldErrors: '오류' },
-    { name: '숫자', fieldErrors: 123 },
-    { name: '불리언', fieldErrors: false },
+    { name: '空の配列', fieldErrors: [] },
+    { name: '配列', fieldErrors: ['エラー'] },
+    { name: '文字列', fieldErrors: 'エラー' },
+    { name: '数値', fieldErrors: 123 },
+    { name: '真偽値', fieldErrors: false },
   ])(
-    'fieldErrors가 $name이면 무시하고 일반 메시지는 보존한다',
+    'fieldErrorsが$nameなら無視し、全体のメッセージは保持する',
     async ({ fieldErrors }) => {
       const error = await parseApiError(
         new Response(JSON.stringify({
-          message: '일반 오류 메시지',
+          message: '全体のエラーメッセージ',
           code: 'SERVER_ERROR',
           fieldErrors,
         }), { status: 500 }),
-        '기본 오류 메시지',
+        '既定のエラーメッセージ',
       );
 
       expect(error).toMatchObject({
-        message: '일반 오류 메시지',
+        message: '全体のエラーメッセージ',
         status: 500,
         code: 'SERVER_ERROR',
         fieldErrors: {},
@@ -403,32 +403,32 @@ describe('parseApiError 응답 구조 검증', () => {
     },
   );
 
-  test('일반 메시지가 없더라도 유효한 code와 필드 오류를 보존한다', async () => {
+  test('全体のメッセージがなくても有効なcodeと項目のエラーを保持する', async () => {
     const error = await parseApiError(
       new Response(JSON.stringify({
         message: 123,
         code: 'VALIDATION_ERROR',
-        fieldErrors: { title: '제목을 입력해 주세요.' },
+        fieldErrors: { title: 'タイトルを入力してください。' },
       }), { status: 400 }),
-      '기본 오류 메시지',
+      '既定のエラーメッセージ',
     );
 
     expect(error).toMatchObject({
-      message: '기본 오류 메시지',
+      message: '既定のエラーメッセージ',
       status: 400,
       code: 'VALIDATION_ERROR',
-      fieldErrors: { title: '제목을 입력해 주세요.' },
+      fieldErrors: { title: 'タイトルを入力してください。' },
     });
   });
 
-  test('응답 본문에 다른 status가 있어도 HTTP 응답의 status를 사용한다', async () => {
+  test('応答の本文に別のstatusがあってもHTTP応答のstatusを使う', async () => {
     const error = await parseApiError(
       new Response(JSON.stringify({
-        message: '검증 오류',
+        message: '検証エラー',
         status: 412,
         code: 'JOB_POSTING_VERSION_CONFLICT',
       }), { status: 400 }),
-      '기본 오류 메시지',
+      '既定のエラーメッセージ',
     );
 
     expect(error.status).toBe(400);
@@ -436,43 +436,43 @@ describe('parseApiError 응답 구조 검증', () => {
   });
 });
 
-describe('ApiError 생성자와 버전 충돌 호환성', () => {
-  test('기존 두 인자 및 세 인자 생성자는 빈 fieldErrors를 제공한다', () => {
-    const withoutCode = new ApiError('일반 오류', 500);
-    const withCode = new ApiError('검증 오류', 400, 'VALIDATION_ERROR');
+describe('ApiErrorのコンストラクタとバージョン競合の互換性', () => {
+  test('従来の2引数と3引数のコンストラクタは空のfieldErrorsを持つ', () => {
+    const withoutCode = new ApiError('全体のエラー', 500);
+    const withCode = new ApiError('検証エラー', 400, 'VALIDATION_ERROR');
 
     expect(withoutCode).toBeInstanceOf(Error);
     expect(withoutCode).toMatchObject({
       name: 'ApiError',
-      message: '일반 오류',
+      message: '全体のエラー',
       status: 500,
       code: undefined,
       fieldErrors: {},
     });
     expect(withCode).toMatchObject({
       name: 'ApiError',
-      message: '검증 오류',
+      message: '検証エラー',
       status: 400,
       code: 'VALIDATION_ERROR',
       fieldErrors: {},
     });
   });
 
-  test('네 번째 인자로 전달한 필드 오류를 보존한다', () => {
-    const fieldErrors = { title: '제목을 입력해 주세요.' };
-    const error = new ApiError('검증 오류', 400, 'VALIDATION_ERROR', fieldErrors);
+  test('4番目の引数で渡した項目のエラーを保持する', () => {
+    const fieldErrors = { title: 'タイトルを入力してください。' };
+    const error = new ApiError('検証エラー', 400, 'VALIDATION_ERROR', fieldErrors);
 
     expect(error.fieldErrors).toEqual(fieldErrors);
   });
 
   test.each([
-    new ApiError('검증 오류', 400, 'JOB_POSTING_VERSION_CONFLICT'),
-    new ApiError('다른 사전 조건 오류', 412, 'OTHER_ERROR'),
-    new ApiError('코드 없는 오류', 412),
-    new Error('일반 오류'),
+    new ApiError('検証エラー', 400, 'JOB_POSTING_VERSION_CONFLICT'),
+    new ApiError('別の事前条件のエラー', 412, 'OTHER_ERROR'),
+    new ApiError('コードのないエラー', 412),
+    new Error('全体のエラー'),
     { status: 412, code: 'JOB_POSTING_VERSION_CONFLICT' },
     null,
-  ])('기존 조건을 충족하지 않는 오류(%j)는 버전 충돌로 판정하지 않는다', (error) => {
+  ])('従来の条件を満たさないエラー(%j)はバージョン競合と判定しない', (error) => {
     expect(isJobPostingVersionConflict(error)).toBe(false);
   });
 });

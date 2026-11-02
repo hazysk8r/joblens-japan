@@ -164,9 +164,9 @@ class RequestErrorResponseTest {
                 .andExpect(result -> assertInstanceOf(MethodArgumentNotValidException.class,
                         result.getResolvedException()))
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
-                .andExpect(jsonPath("$.message").value("입력값이 올바르지 않습니다."))
+                .andExpect(jsonPath("$.message").value("入力値が正しくありません。"))
                 .andExpect(jsonPath("$.fieldErrors", aMapWithSize(1)))
-                .andExpect(jsonPath("$.fieldErrors.title").value("공고 제목은 필수입니다."));
+                .andExpect(jsonPath("$.fieldErrors.title").value("求人タイトルは必須です。"));
 
         assertEquals(0L, jobPostingRepository.count());
     }
@@ -180,7 +180,7 @@ class RequestErrorResponseTest {
                 .andExpect(result -> assertInstanceOf(MethodArgumentNotValidException.class,
                         result.getResolvedException()))
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
-                .andExpect(jsonPath("$.message").value("입력값이 올바르지 않습니다."))
+                .andExpect(jsonPath("$.message").value("入力値が正しくありません。"))
                 .andExpect(jsonPath("$.fieldErrors", hasKey(parameter)));
     }
 
@@ -193,13 +193,13 @@ class RequestErrorResponseTest {
     private void assertRequestBodyError(ResultActions result, String path) throws Exception {
         result.andExpect(response -> assertInstanceOf(HttpMessageNotReadableException.class,
                 response.getResolvedException()));
-        assertCommonError(result, path, "INVALID_REQUEST_BODY", "요청 본문의 형식이나 값이 올바르지 않습니다.");
+        assertCommonError(result, path, "INVALID_REQUEST_BODY", "リクエスト本文の形式または値が正しくありません。");
     }
 
     private void assertParameterTypeError(ResultActions result, String path) throws Exception {
         result.andExpect(response -> assertInstanceOf(MethodArgumentTypeMismatchException.class,
                 response.getResolvedException()));
-        assertCommonError(result, path, "INVALID_PARAMETER_TYPE", "요청 경로나 검색 조건의 값이 올바르지 않습니다.");
+        assertCommonError(result, path, "INVALID_PARAMETER_TYPE", "リクエストのパスまたは検索条件の値が正しくありません。");
     }
 
     private void assertCommonError(ResultActions result, String path, String code, String message) throws Exception {

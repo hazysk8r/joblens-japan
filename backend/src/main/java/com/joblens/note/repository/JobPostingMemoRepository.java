@@ -11,6 +11,6 @@ public interface JobPostingMemoRepository extends JpaRepository<JobPostingMemo, 
   List<JobPostingMemo>
     findByJobPosting_IdOrderByUpdatedAtDescIdDesc(Long jobPostingId);
 
-  // Optional 사용 이유: memoId + jobPostingId 조합이 존재하지 않을 가능성이 있기 때문 + 단건 조회
+  // Optionalを使う理由: memoIdとjobPostingIdの組み合わせが存在しない可能性があり、単件取得でもあるため
   Optional<JobPostingMemo> findByIdAndJobPosting_Id(Long memoId, Long jobPostingId);
 }

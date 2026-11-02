@@ -91,7 +91,7 @@ async function submitSignup() {
 }
 
 describe('ログインが回数制限で拒否された場合', () => {
-  test('429를 받으면 Nginx의 메시지를 표시하고, 로그인 화면에 머물며, /me로 다시 확인하지 않는다', async () => {
+  test('429を受けるとNginxのメッセージを表示し、ログイン画面に留まり、/meで再確認しない', async () => {
     document.cookie = 'XSRF-TOKEN=token-1; path=/';
     stubServer('/api/auth/login', () => rateLimitedResponse('/api/auth/login'));
 
@@ -108,7 +108,7 @@ describe('ログインが回数制限で拒否された場合', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'ログイン' })).toBeEnabled());
   });
 
-  test('429 본문이 JSON이 아니어도 기본 메시지를 표시하고 화면이 멈추지 않는다', async () => {
+  test('429の本文がJSONでなくても既定のメッセージを表示し、画面が止まらない', async () => {
     document.cookie = 'XSRF-TOKEN=token-1; path=/';
     // Nginxの設定ミスなどで、既定のHTMLのエラーページが返った場合。
     stubServer('/api/auth/login', () => new Response('<html><body>429 Too Many Requests</body></html>', {
@@ -118,14 +118,14 @@ describe('ログインが回数制限で拒否された場合', () => {
 
     await submitLogin();
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('로그인에 실패했습니다.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('ログインに失敗しました。');
     expect(screen.getByTestId('location').textContent).toBe('/login');
     expect(callsTo('/api/auth/me')).toBe(1);
   });
 });
 
 describe('会員登録が回数制限で拒否された場合', () => {
-  test('429를 받으면 Nginx의 메시지를 표시하고, 입력한 비밀번호를 유지하며, /me로 다시 확인하지 않는다', async () => {
+  test('429を受けるとNginxのメッセージを表示し、入力したパスワードを維持し、/meで再確認しない', async () => {
     document.cookie = 'XSRF-TOKEN=token-1; path=/';
     stubServer('/api/auth/signup', () => rateLimitedResponse('/api/auth/signup'));
 

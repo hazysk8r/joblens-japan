@@ -21,7 +21,7 @@ public @interface MaxUtf8Bytes {
 
     int value();
 
-    String message() default "입력값이 너무 깁니다.";
+    String message() default "入力値が長すぎます。";
 
     Class<?>[] groups() default {};
 

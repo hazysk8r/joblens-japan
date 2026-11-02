@@ -21,7 +21,7 @@ afterEach(() => {
 });
 
 describe('通知を送る', () => {
-  test('localStorage에 매번 다른 무작위 값을 쓰고, 사용자 정보는 쓰지 않는다', () => {
+  test('localStorageに毎回異なるランダムな値を書き、ユーザー情報は書かない', () => {
     notifyAuthChanged();
     const first = localStorage.getItem(KEY);
     notifyAuthChanged();
@@ -35,7 +35,7 @@ describe('通知を送る', () => {
     expect(second).not.toContain('@');
   });
 
-  test('localStorage를 쓸 수 없어도 예외를 던지지 않는다', () => {
+  test('localStorageを使えなくても例外を投げない', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new DOMException('denied', 'SecurityError');
     });
@@ -45,7 +45,7 @@ describe('通知を送る', () => {
 });
 
 describe('通知を受け取る', () => {
-  test('다른 탭이 같은 키에 값을 쓰면 알림을 받는다', () => {
+  test('別のタブが同じキーに値を書くと通知を受ける', () => {
     const onChange = vi.fn();
     const unsubscribe = subscribeAuthChanged(onChange);
 
@@ -56,10 +56,10 @@ describe('通知を受け取る', () => {
   });
 
   test.each([
-    { name: '다른 키', init: { key: 'other-key', newValue: 'abc' } },
-    { name: '키 삭제(newValue가 null)', init: { key: KEY, newValue: null } },
-    { name: 'localStorage.clear()(key가 null)', init: { key: null, newValue: null } },
-  ])('$name: 알림으로 보지 않는다', ({ init }) => {
+    { name: '別のキー', init: { key: 'other-key', newValue: 'abc' } },
+    { name: 'キーの削除(newValueがnull)', init: { key: KEY, newValue: null } },
+    { name: 'localStorage.clear()(keyがnull)', init: { key: null, newValue: null } },
+  ])('$name: 通知として扱わない', ({ init }) => {
     const onChange = vi.fn();
     const unsubscribe = subscribeAuthChanged(onChange);
 
@@ -69,7 +69,7 @@ describe('通知を受け取る', () => {
     unsubscribe();
   });
 
-  test('해제한 뒤에는 알림을 받지 않는다', () => {
+  test('解除した後は通知を受けない', () => {
     const onChange = vi.fn();
     subscribeAuthChanged(onChange)();
 

@@ -33,8 +33,8 @@ public class JobPostingMemoController {
   @PostMapping
   public ResponseEntity<JobPostingMemoResponse> create(
         @AuthenticationPrincipal AuthenticatedUser user,
-        @PathVariable Long jobPostingId, // URL 경로 안에 들어있는 값을 Controller의 변수로 꺼내오기 위함
-        @Valid @RequestBody CreateJobPostingMemoRequest request //@Valid를 사용하여 잘못된 Content는 Controller에서 걸러냄
+        @PathVariable Long jobPostingId, // URLパスの中の値をControllerの変数として取り出すため
+        @Valid @RequestBody CreateJobPostingMemoRequest request // @Validを使い、不正なContentをControllerで弾く
   ) {
     JobPostingMemoResponse response = jobPostingMemoService.create(user.getId(), jobPostingId, request);
 

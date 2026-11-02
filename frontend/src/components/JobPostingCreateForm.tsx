@@ -8,8 +8,8 @@ import { SALARY_OPTIONS } from '../constants/salaryOptions';
 
 interface JobPostingCreateFormProps {
   /**
-   * 등록 성공 후 부모 컴포넌트의 목록을
-   * 다시 불러오기 위해 호출한다.
+   * 登録成功後に親コンポーネントの一覧を
+   * 再取得するために呼び出す。
    */
   onCreated: () => Promise<void> | void;
 }
@@ -65,7 +65,7 @@ function JobPostingCreateForm({
     try {
       await createJobPosting({
         /*
-         * 선택 입력값은 비어 있을 경우 null로 전달한다.
+         * 任意の入力値は、空の場合にnullとして渡す。
          */
         companyName: companyName.trim() || null,
         title: title.trim(),
@@ -77,7 +77,7 @@ function JobPostingCreateForm({
       });
 
       /*
-       * 등록 성공 후 입력창을 초기화한다.
+       * 登録成功後に入力欄を初期化する。
        */
       setCompanyName('');
       setTitle('');
@@ -87,11 +87,11 @@ function JobPostingCreateForm({
       setSalaryMax(null);
       setApplicationDeadline('');
 
-      setMessage('채용공고가 등록되었습니다.');
+      setMessage('求人を登録しました。');
 
       /*
-       * 부모 컴포넌트에 등록 완료 사실을 전달해
-       * 목록을 다시 조회하게 한다.
+       * 親コンポーネントに登録完了を伝え、
+       * 一覧を再取得させる。
        */
       await onCreated();
     } catch (caughtError) {
@@ -102,7 +102,7 @@ function JobPostingCreateForm({
       const errorMessage =
         caughtError instanceof Error
           ? caughtError.message
-          : '알 수 없는 오류가 발생했습니다.';
+          : '不明なエラーが発生しました。';
 
       setError(errorMessage);
     } finally {
@@ -112,11 +112,11 @@ function JobPostingCreateForm({
 
   return (
     <section className="job-posting-create-form">
-      <h2 >채용공고 등록</h2>
+      <h2 >求人登録</h2>
 
       <form onSubmit={handleSubmit}>
         <div>
-          <label htmlFor="companyName">회사명</label>
+          <label htmlFor="companyName">会社名</label>
           <input
             id="companyName"
             {...getFieldErrorAttributes('companyName')}
@@ -130,7 +130,7 @@ function JobPostingCreateForm({
         </div>
 
         <div>
-          <label htmlFor="title">공고 제목</label>
+          <label htmlFor="title">求人タイトル</label>
           <input
             id="title"
             {...getFieldErrorAttributes('title')}
@@ -145,7 +145,7 @@ function JobPostingCreateForm({
         </div>
 
         <div>
-          <label htmlFor="sourceUrl">공고 URL</label>
+          <label htmlFor="sourceUrl">求人URL</label>
           <input
             id="sourceUrl"
             {...getFieldErrorAttributes('sourceUrl')}
@@ -159,7 +159,7 @@ function JobPostingCreateForm({
         </div>
 
         <div>
-          <label htmlFor="originalText">공고 원문</label>
+          <label htmlFor="originalText">求人原文</label>
           <textarea
             id="originalText"
             {...getFieldErrorAttributes('originalText')}
@@ -173,7 +173,7 @@ function JobPostingCreateForm({
         </div>
 
         <div>
-          <label htmlFor="create-salaryMin">최저 월급</label>
+          <label htmlFor="create-salaryMin">最低月給</label>
           <select
             id="create-salaryMin"
             {...getFieldErrorAttributes('salaryMin')}
@@ -186,7 +186,7 @@ function JobPostingCreateForm({
               );
             }}
           >
-            <option value="">미지정</option>
+            <option value="">指定なし</option>
 
             {SALARY_OPTIONS.map((salary) => (
               <option 
@@ -205,7 +205,7 @@ function JobPostingCreateForm({
         </div>
 
         <div>
-          <label htmlFor="create-salaryMax">최고 월급</label>
+          <label htmlFor="create-salaryMax">最高月給</label>
           <select
             id="create-salaryMax"
             {...getFieldErrorAttributes('salaryMax')}
@@ -218,7 +218,7 @@ function JobPostingCreateForm({
               );
             }}
           >
-            <option value="">미지정</option>
+            <option value="">指定なし</option>
 
             {SALARY_OPTIONS.map((salary) => (
               <option
@@ -251,7 +251,7 @@ function JobPostingCreateForm({
         </div>
 
         <button type="submit" disabled={submitting}>
-          {submitting ? '등록 중...' : '등록'}
+          {submitting ? '登録中…' : '登録'}
         </button>
       </form>
 

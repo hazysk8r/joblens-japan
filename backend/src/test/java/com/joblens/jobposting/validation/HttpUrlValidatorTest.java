@@ -15,7 +15,7 @@ class HttpUrlValidatorTest {
     private final HttpUrlValidator validator = new HttpUrlValidator();
 
     @Test
-    void null은_선택_입력이므로_허용한다() {
+    void nullは任意入力のため許可する() {
         assertTrue(validator.isValid(null, null));
     }
 
@@ -33,7 +33,7 @@ class HttpUrlValidatorTest {
             "https://my_company.example.com/x",
             "https://example.com:8443/x#top",
     })
-    void 브라우저에서_열리는_http와_https_URL은_허용한다(String url) {
+    void ブラウザーで開けるhttpとhttpsのURLは許可する(String url) {
         assertTrue(validator.isValid(url, null));
     }
 
@@ -48,7 +48,7 @@ class HttpUrlValidatorTest {
             "httpx://example.com",
             "https:example.com",
     })
-    void http와_https가_아닌_스킴은_거절한다(String url) {
+    void httpとhttps以外のスキームは拒否する(String url) {
         assertFalse(validator.isValid(url, null));
     }
 
@@ -67,7 +67,7 @@ class HttpUrlValidatorTest {
             "http:\\\\example.com",
             "https://\\example.com",
     })
-    void 호스트를_확인할_수_없는_값은_거절한다(String url) {
+    void ホストを確認できない値は拒否する(String url) {
         assertFalse(validator.isValid(url, null));
     }
 
@@ -85,13 +85,13 @@ class HttpUrlValidatorTest {
             "https://example.com/\u0000",
             "https://example.com/\u007F",
     })
-    void 공백과_제어_문자가_있으면_거절한다(String url) {
+    void 空白と制御文字があれば拒否する(String url) {
         assertFalse(validator.isValid(url, null));
     }
 
     // 正規表現に書き換えると、値の長さの2乗の時間がかかるおそれがある。止まったままにせず、失敗させる。
     @Test
-    void 아주_긴_값도_마지막_문자까지_바로_확인한다() {
+    void とても長い値も最後の文字まですぐ確認する() {
         String longValue = "https://example.com/" + "a".repeat(1024 * 1024) + "\n";
 
         assertFalse(assertTimeoutPreemptively(

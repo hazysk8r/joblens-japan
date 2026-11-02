@@ -38,7 +38,7 @@ vi.mock('../api/jobPostingMemoApi')
 
 describe('skills', () => {
 
-  test('기술이 있는 공고의 기술 스택 보기 버튼을 누르면 기술 스택을 볼 수 있다', async () => {
+  test('技術がある求人で「技術スタックを見る」を押すと技術スタックを見られる', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -72,7 +72,7 @@ describe('skills', () => {
     );
 
     const extractSkills = await screen.findByRole('button', {
-      name: '기술 스택 보기',
+      name: '技術スタックを見る',
     });
     await user.click(extractSkills);
 
@@ -86,7 +86,7 @@ describe('skills', () => {
 
   });
 
-  test('기술이 없는 공고의 경우 기술 스택 보기를 누르면 기술 없음 메시지를 표시한다', async () => {
+  test('技術がない求人で「技術スタックを見る」を押すと技術なしのメッセージを表示する', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -120,7 +120,7 @@ describe('skills', () => {
     );
 
     const extractSkills = await screen.findByRole('button', {
-      name: '기술 스택 보기',
+      name: '技術スタックを見る',
     });
     await user.click(extractSkills);
 
@@ -130,11 +130,11 @@ describe('skills', () => {
         expect.any(AbortSignal),
       );
 
-    await screen.findByText('추출된 기술 스택이 없습니다.');
+    await screen.findByText('抽出された技術スタックはありません。');
 
   })
 
-  test('존재하지 않는 공고의 경우 기술 스택 보기를 누르면 오류 메시지 표시한다', async () => {
+  test('存在しない求人で「技術スタックを見る」を押すとエラーメッセージを表示する', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -149,7 +149,7 @@ describe('skills', () => {
       version: 0,
     };
     vi.mocked(extractRequiredSkills)
-      .mockRejectedValueOnce(new Error('존재하지 않는 공고입니다.'));
+      .mockRejectedValueOnce(new Error('存在しない求人です。'));
 
     const user = userEvent.setup();
     render(
@@ -168,7 +168,7 @@ describe('skills', () => {
     );
 
     const extractSkills = await screen.findByRole('button', {
-      name: '기술 스택 보기',
+      name: '技術スタックを見る',
     });
     await user.click(extractSkills);
 
@@ -178,11 +178,11 @@ describe('skills', () => {
         expect.any(AbortSignal),
       );
 
-    await screen.findByText('존재하지 않는 공고입니다.');
+    await screen.findByText('存在しない求人です。');
 
   })
 
-  test('시스템이 기술 스택 보기 요청을 처리 중일 때는 버튼을 비활성화하고 이중송신을 막는다', async () => {
+  test('技術スタックのリクエストを処理中はボタンを無効にし、二重送信を防ぐ', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -196,7 +196,7 @@ describe('skills', () => {
       applicationDeadline: null,
       version: 0,
     };
-    // 비동기 처리를 위해 resolve 함수를 외부로 추출
+    // 非同期処理のためresolve関数を外に取り出す
     let resolveSkills: (value: string[]) => void = () => { };
     const skillsPromise = new Promise<string[]>((resolve) => {
       resolveSkills = resolve;
@@ -220,12 +220,12 @@ describe('skills', () => {
     );
 
     const extractSkills = await screen.findByRole('button', {
-      name: '기술 스택 보기',
+      name: '技術スタックを見る',
     });
     await user.click(extractSkills);
 
     const loadingButton = await screen.findByRole('button', {
-      name: '처리중...',
+      name: '処理中…',
     });
 
     expect(loadingButton).toBeDisabled();
@@ -234,14 +234,14 @@ describe('skills', () => {
     expect(extractRequiredSkills).toHaveBeenCalledTimes(1);
 
     resolveSkills(['AWS']);
-    // resolveSkill 이후, React가 state를 업데이트해서 화면을 띄우는 작업이 비동기적으로 이어질 수 있음. 
-    // AWS가 화면에 나타날 때 까지 기다림
+    // resolveSkillの後、Reactがstateを更新して画面を表示する処理が非同期に続く場合がある。 
+    // AWSが画面に表示されるまで待つ
     expect(await screen.findByText('AWS')).toBeInTheDocument();
 
 
   })
 
-  test('첫번째 시도에서 실패하더라도 두번째에서 재시도할 수 있다', async () => {
+  test('1回目の試行で失敗しても2回目で再試行できる', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -257,7 +257,7 @@ describe('skills', () => {
     };
 
     vi.mocked(extractRequiredSkills)
-      .mockRejectedValueOnce(new Error('기술 스택 조회에 실패했습니다.'))
+      .mockRejectedValueOnce(new Error('技術スタックの取得に失敗しました。'))
       .mockResolvedValueOnce(['AWS']);
 
     const user = userEvent.setup();
@@ -277,11 +277,11 @@ describe('skills', () => {
     );
 
     const extractSkills = await screen.findByRole('button', {
-      name: '기술 스택 보기',
+      name: '技術スタックを見る',
     });
     await user.click(extractSkills);
 
-    expect(await screen.findByText('기술 스택 조회에 실패했습니다.')).toBeInTheDocument();
+    expect(await screen.findByText('技術スタックの取得に失敗しました。')).toBeInTheDocument();
     expect(extractSkills).toBeEnabled();
 
     await user.click(extractSkills);
@@ -291,7 +291,7 @@ describe('skills', () => {
 
   })
 
-  test('기술 스택 보기를 누르면 기술이 데이터에 남아있고 추가 API호출 없이 데이터를 사용할 수 있다', async () => {
+  test('「技術スタックを見る」を押すと技術がデータに残り、追加のAPI呼び出しなしで使える', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -326,7 +326,7 @@ describe('skills', () => {
     );
 
     const extractedSkills = await screen.findByRole('button', {
-      name: '기술 스택 보기',
+      name: '技術スタックを見る',
     });
     await user.click(extractedSkills);
     expect(await screen.findByText('AWS')).toBeInTheDocument();
@@ -342,7 +342,7 @@ describe('skills', () => {
 
   })
 
-  test('originalText가 변경되면 진행 중인 Skills 요청을 취소한다', async() => {
+  test('originalTextが変更されると進行中のSkillsリクエストを取り消す', async() => {
     const awsRequest = deferred<string[]>();
     const javaRequest = deferred<string[]>();
 
@@ -389,7 +389,7 @@ describe('skills', () => {
     );
 
     const awsSkillsButton = screen.getByRole('button', {
-      name: '기술 스택 보기',
+      name: '技術スタックを見る',
     });
 
     await userEvent.click(awsSkillsButton);
@@ -418,7 +418,7 @@ describe('skills', () => {
     );
 
     const javaSkillsButton = await screen.findByRole('button', {
-      name: '기술 스택 보기',
+      name: '技術スタックを見る',
     });
     expect(javaSkillsButton).toBeEnabled();
 
@@ -440,7 +440,7 @@ describe('skills', () => {
 })
 
 describe('memos', () => {
-  test('등록된 메모 목록이 정상적으로 표시된다.', async () => {
+  test('登録されたメモの一覧が正しく表示される。', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -481,7 +481,7 @@ describe('memos', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: '메모 보기',
+        name: 'メモを見る',
       }),
     );
 
@@ -493,7 +493,7 @@ describe('memos', () => {
     expect(await screen.findByText('面談準備中')).toBeInTheDocument();
   });
 
-  test('메모가 없을 때 메시지로 메모가 없음을 확인할 수 있다.', async () => {
+  test('メモがないとき、メッセージでメモがないことを確認できる。', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -528,7 +528,7 @@ describe('memos', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: '메모 보기',
+        name: 'メモを見る',
       }),
     );
 
@@ -537,10 +537,10 @@ describe('memos', () => {
         1
       );
 
-    expect(await screen.findByText('등록된 메모가 없습니다.')).toBeInTheDocument();
+    expect(await screen.findByText('登録されたメモはありません。')).toBeInTheDocument();
   });
 
-  test('존재하지 않는 공고의 경우 에러 메시지를 표기한다', async () => {
+  test('存在しない求人の場合はエラーメッセージを表示する', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -556,7 +556,7 @@ describe('memos', () => {
     };
 
     vi.mocked(getJobPostingMemos)
-      .mockRejectedValueOnce(new Error('존재하지 않는 공고입니다.'));
+      .mockRejectedValueOnce(new Error('存在しない求人です。'));
 
 
     const user = userEvent.setup();
@@ -577,7 +577,7 @@ describe('memos', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: '메모 보기',
+        name: 'メモを見る',
       }),
     );
 
@@ -586,11 +586,11 @@ describe('memos', () => {
         1
       );
 
-    expect(await screen.findByText('존재하지 않는 공고입니다.')).toBeInTheDocument();
-    expect(screen.queryByText('등록된 메모가 없습니다.')).not.toBeInTheDocument(); // 없어야 하는 요소를 검사할 때는 query 사용(지금 없다면 null을 반환)
+    expect(await screen.findByText('存在しない求人です。')).toBeInTheDocument();
+    expect(screen.queryByText('登録されたメモはありません。')).not.toBeInTheDocument(); // ないはずの要素を調べるときはqueryを使う(今なければnullを返す)
   });
 
-  test('메모를 등록한 후 재조회가 가능하다', async () => {
+  test('メモを登録した後に再取得できる', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -630,20 +630,20 @@ describe('memos', () => {
       />
     );
     await user.click(
-      screen.getByRole('button', { name: '메모 보기' })
+      screen.getByRole('button', { name: 'メモを見る' })
     );
-    // 초기 Get 완료 확인
+    // 初回Getの完了を確認
     expect(
-      await screen.findByText('등록된 메모가 없습니다.'),
+      await screen.findByText('登録されたメモはありません。'),
     ).toBeInTheDocument();
 
     const textArea = screen.getByRole('textbox', {
-      name: '메모내용',
+      name: 'メモ内容',
     });
     await user.type(textArea, '面談準備中');
 
     const writeMemo = await screen.findByRole('button', {
-      name: '등록',
+      name: '登録',
     });
     await user.click(writeMemo);
 
@@ -656,7 +656,7 @@ describe('memos', () => {
     expect(await screen.findByText('面談準備中')).toBeInTheDocument();
   });
 
-  test('메모를 등록한 후 삭제할 수 있다.', async () => {
+  test('メモを登録した後に削除できる。', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -698,12 +698,12 @@ describe('memos', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: '메모 보기',
+        name: 'メモを見る',
       }),
     );
 
     const deleteMemo = await screen.findByRole('button', {
-      name: '메모 삭제',
+      name: 'メモを削除',
     });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     await user.click(deleteMemo);
@@ -713,10 +713,10 @@ describe('memos', () => {
     expect(getJobPostingMemos)
       .toHaveBeenCalledTimes(2);
 
-    expect(await screen.findByText('등록된 메모가 없습니다.')).toBeInTheDocument();
+    expect(await screen.findByText('登録されたメモはありません。')).toBeInTheDocument();
   });
 
-  test('메모 삭제 여부를 묻는 창에서 취소를 누르면 삭제하지 않는다.', async () => {
+  test('メモ削除の確認画面でキャンセルを押すと削除しない。', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -757,12 +757,12 @@ describe('memos', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: '메모 보기',
+        name: 'メモを見る',
       }),
     );
 
     const deleteMemo = await screen.findByRole('button', {
-      name: '메모 삭제',
+      name: 'メモを削除',
     });
     vi.spyOn(window, 'confirm').mockReturnValue(false);
     await user.click(deleteMemo);
@@ -776,7 +776,7 @@ describe('memos', () => {
   });
 
   test(
-    '메모 삭제가 한 번 실패해도 목록과 삭제 버튼을 유지하고 다시 삭제할 수 있다.',
+    'メモの削除が一度失敗しても、一覧と削除ボタンを維持して再度削除できる。',
     async () => {
       const mockContent: JobPosting = {
         id: 1,
@@ -800,7 +800,7 @@ describe('memos', () => {
       };
 
       const errorMessage =
-        '삭제 중 알 수 없는 오류가 발생하였습니다.';
+        '削除中に不明なエラーが発生しました。';
 
       vi.mocked(getJobPostingMemos)
         .mockResolvedValueOnce([mockMemo])
@@ -835,7 +835,7 @@ describe('memos', () => {
       // 最初のメモ取得
       await user.click(
         screen.getByRole('button', {
-          name: '메모 보기',
+          name: 'メモを見る',
         }),
       );
 
@@ -846,7 +846,7 @@ describe('memos', () => {
       // 一次削除失敗
       await user.click(
         screen.getByRole('button', {
-          name: '메모 삭제',
+          name: 'メモを削除',
         }),
       );
 
@@ -860,7 +860,7 @@ describe('memos', () => {
 
       const retryDeleteButton =
         screen.getByRole('button', {
-          name: '메모 삭제',
+          name: 'メモを削除',
         });
 
       expect(retryDeleteButton).toBeEnabled();
@@ -879,7 +879,7 @@ describe('memos', () => {
       expect(deleteJobPostingMemo)
         .toHaveBeenNthCalledWith(2, 1, 1);
 
-      // 삭제 성공 후 최신 Memo 목록 재조회
+      // 削除の成功後に最新のMemo一覧を再取得
       await waitFor(() => {
         expect(getJobPostingMemos)
           .toHaveBeenCalledTimes(2);
@@ -887,13 +887,13 @@ describe('memos', () => {
 
       expect(
         await screen.findByText(
-          '등록된 메모가 없습니다.',
+          '登録されたメモはありません。',
         ),
       ).toBeInTheDocument();
     },
   );
 
-  test('메모를 수정한 후 재조회하여 수정된 내용을 표시한다.', async () => {
+  test('メモを編集した後に再取得し、編集した内容を表示する。', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -947,7 +947,7 @@ describe('memos', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: '메모 보기',
+        name: 'メモを見る',
       }),
     );
 
@@ -958,26 +958,26 @@ describe('memos', () => {
       memoContent.closest('li');
 
     if (!memoListItem) {
-      throw new Error('메모 목록 요소를 찾을 수 없습니다.');
+      throw new Error('メモ一覧の要素が見つかりません。');
     }
 
-    // withinを使う理由は、今の画面にはJobPostingの수정ボタンとMemoの수정ボタンが両方あるから。特定Memoの<li>の中だけ探したほうが安全。
+    // withinを使う理由は、今の画面にはJobPostingの編集ボタンとMemoの編集ボタンが両方あるから。特定Memoの<li>の中だけ探したほうが安全。
     const editButton = within(memoListItem)
       .getByRole('button', {
-        name: '수정',
+        name: '編集',
       });
 
     await user.click(editButton);
 
     const textArea = screen.getByRole('textbox', {
-      name: '메모 수정',
+      name: 'メモを編集',
     });
 
     await user.clear(textArea);
     await user.type(textArea, '面接日程確認済み');
 
     const saveButton = screen.getByRole('button', {
-      name: '저장',
+      name: '保存',
     });
 
     await user.click(saveButton);
@@ -1003,7 +1003,7 @@ describe('memos', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('메모 수정 중 취소하면 수정 API를 호출하지 않는다.', async () => {
+  test('メモの編集中にキャンセルすると編集APIを呼び出さない。', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -1047,7 +1047,7 @@ describe('memos', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: '메모 보기',
+        name: 'メモを見る',
       }),
     );
 
@@ -1058,25 +1058,25 @@ describe('memos', () => {
       memoContent.closest('li');
 
     if (!memoListItem) {
-      throw new Error('메모 목록 요소를 찾을 수 없습니다.');
+      throw new Error('メモ一覧の要素が見つかりません。');
     }
 
     const editButton = within(memoListItem)
       .getByRole('button', {
-        name: '수정',
+        name: '編集',
       });
 
     await user.click(editButton);
 
     const textArea = screen.getByRole('textbox', {
-      name: '메모 수정',
+      name: 'メモを編集',
     });
 
     await user.clear(textArea);
     await user.type(textArea, '変更するつもりだった内容');
 
     const cancelButton = screen.getByRole('button', {
-      name: '취소',
+      name: 'キャンセル',
     });
 
     await user.click(cancelButton);
@@ -1092,7 +1092,7 @@ describe('memos', () => {
     ).toBeInTheDocument();
   });
 
-  test('메모 수정 실패 시 에러를 표시하고 편집 폼과 입력 내용을 유지한다.', async () => {
+  test('メモの編集に失敗するとエラーを表示し、編集フォームと入力内容を維持する。', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -1119,7 +1119,7 @@ describe('memos', () => {
 
     vi.mocked(updateJobPostingMemo)
       .mockRejectedValueOnce(
-        new Error('메모 수정에 실패하였습니다.'),
+        new Error('メモの編集に失敗しました。'),
       );
 
     const user = userEvent.setup();
@@ -1141,7 +1141,7 @@ describe('memos', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: '메모 보기',
+        name: 'メモを見る',
       }),
     );
 
@@ -1152,19 +1152,19 @@ describe('memos', () => {
       memoContent.closest('li');
 
     if (!memoListItem) {
-      throw new Error('메모 목록 요소를 찾을 수 없습니다.');
+      throw new Error('メモ一覧の要素が見つかりません。');
     }
 
     const editButton = within(memoListItem)
       .getByRole('button', {
-        name: '수정',
+        name: '編集',
       });
 
     await user.click(editButton);
 
     const textArea = within(memoListItem)
       .getByRole('textbox', {
-        name: '메모 수정',
+        name: 'メモを編集',
       });
 
     await user.clear(textArea);
@@ -1175,7 +1175,7 @@ describe('memos', () => {
 
     const saveButton = within(memoListItem)
       .getByRole('button', {
-        name: '저장',
+        name: '保存',
       });
 
     await user.click(saveButton);
@@ -1191,13 +1191,13 @@ describe('memos', () => {
 
     expect(
       await screen.findByText(
-        '메모 수정에 실패하였습니다.',
+        'メモの編集に失敗しました。',
       ),
     ).toBeInTheDocument();
 
     const remainingTextArea =
       screen.getByRole('textbox', {
-        name: '메모 수정',
+        name: 'メモを編集',
       });
 
     expect(remainingTextArea)
@@ -1207,7 +1207,7 @@ describe('memos', () => {
       .toHaveBeenCalledTimes(1);
   });
 
-  test('처음 화면에 구인공고가 표시될 때는 메모API를 호출하지 않는다.', () => {
+  test('最初に求人が表示されるときはメモAPIを呼び出さない。', () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -1254,7 +1254,7 @@ describe('memos', () => {
 
   });
 
-  test('메모 보기 버튼을 눌렀다가, 닫고 다시 눌러도 GET 호출은 최종적으로 1번이다', async () => {
+  test('「メモを見る」を押して閉じ、また押してもGETの呼び出しは最終的に1回である', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -1297,7 +1297,7 @@ describe('memos', () => {
 
     const toggleButton =
       screen.getByRole('button', {
-        name: '메모 보기',
+        name: 'メモを見る',
       });
 
     await user.click(toggleButton);
@@ -1314,7 +1314,7 @@ describe('memos', () => {
 
   });
 
-  test('메모 보기 버튼을 눌렀을 때, 첫번째 시도에서 실패하더라도 두번째에서 재시도할 수 있다.', async () => {
+  test('「メモを見る」を押したとき、1回目の試行で失敗しても2回目で再試行できる。', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -1336,7 +1336,7 @@ describe('memos', () => {
     };
 
     vi.mocked(getJobPostingMemos)
-      .mockRejectedValueOnce(new Error('메모 조회에 실패하였습니다.'))
+      .mockRejectedValueOnce(new Error('メモの取得に失敗しました。'))
       .mockResolvedValueOnce([mockMemo]);
 
     const user = userEvent.setup();
@@ -1358,11 +1358,11 @@ describe('memos', () => {
 
     const toggleButton =
       screen.getByRole('button', {
-        name: '메모 보기',
+        name: 'メモを見る',
       });
 
     await user.click(toggleButton);
-    expect(await screen.findByText('메모 조회에 실패하였습니다.')).toBeInTheDocument();
+    expect(await screen.findByText('メモの取得に失敗しました。')).toBeInTheDocument();
 
     await user.click(toggleButton);
     expect(screen.queryByText('面談準備中')).not.toBeInTheDocument();
@@ -1371,7 +1371,7 @@ describe('memos', () => {
     expect(await screen.findByText('面談準備中')).toBeInTheDocument();
 
     expect(
-      screen.queryByText('메모 조회에 실패하였습니다.')
+      screen.queryByText('メモの取得に失敗しました。')
     ).not.toBeInTheDocument();
 
     expect(getJobPostingMemos)
@@ -1379,7 +1379,7 @@ describe('memos', () => {
 
   });
 
-  test('메모 토글 시 aria-expanded 상태가 변경된다', async () => {
+  test('メモの切り替えでaria-expandedの状態が変わる', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -1422,7 +1422,7 @@ describe('memos', () => {
 
     const toggleButton =
       screen.getByRole('button', {
-        name: '메모 보기',
+        name: 'メモを見る',
       });
     expect(toggleButton).toHaveAttribute('aria-expanded', 'false');
 
@@ -1439,7 +1439,7 @@ describe('memos', () => {
       .toHaveBeenCalledTimes(1);
   });
 
-  test('메모 토글 버튼의 aria-controls가 메모 영역을 가리킨다', async () => {
+  test('メモの切り替えボタンのaria-controlsがメモの領域を指す', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -1482,7 +1482,7 @@ describe('memos', () => {
 
     const toggleButton =
       screen.getByRole('button', {
-        name: '메모 보기',
+        name: 'メモを見る',
       });
     expect(toggleButton).toHaveAttribute('aria-controls', 'job-posting-memos-1');
 
@@ -1490,7 +1490,7 @@ describe('memos', () => {
       'job-posting-memos-1',
     );
     if (!memoRegion) {
-      throw new Error('메모 영역을 찾을 수 없습니다.');
+      throw new Error('メモの領域が見つかりません。');
     }
     expect(memoRegion).toHaveAttribute('hidden');
 
@@ -1505,7 +1505,7 @@ describe('memos', () => {
   });
 
   test(
-    '다른 메모 편집 중 이전 저장 요청이 완료되어도 현재 편집 상태를 유지한다',
+    '別のメモの編集中に以前の保存リクエストが完了しても、現在の編集状態を維持する',
     async () => {
       const mockContent: JobPosting = {
         id: 1,
@@ -1583,7 +1583,7 @@ describe('memos', () => {
 
       await user.click(
         screen.getByRole('button', {
-          name: '메모 보기',
+          name: 'メモを見る',
         }),
       );
 
@@ -1601,7 +1601,7 @@ describe('memos', () => {
 
       if (!memoAItem || !memoBItem) {
         throw new Error(
-          '메모 목록 요소를 찾을 수 없습니다.',
+          'メモ一覧の要素が見つかりません。',
         );
       }
 
@@ -1610,7 +1610,7 @@ describe('memos', () => {
         within(memoAItem).getByRole(
           'button',
           {
-            name: '수정',
+            name: '編集',
           },
         ),
       );
@@ -1619,7 +1619,7 @@ describe('memos', () => {
         within(memoAItem).getByRole(
           'textbox',
           {
-            name: '메모 수정',
+            name: 'メモを編集',
           },
         );
 
@@ -1636,7 +1636,7 @@ describe('memos', () => {
         within(memoAItem).getByRole(
           'button',
           {
-            name: '저장',
+            name: '保存',
           },
         ),
       );
@@ -1655,7 +1655,7 @@ describe('memos', () => {
         within(memoBItem).getByRole(
           'button',
           {
-            name: '수정',
+            name: '編集',
           },
         ),
       );
@@ -1664,7 +1664,7 @@ describe('memos', () => {
         within(memoBItem).getByRole(
           'textbox',
           {
-            name: '메모 수정',
+            name: 'メモを編集',
           },
         ),
       ).toHaveValue(
@@ -1687,7 +1687,7 @@ describe('memos', () => {
         screen.getByRole(
           'textbox',
           {
-            name: '메모 수정',
+            name: 'メモを編集',
           },
         ),
       ).toHaveValue(
@@ -1952,7 +1952,7 @@ describe('status', () => {
 
       await user.selectOptions(
         screen.getByRole('combobox', {
-          name: '지원 상태:',
+          name: '応募ステータス:',
         }),
         'INTERVIEWING',
       );
@@ -2055,7 +2055,7 @@ describe('status', () => {
 
       await user.selectOptions(
         screen.getByRole('combobox', {
-          name: '지원 상태:',
+          name: '応募ステータス:',
         }),
         'INTERVIEWING',
       );
@@ -2116,7 +2116,7 @@ describe('status', () => {
 
       await user.selectOptions(
         screen.getByRole('combobox', {
-          name: '지원 상태:',
+          name: '応募ステータス:',
         }),
         'INTERVIEWING',
       );
@@ -2137,7 +2137,7 @@ describe('status', () => {
   );
 })
 
-describe('공고 원문 링크', () => {
+describe('求人原文のリンク', () => {
   const renderWithSourceUrl = async (sourceUrl: string | null) => {
     const jobPosting: JobPosting = {
       id: 1,
@@ -2168,13 +2168,13 @@ describe('공고 원문 링크', () => {
       />
     );
 
-    await screen.findByRole('button', { name: '기술 스택 보기' });
+    await screen.findByRole('button', { name: '技術スタックを見る' });
   };
 
-  test('http와 https URL은 새 탭으로 여는 링크로 표시한다', async () => {
+  test('httpとhttpsのURLは新しいタブで開くリンクとして表示する', async () => {
     await renderWithSourceUrl('https://example.com/jobs/1');
 
-    const link = screen.getByRole('link', { name: '원문 보기' });
+    const link = screen.getByRole('link', { name: '原文を見る' });
     expect(link).toHaveAttribute('href', 'https://example.com/jobs/1');
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noreferrer');
@@ -2186,16 +2186,16 @@ describe('공고 원문 링크', () => {
     'data:text/html,<script>alert(1)</script>',
     'www.example.com',
     'ftp://example.com/x',
-  ])('저장된 값이 %s이면 링크를 표시하지 않는다', async (sourceUrl) => {
+  ])('保存された値が%sならリンクを表示しない', async (sourceUrl) => {
     await renderWithSourceUrl(sourceUrl);
 
-    expect(screen.queryByRole('link', { name: '원문 보기' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '原文を見る' })).not.toBeInTheDocument();
     expect(screen.getByText('AWSエンジニア求人')).toBeInTheDocument();
   });
 
-  test('URL이 없으면 링크를 표시하지 않는다', async () => {
+  test('URLがなければリンクを表示しない', async () => {
     await renderWithSourceUrl(null);
 
-    expect(screen.queryByRole('link', { name: '원문 보기' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '原文を見る' })).not.toBeInTheDocument();
   });
 });

@@ -51,7 +51,7 @@ export class CsrfTokenUnavailableError extends Error {
  */
 export class AuthContextChangedError extends Error {
   constructor() {
-    super('로그인 상태가 바뀌어 요청을 중단했습니다.');
+    super('ログイン状態が変わったため、リクエストを中止しました。');
     this.name = 'AuthContextChangedError';
   }
 }

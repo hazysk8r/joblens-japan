@@ -12,10 +12,10 @@ import jakarta.validation.constraints.PositiveOrZero;
 @ValidSalaryRange
 public record JobPostingSalaryFilterRequest(
 
-  @PositiveOrZero
+  @PositiveOrZero(message = "最低月給は0以上で入力してください。")
   Integer salaryMin,
 
-  @PositiveOrZero
+  @PositiveOrZero(message = "最高月給は0以上で入力してください。")
   Integer salaryMax
 
 ) implements SalaryRangeTarget{

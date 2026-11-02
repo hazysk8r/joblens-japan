@@ -4,7 +4,7 @@ public class JobPostingMemoNotFoundException extends RuntimeException {
 
   public JobPostingMemoNotFoundException(Long memoId, Long jobPostingId) {
     super(
-        "메모를 찾을 수 없습니다. memoId="
+        "メモが見つかりません。memoId="
             + memoId
             + ", jobPostingId="
             + jobPostingId);

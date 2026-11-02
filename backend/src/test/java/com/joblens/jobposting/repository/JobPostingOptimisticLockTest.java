@@ -44,7 +44,7 @@ class JobPostingOptimisticLockTest {
   }
 
   @Test
-  void 동일한_version으로_조회한_두_transaction이_데이터를_수정하면_두번째_flush에서_낙관적_락_예외가_발생한다() {
+  void 同じversionで取得した2つのtransactionがデータを編集すると2回目のflushで楽観ロックの例外が起きる() {
     JobPosting saved = jobPostingRepository.saveAndFlush(
         new JobPosting(
             ownerId,

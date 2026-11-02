@@ -17,12 +17,12 @@ vi.mock('../api/jobPostingApi');
 vi.mock('../api/jobPostingMemoApi');
 
 const fields = [
-  ['companyName', '회사명'],
-  ['title', '공고 제목'],
-  ['sourceUrl', '공고 URL'],
-  ['originalText', '공고 원문'],
-  ['salaryMin', '최저 월급'],
-  ['salaryMax', '최고 월급'],
+  ['companyName', '会社名'],
+  ['title', '求人タイトル'],
+  ['sourceUrl', '求人URL'],
+  ['originalText', '求人原文'],
+  ['salaryMin', '最低月給'],
+  ['salaryMax', '最高月給'],
   ['applicationDeadline', '締切日'],
 ] as const;
 
@@ -84,15 +84,15 @@ async function renderPostings(...postings: JobPosting[]) {
 }
 
 async function startEdit(user: ReturnType<typeof userEvent.setup>, card: HTMLElement) {
-  await user.click(within(card).getByRole('button', { name: '수정' }));
+  await user.click(within(card).getByRole('button', { name: '編集' }));
 }
 
 async function submit(user: ReturnType<typeof userEvent.setup>, card: HTMLElement) {
-  await user.click(within(card).getByRole('button', { name: '저장' }));
+  await user.click(within(card).getByRole('button', { name: '保存' }));
 }
 
 async function replaceTitle(user: ReturnType<typeof userEvent.setup>, card: HTMLElement, title: string) {
-  const input = within(card).getByRole('textbox', { name: '공고 제목' });
+  const input = within(card).getByRole('textbox', { name: '求人タイトル' });
   await user.clear(input);
   await user.type(input, title);
 }
@@ -134,7 +134,7 @@ describe('編集フォームのフィールドエラー', () => {
       expect(input).toHaveAccessibleDescription(errors[field]);
     }
     expect(fetchJobPostings).toHaveBeenCalledTimes(1);
-    expect(within(card).getByRole('button', { name: '저장' })).toBeEnabled();
+    expect(within(card).getByRole('button', { name: '保存' })).toBeEnabled();
   });
 
   test.each<{ name: string; errors: Record<string, string> }>([
@@ -151,9 +151,9 @@ describe('編集フォームのフィールドエラー', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('入力内容を確認してください。');
     expect(screen.queryByText('未対応のフィールドエラー')).not.toBeInTheDocument();
     if (errors.title) {
-      expect(within(card).getByLabelText('공고 제목')).toHaveAccessibleDescription(errors.title);
+      expect(within(card).getByLabelText('求人タイトル')).toHaveAccessibleDescription(errors.title);
     } else {
-      expect(within(card).getByLabelText('공고 제목')).not.toHaveAttribute('aria-invalid');
+      expect(within(card).getByLabelText('求人タイトル')).not.toHaveAttribute('aria-invalid');
     }
   });
 
@@ -170,7 +170,7 @@ describe('編集フォームのフィールドエラー', () => {
     await submit(user, card);
 
     expect(await screen.findByRole('alert')).toHaveTextContent(message);
-    expect(within(card).getByLabelText('공고 제목')).toHaveValue('保持する編集内容');
+    expect(within(card).getByLabelText('求人タイトル')).toHaveValue('保持する編集内容');
     for (const [, label] of fields) {
       expect(within(card).getByLabelText(label)).not.toHaveAttribute('aria-invalid');
       expect(within(card).getByLabelText(label)).not.toHaveAttribute('aria-describedby');
@@ -191,11 +191,11 @@ describe('編集フォームのフィールドエラー', () => {
     await screen.findByText('旧タイトルエラー');
 
     await replaceTitle(user, card, '再保存するタイトル');
-    await user.selectOptions(within(card).getByLabelText('최저 월급'), '350000');
-    expect(within(card).getByLabelText('공고 제목')).toHaveAccessibleDescription('旧タイトルエラー');
-    expect(within(card).getByLabelText('최저 월급')).toHaveAccessibleDescription('旧最低給与エラー');
+    await user.selectOptions(within(card).getByLabelText('最低月給'), '350000');
+    expect(within(card).getByLabelText('求人タイトル')).toHaveAccessibleDescription('旧タイトルエラー');
+    expect(within(card).getByLabelText('最低月給')).toHaveAccessibleDescription('旧最低給与エラー');
     await submit(user, card);
-    expect(within(card).getByRole('button', { name: '저장 중...' })).toBeDisabled();
+    expect(within(card).getByRole('button', { name: '保存中…' })).toBeDisabled();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.queryByText('旧タイトルエラー')).not.toBeInTheDocument();
     for (const [, label] of fields) {
@@ -205,15 +205,15 @@ describe('編集フォームのフィールドエラー', () => {
 
     await act(async () => retry.reject(validationError({ salaryMax: '新しい最高給与エラー' }, '二回目の検証エラー')));
     expect(screen.getByRole('alert')).toHaveTextContent('二回目の検証エラー');
-    expect(within(card).getByLabelText('최고 월급')).toHaveAccessibleDescription('新しい最高給与エラー');
-    expect(within(card).getByLabelText('공고 제목')).not.toHaveAttribute('aria-invalid');
-    expect(within(card).getByLabelText('최저 월급')).not.toHaveAttribute('aria-invalid');
-    expect(within(card).getByLabelText('공고 제목')).toHaveValue('再保存するタイトル');
-    expect(within(card).getByLabelText('최저 월급')).toHaveValue('350000');
-    expect(within(card).getByLabelText('최고 월급')).toHaveValue('500000');
-    expect(within(card).getByLabelText('회사명')).toHaveValue(postingA.companyName);
-    expect(within(card).getByLabelText('공고 URL')).toHaveValue(postingA.sourceUrl);
-    expect(within(card).getByLabelText('공고 원문')).toHaveValue(postingA.originalText);
+    expect(within(card).getByLabelText('最高月給')).toHaveAccessibleDescription('新しい最高給与エラー');
+    expect(within(card).getByLabelText('求人タイトル')).not.toHaveAttribute('aria-invalid');
+    expect(within(card).getByLabelText('最低月給')).not.toHaveAttribute('aria-invalid');
+    expect(within(card).getByLabelText('求人タイトル')).toHaveValue('再保存するタイトル');
+    expect(within(card).getByLabelText('最低月給')).toHaveValue('350000');
+    expect(within(card).getByLabelText('最高月給')).toHaveValue('500000');
+    expect(within(card).getByLabelText('会社名')).toHaveValue(postingA.companyName);
+    expect(within(card).getByLabelText('求人URL')).toHaveValue(postingA.sourceUrl);
+    expect(within(card).getByLabelText('求人原文')).toHaveValue(postingA.originalText);
     expect(within(card).getByLabelText('締切日')).toHaveValue(postingA.applicationDeadline);
     expect(updateJobPosting).toHaveBeenLastCalledWith(
       postingA.id, expect.objectContaining({ title: '再保存するタイトル', salaryMin: 350000 }), postingA.version,
@@ -230,14 +230,14 @@ describe('編集フォームのフィールドエラー', () => {
     await startEdit(user, cardA);
     await submit(user, cardA);
     await screen.findByText('引き継がないエラー');
-    await user.click(within(cardA).getByRole('button', { name: '취소' }));
+    await user.click(within(cardA).getByRole('button', { name: 'キャンセル' }));
     await startEdit(user, cardA);
-    expect(within(cardA).getByLabelText('공고 제목')).not.toHaveAttribute('aria-invalid');
+    expect(within(cardA).getByLabelText('求人タイトル')).not.toHaveAttribute('aria-invalid');
     expect(screen.queryByText('引き継がないエラー')).not.toBeInTheDocument();
     await submit(user, cardA);
     await screen.findByText('引き継がないエラー');
     await startEdit(user, cardB);
-    expect(within(cardB).getByLabelText('공고 제목')).not.toHaveAttribute('aria-invalid');
+    expect(within(cardB).getByLabelText('求人タイトル')).not.toHaveAttribute('aria-invalid');
     expect(screen.queryByText('引き継がないエラー')).not.toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
@@ -261,11 +261,11 @@ describe('編集フォームのフィールドエラー', () => {
     await screen.findByText('現在のタイトルエラー');
 
     await act(async () => oldSave.reject(validationError({ salaryMax: '古い最高給与エラー' }, '古い検証エラー')));
-    expect(within(currentCard).getByLabelText('공고 제목')).toHaveAccessibleDescription('現在のタイトルエラー');
-    expect(within(currentCard).getByLabelText('공고 제목')).toHaveValue('現在のセッションの下書き');
+    expect(within(currentCard).getByLabelText('求人タイトル')).toHaveAccessibleDescription('現在のタイトルエラー');
+    expect(within(currentCard).getByLabelText('求人タイトル')).toHaveValue('現在のセッションの下書き');
     expect(screen.getByRole('alert')).toHaveTextContent('現在の検証エラー');
     expect(screen.queryByText('古い最高給与エラー')).not.toBeInTheDocument();
-    expect(within(currentCard).getByRole('button', { name: '저장' })).toBeEnabled();
+    expect(within(currentCard).getByRole('button', { name: '保存' })).toBeEnabled();
     expect(fetchJobPostings).toHaveBeenCalledTimes(1);
   });
 
@@ -291,10 +291,10 @@ describe('編集フォームのフィールドエラー', () => {
       if (outcome === '成功') oldSave.resolve({ ...postingA, version: 4 });
       else oldSave.reject(conflict());
     });
-    expect(within(cardA).getByLabelText('공고 제목')).toHaveValue('新Aの入力内容');
-    expect(within(cardA).getByLabelText('공고 제목')).toHaveAccessibleDescription('新Aのタイトルエラー');
+    expect(within(cardA).getByLabelText('求人タイトル')).toHaveValue('新Aの入力内容');
+    expect(within(cardA).getByLabelText('求人タイトル')).toHaveAccessibleDescription('新Aのタイトルエラー');
     expect(screen.getByRole('alert')).toHaveTextContent('新Aの検証エラー');
-    expect(within(cardA).getByRole('button', { name: '저장' })).toBeEnabled();
+    expect(within(cardA).getByRole('button', { name: '保存' })).toBeEnabled();
     expect(updateJobPosting).toHaveBeenCalledTimes(2);
   });
 
@@ -318,8 +318,8 @@ describe('編集フォームのフィールドエラー', () => {
     await submit(user, cardA);
     await act(async () => oldSave.reject(validationError({ title: '古い応答のエラー' })));
 
-    expect(within(cardA).getByRole('button', { name: '저장 중...' })).toBeDisabled();
-    expect(within(cardA).getByLabelText('공고 제목')).toBeDisabled();
+    expect(within(cardA).getByRole('button', { name: '保存中…' })).toBeDisabled();
+    expect(within(cardA).getByLabelText('求人タイトル')).toBeDisabled();
     expect(screen.queryByText('古い応答のエラー')).not.toBeInTheDocument();
     expect(screen.queryByText('再保存前のエラー')).not.toBeInTheDocument();
     await act(async () => currentSave.resolve({ ...postingA, version: 4 }));
@@ -340,14 +340,14 @@ describe('編集フォームのフィールドエラー', () => {
     await submit(user, card);
 
     await waitFor(() => expect(fetchJobPostings).toHaveBeenCalledTimes(2));
-    expect(within(card).queryByRole('textbox', { name: '공고 제목' })).not.toBeInTheDocument();
+    expect(within(card).queryByRole('textbox', { name: '求人タイトル' })).not.toBeInTheDocument();
     expect(screen.queryByText('復旧時に消去するエラー')).not.toBeInTheDocument();
-    expect(within(card).getByRole('button', { name: '수정' })).toBeDisabled();
-    expect(screen.getByRole('alert')).toHaveTextContent('다른 화면에서 채용공고가 수정되었습니다.');
+    expect(within(card).getByRole('button', { name: '編集' })).toBeDisabled();
+    expect(screen.getByRole('alert')).toHaveTextContent('別の画面で求人が編集されました。');
     await act(async () => recovery.resolve(pageOf({ ...postingA, version: 9 })));
     expect(updateJobPosting).toHaveBeenCalledTimes(2);
     await startEdit(user, card);
-    expect(within(card).getByLabelText('공고 제목')).not.toHaveAttribute('aria-invalid');
+    expect(within(card).getByLabelText('求人タイトル')).not.toHaveAttribute('aria-invalid');
     await submit(user, card);
     expect(updateJobPosting).toHaveBeenLastCalledWith(postingA.id, expect.any(Object), 9);
   });
@@ -366,7 +366,7 @@ describe('編集フォームのフィールドエラー', () => {
     await submit(user, card);
 
     expect(await screen.findByRole('heading', { name: '更新済みの求人', level: 2 })).toBeInTheDocument();
-    expect(screen.queryByRole('textbox', { name: '공고 제목' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: '求人タイトル' })).not.toBeInTheDocument();
     expect(screen.queryByText('成功時に消去するエラー')).not.toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(fetchJobPostings).toHaveBeenCalledTimes(2);
@@ -381,9 +381,9 @@ describe('編集フォームのフィールドエラー', () => {
     await submit(user, card);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('一覧の更新に失敗しました。');
-    expect(screen.queryByRole('textbox', { name: '공고 제목' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: '求人タイトル' })).not.toBeInTheDocument();
     expect(screen.queryByText('一覧APIのフィールド情報')).not.toBeInTheDocument();
     await startEdit(user, card);
-    expect(within(card).getByLabelText('공고 제목')).not.toHaveAttribute('aria-invalid');
+    expect(within(card).getByLabelText('求人タイトル')).not.toHaveAttribute('aria-invalid');
   });
 });

@@ -162,26 +162,26 @@ class ExpectedUserCheckTest {
     // ユーザーBのデータを変更するすべてのリクエスト。
     private MockHttpServletRequestBuilder stateChangingRequest(String name) {
         return switch (name) {
-            case "공고 등록" -> post("/api/job-postings")
+            case "求人の登録" -> post("/api/job-postings")
                     .contentType(MediaType.APPLICATION_JSON).content(POSTING_BODY);
-            case "공고 수정" -> put("/api/job-postings/{id}", postingId)
+            case "求人の編集" -> put("/api/job-postings/{id}", postingId)
                     .header(HttpHeaders.IF_MATCH, "\"0\"")
                     .contentType(MediaType.APPLICATION_JSON).content(POSTING_BODY);
-            case "지원 상태 변경" -> patch("/api/job-postings/{id}/status", postingId)
+            case "応募ステータスの変更" -> patch("/api/job-postings/{id}/status", postingId)
                     .header(HttpHeaders.IF_MATCH, "\"0\"")
                     .contentType(MediaType.APPLICATION_JSON).content(STATUS_BODY);
-            case "공고 삭제" -> delete("/api/job-postings/{id}", postingId);
-            case "메모 등록" -> post("/api/job-postings/{id}/notes", postingId)
+            case "求人の削除" -> delete("/api/job-postings/{id}", postingId);
+            case "メモの登録" -> post("/api/job-postings/{id}/notes", postingId)
                     .contentType(MediaType.APPLICATION_JSON).content(MEMO_BODY);
-            case "메모 수정" -> put("/api/job-postings/{id}/notes/{memoId}", postingId, memoId)
+            case "メモの編集" -> put("/api/job-postings/{id}/notes/{memoId}", postingId, memoId)
                     .contentType(MediaType.APPLICATION_JSON).content(MEMO_BODY);
-            case "메모 삭제" -> delete("/api/job-postings/{id}/notes/{memoId}", postingId, memoId);
+            case "メモの削除" -> delete("/api/job-postings/{id}/notes/{memoId}", postingId, memoId);
             default -> throw new IllegalArgumentException(name);
         };
     }
 
     static Stream<Arguments> stateChangingRequests() {
-        return Stream.of("공고 등록", "공고 수정", "지원 상태 변경", "공고 삭제", "메모 등록", "메모 수정", "메모 삭제")
+        return Stream.of("求人の登録", "求人の編集", "応募ステータスの変更", "求人の削除", "メモの登録", "メモの編集", "メモの削除")
                 .map(Arguments::of);
     }
 
@@ -189,7 +189,7 @@ class ExpectedUserCheckTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("stateChangingRequests")
-    void 예상_사용자가_세션_사용자와_다르면_409를_반환하고_데이터를_바꾸지_않는다(String name) throws Exception {
+    void 想定ユーザーがセッションのユーザーと違うと_409を返しデータを変えない(String name) throws Exception {
         List<Map<String, Object>> before = snapshot();
 
         mockMvc.perform(as(userB, stateChangingRequest(name))
@@ -201,10 +201,10 @@ class ExpectedUserCheckTest {
     }
 
     @Test
-    void 예상_사용자_헤더가_숫자가_아니면_409를_반환하고_데이터를_바꾸지_않는다() throws Exception {
+    void 想定ユーザーのヘッダーが数値でないと_409を返しデータを変えない() throws Exception {
         List<Map<String, Object>> before = snapshot();
 
-        mockMvc.perform(as(userB, stateChangingRequest("공고 등록"))
+        mockMvc.perform(as(userB, stateChangingRequest("求人の登録"))
                         .header(EXPECTED_USER_HEADER, "not-a-number"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("AUTH_CONTEXT_CHANGED"));
@@ -216,20 +216,20 @@ class ExpectedUserCheckTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("stateChangingRequests")
-    void 예상_사용자가_세션_사용자와_같으면_정상적으로_처리한다(String name) throws Exception {
+    void 想定ユーザーがセッションのユーザーと同じなら正しく処理する(String name) throws Exception {
         mockMvc.perform(as(userB, stateChangingRequest(name))
                         .header(EXPECTED_USER_HEADER, String.valueOf(userB.id())))
                 .andExpect(status().is2xxSuccessful());
     }
 
     @Test
-    void 예상_사용자_헤더가_없으면_기존처럼_처리한다() throws Exception {
-        mockMvc.perform(as(userB, stateChangingRequest("공고 등록")))
+    void 想定ユーザーのヘッダーがなければ従来どおり処理する() throws Exception {
+        mockMvc.perform(as(userB, stateChangingRequest("求人の登録")))
                 .andExpect(status().isCreated());
     }
 
     @Test
-    void 조회_요청은_예상_사용자가_달라도_검사하지_않는다() throws Exception {
+    void 取得リクエストは想定ユーザーが違っても検査しない() throws Exception {
         // 照会はデータを変更せず、結果は新しい画面に渡る前にフロントエンドで破棄される。
         mockMvc.perform(as(userB, get("/api/job-postings/{id}", postingId))
                         .header(EXPECTED_USER_HEADER, String.valueOf(userA.id())))
@@ -237,7 +237,7 @@ class ExpectedUserCheckTest {
     }
 
     @Test
-    void 로그인_요청은_예상_사용자가_달라도_검사하지_않는다() throws Exception {
+    void ログインのリクエストは想定ユーザーが違っても検査しない() throws Exception {
         // アカウントを切り替えるリクエスト自体は、セッションのユーザーと異なるのが正常。
         mockMvc.perform(as(userB, post("/api/auth/login"))
                         .header(EXPECTED_USER_HEADER, String.valueOf(userA.id()))
