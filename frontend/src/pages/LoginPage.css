@@ -1,4 +1,6 @@
 .login-page {
+  --login-error: #b42318;
+
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
@@ -7,39 +9,136 @@
 }
 
 .login-page-header h1 {
-  margin: 0 0 8px;
+  margin: 0;
+  font-size: 2.4rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
 }
 
 .login-page-content {
-  margin-top: 32px;
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 4%);
+  color: var(--text-h);
+  text-align: left;
 }
 
 .login-page-content h2 {
-  margin-bottom: 20px;
+  margin: 0 0 1.25rem;
+  font-size: 1.4rem;
 }
 
 .login-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 16px;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
 }
 
-.login-page-notice,
-.login-page-error {
-  margin: 0 0 16px;
+.login-field label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.login-field input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+}
+
+.login-field [aria-invalid='true'] {
+  border-color: var(--login-error);
+}
+
+.login-page-notice {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--code-bg);
+  font-size: 0.9rem;
 }
 
 .login-page-error {
-  color: #c0392b;
+  margin: 0 0 1rem;
+  color: var(--login-error);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.login-field .login-page-error {
+  margin: 0;
+}
+
+.login-page-error a {
+  color: inherit;
+}
+
+.login-page-content button[type='submit'] {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--text-h);
+  border-radius: 8px;
+  background: var(--text-h);
+  color: var(--bg);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.login-page-content button[type='submit']:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.login-page-content button[type='submit']:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login-page-content :is(input, button, a):focus-visible {
+  outline: 2px solid var(--text-h);
+  outline-offset: 3px;
 }
 
 .login-page-switch {
-  margin-top: 24px;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.login-page-switch a {
+  margin-left: 0.35rem;
+  color: var(--text-h);
+  font-weight: 600;
 }
 
 @media (max-width: 640px) {
   .login-page {
     padding: 24px 16px;
+  }
+
+  .login-page-content {
+    padding: 1rem;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .login-page {
+    --login-error: #fda29b;
   }
 }
