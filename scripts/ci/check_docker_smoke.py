@@ -9,7 +9,9 @@ from http.client import HTTPException
 from http.cookiejar import CookieJar
 from html.parser import HTMLParser
 import json
+import subprocess
 import sys
+import time
 import traceback
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urljoin, urlsplit
@@ -64,11 +66,11 @@ def transport_error_details(error):
     return ", ".join(details)
 
 
-def fetch_with_headers(url, expected_status=200, data=None, headers=None):
+def fetch_with_headers(url, expected_status=200, data=None, headers=None, timeout=10):
     path = urlsplit(url).path
     request = Request(url, data=data, headers=headers or {}, method="POST" if data is not None else "GET")
     try:
-        response = OPENER.open(request, timeout=10)
+        response = OPENER.open(request, timeout=timeout)
     except HTTPError as error:
         response = error
     except (URLError, HTTPException, TimeoutError, OSError) as error:
@@ -147,9 +149,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", required=True)
     parser.add_argument("--debug", action="store_true", help="Show the original exception traceback on failure")
+    parser.add_argument("--database-container", help="Stop this container last to check responses during a DB outage")
     args = parser.parse_args()
     try:
-        check(args.base_url)
+        check(args.base_url, args.database_container)
     except SmokeFailure as error:
         print(f"FAIL: {error}", file=sys.stderr)
         if args.debug:
@@ -158,7 +161,7 @@ def main():
     return 0
 
 
-def check(base_url):
+def check(base_url, database_container=None):
     base = base_url.rstrip("/") + "/"
     origin = urlsplit(base)
     require(origin.scheme in {"http", "https"} and origin.netloc and
@@ -238,6 +241,40 @@ def check(base_url):
     # 上限を超える要求が回数制限を消費しないことも確かめるため、回数制限の確認より先に行う。
     check_body_size_limit(base)
     check_auth_rate_limits(base)
+    # DBを止めるため、最後に行う。
+    if database_container:
+        check_database_outage(base, database_container)
+
+
+# DBの接続待ち(application.yamlのconnection-timeout)を含めても、Nginxのタイムアウトより十分に短いこと。
+DATABASE_OUTAGE_MAX_SECONDS = 20
+
+
+def check_database_outage(base, database_container):
+    try:
+        subprocess.run(["docker", "stop", database_container], check=True, capture_output=True, timeout=60)
+    except (subprocess.SubprocessError, OSError) as error:
+        raise SmokeFailure(f"could not stop the database container ({type(error).__name__})") from error
+
+    # セッションCookieがあるため、セッションの読み込みでDBが必要になる。
+    # 1回目は切断済みの接続ですぐに失敗し、2回目から接続待ちが起きるため、両方を確かめる。
+    path = "/api/auth/me"
+    elapsed = 0
+    for _ in range(2):
+        started = time.monotonic()
+        content_type, body, _headers = fetch_with_headers(urljoin(base, path), expected_status=500, timeout=75)
+        elapsed = time.monotonic() - started
+        require(content_type == "application/json", f"{path}: DB outage response must be JSON")
+        try:
+            error = json.loads(body)
+        except (UnicodeError, ValueError):
+            raise SmokeFailure(f"{path}: DB outage response returned invalid JSON") from None
+        require(isinstance(error, dict) and error.get("code") == "INTERNAL_SERVER_ERROR" and error.get("path") == path
+                and error.get("fieldErrors") == {} and error.get("message"),
+                f"{path}: DB outage response must use the API error format")
+        require(elapsed < DATABASE_OUTAGE_MAX_SECONDS,
+                f"{path}: DB outage response took {elapsed:.0f}s (limit {DATABASE_OUTAGE_MAX_SECONDS}s)")
+    print(f"PASS: a DB outage returns a JSON 500 in {elapsed:.0f}s")
 
 
 def check_spring_error_format(base):

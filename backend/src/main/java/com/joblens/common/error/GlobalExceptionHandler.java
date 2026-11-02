@@ -296,18 +296,24 @@ public class GlobalExceptionHandler {
     ) {
         String sqlState = DatabaseErrors.sqlStateOf(exception);
 
+        // 400・409は不正な入力の繰り返しで増えるため、例外の詳細は残さない。
+        // 22001(値が長すぎる)のように、DTOの上限とDBの列のずれが原因の場合に、どのAPIかを追えるようにする。
         if (sqlState != null && sqlState.startsWith(SQL_STATE_CLASS_DATA_EXCEPTION)) {
+            log.warn("データベースが値を受け付けませんでした: {} {} sqlState={}",
+                    request.getMethod(), request.getRequestURI(), sqlState);
             return errorResponse(HttpStatus.BAD_REQUEST, "INVALID_REQUEST_VALUE",
                     "入力された値を処理できませんでした。", request);
         }
 
         if (SQL_STATE_UNIQUE_VIOLATION.equals(sqlState) || SQL_STATE_FOREIGN_KEY_VIOLATION.equals(sqlState)) {
+            log.warn("データが競合しました: {} {} sqlState={}",
+                    request.getMethod(), request.getRequestURI(), sqlState);
             return errorResponse(HttpStatus.CONFLICT, "DATA_CONFLICT",
                     "他のデータと競合したため処理できませんでした。画面を更新してから再度お試しください。", request);
         }
 
         // 入力の検証を通過した値のCHECK違反やDBの障害は、サーバーの問題として扱う。
-        log.error("データベースの処理に失敗しました: {} {}", request.getMethod(), request.getRequestURI(), exception);
+        log.error("データの処理に失敗しました: {} {}", request.getMethod(), request.getRequestURI(), exception);
         return errorResponse(HttpStatus.INTERNAL_SERVER_ERROR, HttpStatus.INTERNAL_SERVER_ERROR.name(),
                 ApiErrorAttributes.SERVER_ERROR_MESSAGE, request);
     }

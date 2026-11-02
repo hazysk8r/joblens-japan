@@ -8,6 +8,9 @@ spring:
     username: ${DB_USERNAME:joblens}
     password: ${DB_PASSWORD:local-password}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      # 既定の30秒では、DBの障害時に要求ごとにスレッドを長く占有し、Nginxのタイムアウト(60秒)も超えてしまう。
+      connection-timeout: 5000
 
   jpa:
     hibernate:
@@ -28,6 +31,10 @@ spring:
     jdbc:
       # セッション用テーブルはFlywayのマイグレーションで作成する。
       initialize-schema: never
+    servlet:
+      # /errorへの転送ではセッションを読まない。DBの障害時に/errorまで失敗し、
+      # APIの形式ではなくTomcatのHTMLが返ってしまうため。
+      filter-dispatcher-types: async,request
 
 server:
   servlet:

@@ -242,7 +242,36 @@ class ErrorResponseIntegrationTest {
         JsonNode body = assertErrorFormat(response, 500, "INTERNAL_SERVER_ERROR", "/api/test-errors/check");
         assertEquals(SERVER_ERROR_MESSAGE, body.get("message").asString());
         assertFalse(response.body().contains("salary"), response.body());
-        assertTrue(output.getOut().contains("GET /api/test-errors/check"), "原因をログで追えない");
+        assertTrue(output.getOut().contains("データの処理に失敗しました: GET /api/test-errors/check"), "原因をログで追えない");
+    }
+
+    // ---- 400・409はサーバーの障害と区別し、どのAPIで起きたかだけを警告として残す ----
+
+    @Test
+    void DB가_받을_수_없는_값은_SQLState를_경고로_남기고_오류_로그는_남기지_않는다(CapturedOutput output) throws Exception {
+        sendJson("POST", "/api/job-postings", "{\"title\":\"a\\u0000b\",\"originalText\":\"o\"}");
+
+        assertTrue(output.getOut().contains("POST /api/job-postings sqlState=22021"), output.getOut());
+        assertFalse(output.getOut().contains("データの処理に失敗しました"), output.getOut());
+    }
+
+    @Test
+    void 데이터_충돌은_SQLState를_경고로_남기고_오류_로그는_남기지_않는다(CapturedOutput output) throws Exception {
+        send("GET", "/api/test-errors/foreign-key", null, null);
+
+        assertTrue(output.getOut().contains("GET /api/test-errors/foreign-key sqlState=23503"), output.getOut());
+        assertFalse(output.getOut().contains("データの処理に失敗しました"), output.getOut());
+    }
+
+    // ---- /errorへの転送ではセッションを読まない ----
+
+    @Test
+    void 오류_응답_뒤에도_세션이_유지되고_다른_세션을_만들지_않는다() throws Exception {
+        assertEquals(500, send("GET", "/api/test-errors/runtime", null, null).statusCode());
+
+        assertTrue(cookies.getCookieStore().getCookies().stream()
+                .noneMatch(cookie -> cookie.getName().equals("JSESSIONID")));
+        assertEquals(200, send("GET", "/api/auth/me", null, null).statusCode());
     }
 
     @Test

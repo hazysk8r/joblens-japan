@@ -34,7 +34,8 @@ case "${1:-}" in
   check)
     frontend_address="$("${compose[@]}" port frontend 80)"
     python_bin="${PYTHON_BIN:-python3}"
-    smoke_args=(--base-url "http://$frontend_address")
+    # Python側で最後にDBを止めて、障害時の応答も確かめる。コンテナ名はdocker-compose.smoke.ymlで指定している。
+    smoke_args=(--base-url "http://$frontend_address" --database-container "$COMPOSE_PROJECT_NAME-postgres")
     if [[ "${SMOKE_DEBUG:-0}" == "1" ]]; then
       smoke_args+=(--debug)
     fi
