@@ -29,7 +29,7 @@ class RangeValidationTest {
     private static final String SALARY_RANGE_MESSAGE =
             "最低月給を最高月給より大きくすることはできません。";
     private static final String DEADLINE_RANGE_MESSAGE =
-            "開始日を締切日より後の日付にすることはできません。";
+            "締切日（以降）を締切日（以前）より後の日付にすることはできません。";
 
     private static ValidatorFactory validatorFactory;
     private static Validator validator;

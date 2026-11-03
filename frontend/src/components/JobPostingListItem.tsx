@@ -21,9 +21,9 @@ import { ApiError } from '../api/apiError';
 // ApplicationStatusの全ての値に対応する画面表示用の日本語ラベルを定義する。
 const APPLICATION_STATUS_LABELS:
 	Record<ApplicationStatus, string> = {
-	SAVED: '保存',
-	APPLIED: '応募',
-	INTERVIEWING: '面接',
+	SAVED: '保存済み',
+	APPLIED: '応募済み',
+	INTERVIEWING: '面接中',
 	OFFERED: '内定',
 	REJECTED: '不採用',
 };
@@ -438,7 +438,7 @@ function JobPostingListItem({
 					aria-controls={`job-posting-status-history-${jobPosting.id}`}
 				>
 					{isLoadingStatusHistory
-						? 'ロード中...'
+						? '読み込み中…'
 						: isStatusHistoryVisible
 							? '変更履歴を閉じる'
 							: '変更履歴を表示'}

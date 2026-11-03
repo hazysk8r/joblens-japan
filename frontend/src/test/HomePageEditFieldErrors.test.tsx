@@ -23,7 +23,7 @@ const fields = [
   ['originalText', '求人原文'],
   ['salaryMin', '最低月給'],
   ['salaryMax', '最高月給'],
-  ['applicationDeadline', '締切日'],
+  ['applicationDeadline', '応募締切日'],
 ] as const;
 
 const postingA: JobPosting = {
@@ -214,7 +214,7 @@ describe('編集フォームのフィールドエラー', () => {
     expect(within(card).getByLabelText('会社名')).toHaveValue(postingA.companyName);
     expect(within(card).getByLabelText('求人URL')).toHaveValue(postingA.sourceUrl);
     expect(within(card).getByLabelText('求人原文')).toHaveValue(postingA.originalText);
-    expect(within(card).getByLabelText('締切日')).toHaveValue(postingA.applicationDeadline);
+    expect(within(card).getByLabelText('応募締切日')).toHaveValue(postingA.applicationDeadline);
     expect(updateJobPosting).toHaveBeenLastCalledWith(
       postingA.id, expect.objectContaining({ title: '再保存するタイトル', salaryMin: 350000 }), postingA.version,
     );

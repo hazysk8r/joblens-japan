@@ -304,7 +304,7 @@ function JobPostingEditForm({
       </div>
 
       <div>
-        <label htmlFor={`edit-applicationDeadline-${jobPosting.id}`}>締切日</label>
+        <label htmlFor={`edit-applicationDeadline-${jobPosting.id}`}>応募締切日</label>
           <input 
             id={`edit-applicationDeadline-${jobPosting.id}`}
             {...getFieldErrorAttributes('applicationDeadline')}

@@ -1048,7 +1048,7 @@ class JobPostingControllerTest {
     @Nested
     class DeadlineFilterTests {
         @Test
-        void 開始日が締切日より後なら_400を返す() throws Exception {
+        void 締切日の範囲が逆なら_400を返す() throws Exception {
             mockMvc.perform(get("/api/job-postings")
                     .param("deadlineFrom", "2026-11-01")
                     .param("deadlineTo", "2026-10-01"))
@@ -1057,7 +1057,7 @@ class JobPostingControllerTest {
                     .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                     .andExpect(jsonPath("$.fieldErrors", aMapWithSize(1)))
                     .andExpect(jsonPath("$.fieldErrors.deadlineTo")
-                            .value("開始日を締切日より後の日付にすることはできません。"));
+                            .value("締切日（以降）を締切日（以前）より後の日付にすることはできません。"));
         }
     }
 

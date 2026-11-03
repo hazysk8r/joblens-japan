@@ -13,7 +13,7 @@ import jakarta.validation.Payload;
 @Constraint(validatedBy = DeadlineRangeValidator.class)
 public @interface ValidDeadlineRange {
   String message()
-    default "開始日を締切日より後の日付にすることはできません。";
+    default "締切日（以降）を締切日（以前）より後の日付にすることはできません。";
   
   Class<?>[] groups() default {};
 

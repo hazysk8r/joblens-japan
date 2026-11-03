@@ -178,12 +178,12 @@ class AuthControllerTest {
                         .content(credentials("user@example.com", "a".repeat(length))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
-                .andExpect(jsonPath("$.fieldErrors.password").exists());
+                .andExpect(jsonPath("$.fieldErrors.password").value("パスワードは8文字以上64文字以内で入力してください。"));
     }
 
     @Test
     void 日本語のパスワードが72バイト以下なら登録してログインできる() throws Exception {
-        // ハングル1文字はUTF-8で3バイトのため、24文字でちょうど72バイトになる。
+        // ひらがな1文字はUTF-8で3バイトのため、24文字でちょうど72バイトになる。
         String password = "あ".repeat(24);
 
         assertEquals(201, signup("user@example.com", password).getResponse().getStatus());

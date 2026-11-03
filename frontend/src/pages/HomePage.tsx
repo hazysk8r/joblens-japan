@@ -37,6 +37,10 @@ import { SALARY_OPTIONS } from '../constants/salaryOptions';
 // 求人情報一覧の初期取得に使用するデフォルトのソート条件
 const DEFAULT_SORTING: JobPostingSorting = 'createdAt,desc';
 
+// サーバーのValidDeadlineRangeと同じ文言にする。
+const DEADLINE_RANGE_ERROR_MESSAGE =
+  '締切日（以降）を締切日（以前）より後の日付にすることはできません。';
+
 type EditingSession = {
   sessionId: number;
   jobPostingId: number;
@@ -169,6 +173,7 @@ function HomePage() {
   const [appliedSalaryMax, setAppliedSalaryMax] = useState<number | null>(null);
   const [deadlineFrom, setDeadlineFrom] = useState<DeadlineFilter>(null);
   const [deadlineTo, setDeadlineTo] = useState<DeadlineFilter>(null);
+  const [deadlineRangeError, setDeadlineRangeError] = useState<string | null>(null);
   const [appliedDeadlineFrom, setAppliedDeadlineFrom] = useState<DeadlineFilter>(null);
   const [appliedDeadlineTo, setAppliedDeadlineTo] = useState<DeadlineFilter>(null);
   const [sorting, setSorting] = useState<JobPostingSorting>(DEFAULT_SORTING);
@@ -537,6 +542,14 @@ function HomePage() {
     event: FormEvent<HTMLFormElement>,
   ) => {
     event.preventDefault();
+
+    // YYYY-MM-DD形式のため、文字列のまま日付の前後を比較できる。
+    if (deadlineFrom && deadlineTo && deadlineFrom > deadlineTo) {
+      // 検索条件・URL・一覧は変えず、詳細条件を閉じていてもエラーが見えるようにする。
+      setDeadlineRangeError(DEADLINE_RANGE_ERROR_MESSAGE);
+      setShowAdvancedFilters(true);
+      return;
+    }
 
     const nextKeyword = keyword.trim();
     const nextStatus = status;
@@ -1057,11 +1070,12 @@ function HomePage() {
               id="deadlineFrom"
               type="date"
               value={deadlineFrom ?? ''}
-              onChange={(event) =>
+              onChange={(event) => {
                 setDeadlineFrom(
                   event.target.value || null,
-                )
-              }
+                );
+                setDeadlineRangeError(null);
+              }}
             />
 
             <label htmlFor="deadlineTo">締切日（以前）</label>
@@ -1069,12 +1083,21 @@ function HomePage() {
               id="deadlineTo"
               type="date"
               value={deadlineTo ?? ''}
-              onChange={(event) =>
+              aria-invalid={deadlineRangeError ? true : undefined}
+              aria-describedby={deadlineRangeError ? 'deadlineTo-error' : undefined}
+              onChange={(event) => {
                 setDeadlineTo(
                   event.target.value || null,
-                )
-              }
+                );
+                setDeadlineRangeError(null);
+              }}
             />
+
+            {deadlineRangeError && (
+              <p id="deadlineTo-error" role="alert">
+                {deadlineRangeError}
+              </p>
+            )}
 
             <label htmlFor="sorting">並び替え</label>
             <select

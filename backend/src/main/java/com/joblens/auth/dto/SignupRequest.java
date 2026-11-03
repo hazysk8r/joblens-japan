@@ -16,7 +16,7 @@ public record SignupRequest(
 
         // BCryptは72バイトまでしか扱えないため、文字数に加えてUTF-8のバイト数も制限する。
         @NotBlank(message = "パスワードを入力してください。")
-        @Size(min = 8, max = 64, message = "パスワードは8文字以上64文字以下で入力してください。")
+        @Size(min = 8, max = 64, message = "パスワードは8文字以上64文字以内で入力してください。")
         @MaxUtf8Bytes(value = 72, message = "パスワードが長すぎます。日本語などは1文字を3バイトとして数え、最大72バイトまで入力できます。")
         String password
 ) {

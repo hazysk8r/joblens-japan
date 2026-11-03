@@ -410,6 +410,8 @@ main > form:has(> .search-main-row) > .advanced-filter-toggle:hover:not(:disable
 }
 
 .advanced-filter {
+  --search-error: #b42318;
+
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-areas:
@@ -443,6 +445,35 @@ main > form:has(> .search-main-row) > .advanced-filter-toggle:hover:not(:disable
   margin-top: 0.75rem;
 }
 
+/* エラーがないときに空の行の分だけ余白が増えないよう、表示中だけ行を追加する。 */
+.advanced-filter:has(> #deadlineTo-error) {
+  grid-template-areas:
+    'salary-min-label salary-max-label'
+    'salary-min salary-max'
+    'deadline-from-label deadline-to-label'
+    'deadline-from deadline-to'
+    'deadline-error deadline-error'
+    'sorting-label sorting-label'
+    'sorting sorting';
+}
+
+.advanced-filter > #deadlineTo-error {
+  grid-area: deadline-error;
+  margin: 0;
+  color: var(--search-error);
+  font-size: 0.85rem;
+}
+
+.advanced-filter > #deadlineTo[aria-invalid='true'] {
+  border-color: var(--search-error);
+}
+
+@media (prefers-color-scheme: dark) {
+  .advanced-filter {
+    --search-error: #fda29b;
+  }
+}
+
 @media (max-width: 600px) {
   main > form:has(> .search-main-row) {
     width: calc(100% - 1.5rem);
@@ -472,6 +503,21 @@ main > form:has(> .search-main-row) > .advanced-filter-toggle:hover:not(:disable
       'deadline-from'
       'deadline-to-label'
       'deadline-to'
+      'sorting-label'
+      'sorting';
+  }
+
+  .advanced-filter:has(> #deadlineTo-error) {
+    grid-template-areas:
+      'salary-min-label'
+      'salary-min'
+      'salary-max-label'
+      'salary-max'
+      'deadline-from-label'
+      'deadline-from'
+      'deadline-to-label'
+      'deadline-to'
+      'deadline-error'
       'sorting-label'
       'sorting';
   }

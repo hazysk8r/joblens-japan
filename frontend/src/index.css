@@ -11,8 +11,12 @@
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  /* system-uiはOSの言語設定に左右されるため使わず、日本語は日本語フォントで表示する。 */
+  /* 'Yu Gothic Medium'は太字を持たず、font-synthesis: noneでは見出しの日本語が太くならないため使わない。 */
+  --sans:
+    'Segoe UI', Roboto, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN',
+    Meiryo, 'Yu Gothic', sans-serif;
+  --heading: var(--sans);
   --mono: ui-monospace, Consolas, monospace;
 
   font: 18px/145% var(--sans);

@@ -1756,16 +1756,64 @@ describe('status', () => {
     );
 
     expect(
-      await screen.findByText("応募 → 面接"),
+      await screen.findByText("応募済み → 面接中"),
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText("保存 → 応募"),
+      screen.getByText("保存済み → 応募済み"),
     ).toBeInTheDocument();
 
     expect(fetchApplicationStatusHistory)
       .toHaveBeenCalledWith(mockContent.id);
     
+  });
+
+  test('応募状態の変更履歴の取得中は読み込み中の表示にする', async () => {
+    const mockContent: JobPosting = {
+      id: 1,
+      companyName: '黄猿',
+      title: 'エンジニア求人',
+      sourceUrl: null,
+      originalText: '営業部求人',
+      createdAt: '2026-08-14T00:00:00Z',
+      applicationStatus: 'SAVED',
+      salaryMin: null,
+      salaryMax: null,
+      applicationDeadline: null,
+      version: 0,
+    };
+
+    vi.mocked(fetchApplicationStatusHistory)
+      .mockReturnValueOnce(new Promise(() => {}));
+
+    const user = userEvent.setup();
+
+    render(
+      <JobPostingListItem
+        jobPosting={mockContent}
+        isEditing={false}
+        isSaving={false}
+        isDeleting={false}
+        isUpdatingStatus={false}
+        onStartEdit={vi.fn()}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        onDelete={vi.fn()}
+        onApplicationStatusChange={vi.fn()}
+      />
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "変更履歴を表示",
+      }),
+    );
+
+    expect(
+      await screen.findByRole("button", {
+        name: "読み込み中…",
+      }),
+    ).toBeDisabled();
   });
 
   test('応募状態の変更履歴がない場合はメッセージを表示する', async () => {
@@ -1946,7 +1994,7 @@ describe('status', () => {
 
       expect(
         await screen.findByText(
-          '保存 → 応募',
+          '保存済み → 応募済み',
         ),
       ).toBeInTheDocument();
 
@@ -1976,13 +2024,13 @@ describe('status', () => {
 
       expect(
         await screen.findByText(
-          '応募 → 面接',
+          '応募済み → 面接中',
         ),
       ).toBeInTheDocument();
 
       expect(
         screen.getByText(
-          '保存 → 応募',
+          '保存済み → 応募済み',
         ),
       ).toBeInTheDocument();
     },
@@ -2047,7 +2095,7 @@ describe('status', () => {
       );
 
       expect(
-        await screen.findByText('保存 → 応募'),
+        await screen.findByText('保存済み → 応募済み'),
       ).toBeInTheDocument();
 
       expect(fetchApplicationStatusHistory)

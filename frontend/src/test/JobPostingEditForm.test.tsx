@@ -13,7 +13,7 @@ const fields = [
   ['originalText', '求人原文'],
   ['salaryMin', '最低月給'],
   ['salaryMax', '最高月給'],
-  ['applicationDeadline', '締切日'],
+  ['applicationDeadline', '応募締切日'],
 ] as const;
 
 const posting: JobPosting = {
