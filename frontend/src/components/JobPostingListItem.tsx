@@ -114,6 +114,11 @@ function JobPostingListItem({
 	const isSkillsCacheValid =
 		skillsOriginalText === jobPosting.originalText;
 
+	// skillsVisibleだけでは、原文の更新で古い一覧を隠している間もtrueのままになる。
+	const isSkillsShown =
+		isSkillsCacheValid && skills !== null && skillsVisible;
+	const skillsPanelId = `job-posting-skills-${jobPosting.id}`;
+
 	async function handlePostingSkill() {
 
 		if (skills !== null && isSkillsCacheValid) {
@@ -409,10 +414,14 @@ function JobPostingListItem({
 					onClick={() => {
 						void handlePostingSkill();
 					}}
+					aria-expanded={isSkillsShown}
+					aria-controls={skillsPanelId}
 				>
 					{loading
 						? '処理中…'
-						: '技術スタックを見る'}
+						: isSkillsShown
+							? '技術スタックを閉じる'
+							: '技術スタックを見る'}
 				</button>
 
 				<button
@@ -446,10 +455,12 @@ function JobPostingListItem({
 			</div>
 
 			<div className="job-posting-card__details">
-				{isSkillsCacheValid && skills !== null &&
-					skillsVisible && (
+				{isSkillsShown && (
 						skills.length > 0 ? (
-							<ul className="job-posting-card__skills">
+							<ul
+								id={skillsPanelId}
+								className="job-posting-card__skills"
+							>
 								{skills.map(
 									(skill) => (
 										<li key={skill}>
@@ -459,7 +470,7 @@ function JobPostingListItem({
 								)}
 							</ul>
 						) : (
-							<p>
+							<p id={skillsPanelId}>
 								抽出された技術スタックはありません。
 							</p>
 						)

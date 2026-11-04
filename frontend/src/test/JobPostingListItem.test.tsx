@@ -439,6 +439,111 @@ describe('skills', () => {
 
 })
 
+describe('技術スタックボタンの表示', () => {
+  const OPEN_LABEL = '技術スタックを見る';
+  const CLOSE_LABEL = '技術スタックを閉じる';
+
+  const jobPosting: JobPosting = {
+    id: 7,
+    companyName: '黄猿',
+    title: 'エンジニア求人',
+    sourceUrl: null,
+    originalText: 'AWSエンジニア求人',
+    createdAt: '2026-08-14T00:00:00Z',
+    applicationStatus: 'SAVED',
+    salaryMin: null,
+    salaryMax: null,
+    applicationDeadline: null,
+    version: 0,
+  };
+
+  function item(posting: JobPosting) {
+    return (
+      <JobPostingListItem
+        jobPosting={posting}
+        isEditing={false}
+        isSaving={false}
+        isDeleting={false}
+        isUpdatingStatus={false}
+        onStartEdit={vi.fn()}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        onDelete={vi.fn()}
+        onApplicationStatusChange={vi.fn()}
+      />
+    );
+  }
+
+  test('開閉に合わせて文言とaria-expandedが変わり、リクエストは1回だけ送る', async () => {
+    vi.mocked(extractRequiredSkills).mockResolvedValueOnce(['AWS']);
+    const user = userEvent.setup();
+    render(item(jobPosting));
+
+    const button = screen.getByRole('button', { name: OPEN_LABEL });
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(button);
+    await screen.findByText('AWS');
+    expect(button).toHaveTextContent(CLOSE_LABEL);
+    expect(button).toHaveAttribute('aria-expanded', 'true');
+
+    await user.click(button);
+    expect(screen.queryByText('AWS')).not.toBeInTheDocument();
+    expect(button).toHaveTextContent(OPEN_LABEL);
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(button);
+    await screen.findByText('AWS');
+    expect(button).toHaveTextContent(CLOSE_LABEL);
+    expect(extractRequiredSkills).toHaveBeenCalledTimes(1);
+  });
+
+  test.each([
+    ['技術がある', ['AWS'], 'AWS'],
+    ['技術がない', [], '抽出された技術スタックはありません。'],
+  ])('%s場合、aria-controlsが表示中の領域を指す', async (_name, skills, text) => {
+    vi.mocked(extractRequiredSkills).mockResolvedValueOnce(skills);
+    const user = userEvent.setup();
+    render(item(jobPosting));
+
+    const button = screen.getByRole('button', { name: OPEN_LABEL });
+    await user.click(button);
+    await screen.findByText(text);
+
+    const panel = document.getElementById(button.getAttribute('aria-controls') ?? '');
+    expect(panel).toHaveTextContent(text);
+  });
+
+  test('取得に失敗すると「見る」に戻る', async () => {
+    vi.mocked(extractRequiredSkills).mockRejectedValueOnce(new Error('取得失敗'));
+    const user = userEvent.setup();
+    render(item(jobPosting));
+
+    const button = screen.getByRole('button', { name: OPEN_LABEL });
+    await user.click(button);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('取得失敗');
+    expect(button).toHaveTextContent(OPEN_LABEL);
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('表示中に原文が変わると、古い一覧を隠して「見る」に戻る', async () => {
+    vi.mocked(extractRequiredSkills).mockResolvedValueOnce(['AWS']);
+    const user = userEvent.setup();
+    const { rerender } = render(item(jobPosting));
+
+    const button = screen.getByRole('button', { name: OPEN_LABEL });
+    await user.click(button);
+    await screen.findByText('AWS');
+
+    rerender(item({ ...jobPosting, originalText: 'Javaエンジニア求人', version: 1 }));
+
+    expect(screen.queryByText('AWS')).not.toBeInTheDocument();
+    expect(button).toHaveTextContent(OPEN_LABEL);
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+  });
+});
+
 describe('memos', () => {
   test('登録されたメモの一覧が正しく表示される。', async () => {
     const mockContent: JobPosting = {
