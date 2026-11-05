@@ -5,6 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -20,6 +24,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
@@ -43,6 +49,9 @@ class SignupLimitTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @MockitoSpyBean
+    private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
@@ -89,6 +98,16 @@ class SignupLimitTest {
         assertNull(result.getResponse().getCookie("SESSION"), "拒否したのにセッションを発行している");
         assertTrue(output.getAll().contains(CAP_LOG_MESSAGE), "運営者が気付くための警告が記録されていない");
         assertFalse(output.getAll().contains("third@example.com"), "警告にメールアドレスを記録している");
+    }
+
+    @Test
+    void 上限に達して拒否するときはパスワードのハッシュを計算しない() throws Exception {
+        fillToCap();
+        clearInvocations(passwordEncoder);
+
+        signup("third@example.com").andExpect(status().isConflict());
+
+        verify(passwordEncoder, never()).encode(any());
     }
 
     @Test

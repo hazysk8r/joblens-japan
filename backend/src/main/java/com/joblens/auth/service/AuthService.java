@@ -36,15 +36,15 @@ public class AuthService {
             throw new EmailAlreadyExistsException();
         }
 
-        // ハッシュの計算は時間がかかるため、上限の確認と保存の間に挟まないよう先に行う。
-        String passwordHash = passwordEncoder.encode(request.password());
-
         // 全体の保存量を抑えるための上限のため、同時登録で数件超えることは許容し、ロックは取らない。
         if (userRepository.count() >= usageLimits.maxUsers()) {
             // 悪用で埋められると新しい利用者が登録できなくなるため、運営者が気付けるように残す。
             log.warn("会員登録の上限に達しました: 上限={}人", usageLimits.maxUsers());
             throw new SignupClosedException();
         }
+
+        // ハッシュの計算は時間がかかるため、拒否しない要求についてだけ行う。
+        String passwordHash = passwordEncoder.encode(request.password());
 
         try {
             User user = userRepository.saveAndFlush(new User(request.email(), passwordHash));

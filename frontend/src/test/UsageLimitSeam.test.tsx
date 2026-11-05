@@ -102,6 +102,7 @@ function renderApp(path: string) {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   document.cookie = 'XSRF-TOKEN=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   switchAuthContext(null);
 });
@@ -136,7 +137,7 @@ describe('登録画面の案内', () => {
 
     // 文の間に半角スペースが入らないことも確かめるため、全文で比べる。
     expect(notice.textContent).toBe(
-      'メールアドレスと、登録した求人の情報を保存します。確認メールは送らないため、実在しないメールアドレスでも登録できます。パスワードを忘れても再設定はできません。お問い合わせはGitHubのIssuesへお願いします。',
+      'メールアドレス、登録した求人とメモ、応募ステータスの変更履歴を保存します。アクセスログにはIPアドレスと検索条件を含むURLが記録されます。確認メールは送らないため、実在しないメールアドレスでも登録できます。パスワードを忘れても再設定はできません。お問い合わせはGitHubのIssuesへお願いします（公開されるため、個人情報は書かないでください）。',
     );
     const link = within(notice).getByRole('link', { name: 'GitHubのIssues' });
     expect(link).toHaveAttribute('href', 'https://github.com/hazysk8r/joblens-japan/issues');
@@ -151,6 +152,106 @@ describe('登録画面の案内', () => {
     await screen.findByLabelText('メールアドレス');
 
     expect(screen.queryByRole('note', { name: '登録情報について' })).not.toBeInTheDocument();
+  });
+});
+
+describe('書き込みの回数制限', () => {
+  // frontend/nginx.confの429と同じ形式。Nginxが返すためpathは空になる。
+  const RATE_LIMITED_MESSAGE = 'リクエストが多すぎます。しばらくしてから再度お試しください。';
+
+  function rateLimited(): Response {
+    return jsonResponse(429, {
+      status: 429,
+      code: 'TOO_MANY_REQUESTS',
+      message: RATE_LIMITED_MESSAGE,
+      path: '',
+      fieldErrors: {},
+    });
+  }
+
+  // 照会は成功し、書き込みだけがNginxの回数制限で拒否されるサーバーを再現する。
+  function stubWriteLimitedServer() {
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      const { pathname } = new URL(url, 'http://localhost');
+      if ((init?.method ?? 'GET') !== 'GET') return rateLimited();
+      if (pathname === '/api/auth/me') return jsonResponse(200, { id: 1, email: 'user@example.com' });
+      if (pathname === '/api/job-postings/status-summary') {
+        return jsonResponse(200, { saved: 1, applied: 0, interviewing: 0, offered: 0, rejected: 0 });
+      }
+      if (pathname === '/api/job-postings') {
+        return jsonResponse(200, {
+          content: [posting], page: 0, size: 5, totalElements: 1, totalPages: 1, first: true, last: true,
+        });
+      }
+      if (pathname === '/api/job-postings/1/notes') return jsonResponse(200, []);
+      return jsonResponse(404, {});
+    }));
+  }
+
+  test('求人の登録が拒否されると、メッセージを表示して入力を残す', async () => {
+    document.cookie = 'XSRF-TOKEN=token-1; path=/';
+    stubWriteLimitedServer();
+    const user = userEvent.setup();
+    renderApp('/job-postings/new');
+
+    await user.type(await screen.findByLabelText('求人タイトル'), 'Java求人');
+    await user.type(screen.getByLabelText('求人原文'), '求人の原文');
+    await user.click(screen.getByRole('button', { name: '登録' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(RATE_LIMITED_MESSAGE);
+    expect(screen.getByLabelText('求人タイトル')).toHaveValue('Java求人');
+  });
+
+  test('応募状況の変更が拒否されると、メッセージを表示して元の状況のままにする', async () => {
+    document.cookie = 'XSRF-TOKEN=token-1; path=/';
+    stubWriteLimitedServer();
+    const user = userEvent.setup();
+    renderApp('/');
+
+    await screen.findByRole('heading', { name: posting.title, level: 2 });
+    const status = screen.getByRole('combobox', { name: /応募ステータス/ });
+    await user.selectOptions(status, 'APPLIED');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(RATE_LIMITED_MESSAGE);
+    expect(status).toHaveValue('SAVED');
+  });
+
+  test('求人の削除が拒否されると、メッセージを表示して一覧を残し、次の削除で消す', async () => {
+    document.cookie = 'XSRF-TOKEN=token-1; path=/';
+    stubWriteLimitedServer();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const user = userEvent.setup();
+    renderApp('/');
+
+    await screen.findByRole('heading', { name: posting.title, level: 2 });
+    await user.click(screen.getByRole('button', { name: '削除' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(RATE_LIMITED_MESSAGE);
+    expect(screen.getByRole('heading', { name: posting.title, level: 2 })).toBeInTheDocument();
+
+    // 再試行中は前回の失敗を表示しない。
+    let finishDelete!: (response: Response) => void;
+    vi.mocked(fetch).mockImplementationOnce(() => new Promise((resolve) => {
+      finishDelete = resolve;
+    }));
+    await user.click(screen.getByRole('button', { name: '削除' }));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    finishDelete(rateLimited());
+    expect(await screen.findByRole('alert')).toHaveTextContent(RATE_LIMITED_MESSAGE);
+  });
+
+  test('ログアウトが拒否されると、メッセージを表示してログイン状態のままにする', async () => {
+    document.cookie = 'XSRF-TOKEN=token-1; path=/';
+    stubWriteLimitedServer();
+    const user = userEvent.setup();
+    renderApp('/');
+
+    await user.click(await screen.findByRole('button', { name: 'ログアウト' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(RATE_LIMITED_MESSAGE);
+    expect(screen.getByTestId('location').textContent).toBe('/');
+    expect(screen.getByRole('button', { name: 'ログアウト' })).toBeEnabled();
   });
 });
 

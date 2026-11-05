@@ -4,7 +4,6 @@ import static com.joblens.CsrfTestSupport.doubleSubmitCsrf;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -80,7 +79,7 @@ class UsageLimitTest {
     private LoginUser userA;
     private LoginUser userB;
 
-    private record LoginUser(long id, Cookie session) {
+    private record LoginUser(long id, String email, Cookie session) {
     }
 
     @BeforeEach
@@ -109,7 +108,7 @@ class UsageLimitTest {
 
         Cookie session = result.getResponse().getCookie("SESSION");
         assertNotNull(session, "セッションCookieが発行されていない");
-        return new LoginUser(json(result).get("id").asLong(), session);
+        return new LoginUser(json(result).get("id").asLong(), email, session);
     }
 
     private MockHttpServletRequestBuilder as(LoginUser user, MockHttpServletRequestBuilder request) {
@@ -350,14 +349,16 @@ class UsageLimitTest {
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"))
                 .andReturn();
 
+        Cookie cleared = result.getResponse().getCookie("SESSION");
+        assertNotNull(cleared, "セッションCookieが削除されていない");
+        assertEquals(0, cleared.getMaxAge(), "セッションCookieが削除されていない");
+        assertEquals("", cleared.getValue(), "セッションCookieが新しく発行されている");
+
         // /meが200を返し続けると、画面はログイン状態のまま失敗を繰り返す。
         mockMvc.perform(get("/api/auth/me").cookie(user.session()))
                 .andExpect(status().isUnauthorized());
         assertEquals(0, jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM spring_session WHERE principal_name = 'limit-a@example.com'", Long.class));
-        Cookie cleared = result.getResponse().getCookie("SESSION");
-        assertNull(cleared == null ? null : cleared.getValue().isEmpty() ? null : cleared.getValue(),
-                "セッションCookieが新しく発行されている");
+                "SELECT count(*) FROM spring_session WHERE principal_name = ?", Long.class, user.email()));
     }
 
     @Test

@@ -680,7 +680,7 @@ function HomePage() {
     }
 
     setDeletingId(jobPosting.id);
-    setError(null);
+    setMutationError(null);
 
     try {
       await deleteJobPosting(jobPosting.id);
@@ -693,7 +693,8 @@ function HomePage() {
         caughtError instanceof Error
           ? caughtError.message
           : '削除中に不明なエラーが発生しました。';
-      setError(message);
+      // 求人は残っているため、一覧を置き換えるerrorではなく、一覧の上に表示する。
+      setMutationError(message);
     } finally {
       setDeletingId(null);
     }

@@ -77,7 +77,8 @@ def fetch_with_headers(url, expected_status=200, data=None, headers=None, timeou
         raise SmokeFailure(f"{path}: HTTP request failed ({transport_error_details(error)})") from error
     try:
         with response:
-            require(response.status == expected_status,
+            expected = expected_status if isinstance(expected_status, tuple) else (expected_status,)
+            require(response.status in expected,
                     f"{path}: expected HTTP {expected_status}, received {response.status}")
             # server_tokens offにより、どの応答にもNginxのバージョンを出さない。
             require(response.headers.get_all("Server", []) == ["nginx"],
@@ -240,6 +241,8 @@ def check(base_url, database_container=None):
 
     # 上限を超える要求が回数制限を消費しないことも確かめるため、回数制限の確認より先に行う。
     check_body_size_limit(base)
+    # 書き込みの制限に達した状態で続けて、ログイン・会員登録の制限が別であることも確かめる。
+    check_write_rate_limit(base)
     check_auth_rate_limits(base)
     # DBを止めるため、最後に行う。
     if database_container:
@@ -296,6 +299,7 @@ def check_spring_error_format(base):
 # 連続した要求は1秒以内に終わるため、その間に回復する許容量は1回分に満たない。
 LOGIN_ALLOWED_IN_BURST = 6
 SIGNUP_ALLOWED_IN_BURST = 4
+WRITE_ALLOWED_IN_BURST = 21
 RATE_LIMITED_CODE = "TOO_MANY_REQUESTS"
 RATE_LIMITED_MESSAGE = "リクエストが多すぎます。しばらくしてから再度お試しください。"
 
@@ -313,14 +317,15 @@ def post_json(base, path, payload, expected_status):
                               headers={"Content-Type": "application/json", "X-XSRF-TOKEN": current_csrf_token()})
 
 
-def require_rate_limited(path, content_type, body, headers):
+def require_rate_limited(path, content_type, body, headers, expected_path=None):
     require(content_type == "application/json", f"{path}: rate-limited response must be JSON")
     try:
         error = json.loads(body)
     except (UnicodeError, ValueError):
         raise SmokeFailure(f"{path}: rate-limited response returned invalid JSON") from None
     require(isinstance(error, dict) and error.get("status") == 429 and error.get("code") == RATE_LIMITED_CODE
-            and error.get("message") == RATE_LIMITED_MESSAGE and error.get("path") == path
+            and error.get("message") == RATE_LIMITED_MESSAGE
+            and error.get("path") == (path if expected_path is None else expected_path)
             and error.get("fieldErrors") == {},
             f"{path}: rate-limited response must use the API error format")
     require(headers.get("Retry-After") == "60", f"{path}: rate-limited response must send Retry-After: 60")
@@ -390,9 +395,13 @@ def check_body_size_limit(base):
     content_type, body, headers = post_raw(base, "/api/job-postings",
                                            json_body_of_size(posting_prefix, MAX_BODY_BYTES + 1), expected_status=413)
     require_payload_too_large("/api/job-postings", content_type, body, headers)
+    # 書き込みの制限を持つ完全一致のlocationにも、同じJSONの413が返る。
+    content_type, body, headers = post_raw(base, "/api",
+                                           json_body_of_size(posting_prefix, MAX_BODY_BYTES + 1), expected_status=413)
+    require_payload_too_large("/api", content_type, body, headers)
     print(f"PASS: request bodies over {MAX_BODY_BYTES} bytes are rejected with a JSON 413")
 
-    # 回数制限のlocationにも、独自のerror_pageがあっても同じJSONの413が返る。
+    # 回数制限のlocationにも、同じJSONの413が返る。
     login_prefix = '{"email":"smoke-test@example.com","password":"'
     content_type, body, headers = post_raw(base, "/api/auth/login",
                                            json_body_of_size(login_prefix, MAX_BODY_BYTES + 1), expected_status=413)
@@ -402,6 +411,59 @@ def check_body_size_limit(base):
                                            json_body_of_size(signup_prefix, MAX_BODY_BYTES + 1), expected_status=413)
     require_payload_too_large("/api/auth/signup", content_type, body, headers)
     print("PASS: oversized login and signup bodies are rejected with a JSON 413")
+
+
+# check_body_size_limitでバックエンドまで届いた書き込みの回数(413は回数制限の前に拒否される)。
+WRITES_BEFORE_LIMIT_CHECK = 2
+# frontend/nginx.confのrate(30r/m)は2秒で1回分回復する。待つ間に1.5回分回復する。
+WRITE_RECOVERY_WAIT_SECONDS = 3
+
+
+def json_error_of(path, content_type, body):
+    require(content_type == "application/json", f"{path}: response must be JSON")
+    try:
+        error = json.loads(body)
+    except (UnicodeError, ValueError):
+        raise SmokeFailure(f"{path}: response returned invalid JSON") from None
+    require(isinstance(error, dict), f"{path}: response must be a JSON object")
+    return error
+
+
+def check_write_rate_limit(base):
+    # 先に消費した分は経過時間で回復するため、制限に達する回数は範囲で確かめる。
+    least = WRITE_ALLOWED_IN_BURST - WRITES_BEFORE_LIMIT_CHECK
+    for _ in range(least):
+        content_type, body, _ = post_raw(base, "/api/job-postings", b"{}", expected_status=400)
+        error = json_error_of("/api/job-postings", content_type, body)
+        require(error.get("code") == "VALIDATION_FAILED", "Write within the rate limit must reach the backend")
+
+    for _ in range(WRITES_BEFORE_LIMIT_CHECK + 2):
+        content_type, body, headers = post_raw(base, "/api/job-postings", b"{}", expected_status=(400, 429))
+        if json_error_of("/api/job-postings", content_type, body).get("status") == 429:
+            break
+    else:
+        raise SmokeFailure("/api/job-postings: writes were not rate-limited")
+    require_rate_limited("/api/job-postings", content_type, body, headers, expected_path="")
+    content_type, body, headers = post_raw(base, "/api", b"{}", expected_status=429)
+    require_rate_limited("/api", content_type, body, headers, expected_path="")
+    print(f"PASS: writes are rate-limited after about {WRITE_ALLOWED_IN_BURST} requests with a JSON 429")
+
+    # 照会は書き込みの制限に数えない。
+    fetch(urljoin(base, "/api/auth/me"))
+    fetch(urljoin(base, "/api/job-postings"))
+    print("PASS: the write rate limit does not affect read requests")
+
+    # 制限に達した時点の残りは1回分未満で一定ではないため、通る回数は1回か2回になる。
+    # 回復しなければ0回、回復が速すぎれば3回以上になる。
+    time.sleep(WRITE_RECOVERY_WAIT_SECONDS)
+    allowed = 0
+    while allowed < 3:
+        content_type, body, _ = post_raw(base, "/api/job-postings", b"{}", expected_status=(400, 429))
+        if json_error_of("/api/job-postings", content_type, body).get("status") == 429:
+            break
+        allowed += 1
+    require(1 <= allowed <= 2, f"/api/job-postings: {allowed} writes recovered in {WRITE_RECOVERY_WAIT_SECONDS}s")
+    print("PASS: writes recover at the configured rate")
 
 
 def check_auth_rate_limits(base):

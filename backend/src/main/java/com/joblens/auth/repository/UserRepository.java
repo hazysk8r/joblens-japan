@@ -15,7 +15,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
 
-    // そのユーザーのデータを変更する処理を1つずつ実行するために、行を更新するまで占有する。
+    // そのユーザーのデータを変更する処理を1つずつ実行するために、トランザクションが終わるまで行を占有する。
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<User> findLockedById(Long id);
 }
