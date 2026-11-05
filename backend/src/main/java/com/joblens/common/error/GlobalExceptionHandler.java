@@ -1,16 +1,21 @@
 package com.joblens.common.error;
 
 import com.joblens.auth.exception.EmailAlreadyExistsException;
+import com.joblens.auth.exception.SignupClosedException;
+import com.joblens.auth.exception.UserNoLongerExistsException;
 import com.joblens.common.web.AuthContextChangedException;
 import com.joblens.jobposting.exception.IfMatchRequiredException;
 import com.joblens.jobposting.exception.InvalidPageException;
 import com.joblens.jobposting.exception.InvalidSortFieldException;
+import com.joblens.jobposting.exception.JobPostingLimitReachedException;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
 import com.joblens.jobposting.exception.JobPostingVersionConflictException;
 import com.joblens.jobposting.exception.MalformedIfMatchHeaderException;
 import com.joblens.note.exception.JobPostingMemoNotFoundException;
+import com.joblens.note.exception.MemoLimitReachedException;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
@@ -248,6 +253,46 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(response);
+    }
+
+    @ExceptionHandler(JobPostingLimitReachedException.class)
+    public ResponseEntity<ApiErrorResponse> handleJobPostingLimitReached(
+            JobPostingLimitReachedException exception,
+            HttpServletRequest request
+    ) {
+        return errorResponse(HttpStatus.CONFLICT, "JOB_POSTING_LIMIT_REACHED", exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(MemoLimitReachedException.class)
+    public ResponseEntity<ApiErrorResponse> handleMemoLimitReached(
+            MemoLimitReachedException exception,
+            HttpServletRequest request
+    ) {
+        return errorResponse(HttpStatus.CONFLICT, "MEMO_LIMIT_REACHED", exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(SignupClosedException.class)
+    public ResponseEntity<ApiErrorResponse> handleSignupClosed(
+            SignupClosedException exception,
+            HttpServletRequest request
+    ) {
+        return errorResponse(HttpStatus.CONFLICT, "SIGNUP_CLOSED", exception.getMessage(), request);
+    }
+
+    /*
+     * セッションを残すと/meが200を返し続け、画面はログイン状態のまま401を繰り返す。
+     * 画面が401の後に/meで確認するため、ここでセッションを終了する。
+     */
+    @ExceptionHandler(UserNoLongerExistsException.class)
+    public ResponseEntity<ApiErrorResponse> handleUserNoLongerExists(
+            UserNoLongerExistsException exception,
+            HttpServletRequest request
+    ) {
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+        return errorResponse(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", exception.getMessage(), request);
     }
 
     // 画面のユーザーとセッションのユーザーが異なるため、変更を行わなかったことを返す。

@@ -22,6 +22,8 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
 
     boolean existsByIdAndUserId(Long id, Long userId);
 
+    long countByUserId(Long userId);
+
     // 応募状況ごとの求人数を1回の集計クエリで取得する。
     @Query("""
             select j.applicationStatus as applicationStatus, count(j) as postingCount

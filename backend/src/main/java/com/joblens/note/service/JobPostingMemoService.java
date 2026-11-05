@@ -5,6 +5,9 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.joblens.auth.exception.UserNoLongerExistsException;
+import com.joblens.auth.repository.UserRepository;
+import com.joblens.common.limit.UsageLimits;
 import com.joblens.jobposting.domain.JobPosting;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
 import com.joblens.jobposting.repository.JobPostingRepository;
@@ -13,6 +16,7 @@ import com.joblens.note.dto.CreateJobPostingMemoRequest;
 import com.joblens.note.dto.JobPostingMemoResponse;
 import com.joblens.note.dto.UpdateJobPostingMemoRequest;
 import com.joblens.note.exception.JobPostingMemoNotFoundException;
+import com.joblens.note.exception.MemoLimitReachedException;
 import com.joblens.note.repository.JobPostingMemoRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -23,11 +27,20 @@ import lombok.RequiredArgsConstructor;
 public class JobPostingMemoService {
   private final JobPostingMemoRepository jobPostingMemoRepository;
   private final JobPostingRepository jobPostingRepository;
+  private final UserRepository userRepository;
+  private final UsageLimits usageLimits;
 
   @Transactional
   public JobPostingMemoResponse create(Long userId, Long jobPostingId, CreateJobPostingMemoRequest request) {
+    // 件数の確認と保存の間に同じユーザーの別の登録が入ると、上限を超えてしまう。
+    userRepository.findLockedById(userId).orElseThrow(UserNoLongerExistsException::new);
+
     JobPosting jobPosting = jobPostingRepository.findByIdAndUserId(jobPostingId, userId)
     .orElseThrow(() -> new JobPostingNotFoundException(jobPostingId));
+
+    if (jobPostingMemoRepository.countByJobPosting_Id(jobPostingId) >= usageLimits.maxMemosPerPosting()) {
+      throw new MemoLimitReachedException(usageLimits.maxMemosPerPosting());
+    }
 
     JobPostingMemo jobPostingMemo = new JobPostingMemo(
       request.content(),

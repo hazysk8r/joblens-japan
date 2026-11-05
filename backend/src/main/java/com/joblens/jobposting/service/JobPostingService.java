@@ -1,5 +1,8 @@
 package com.joblens.jobposting.service;
 
+import com.joblens.auth.exception.UserNoLongerExistsException;
+import com.joblens.auth.repository.UserRepository;
+import com.joblens.common.limit.UsageLimits;
 import com.joblens.common.response.PageResponse;
 import com.joblens.jobposting.domain.ApplicationStatus;
 import com.joblens.jobposting.domain.JobPosting;
@@ -14,6 +17,7 @@ import com.joblens.jobposting.repository.JobPostingRepository;
 import com.joblens.jobposting.repository.JobPostingStatusHistoryRepository;
 import com.joblens.jobposting.specification.JobPostingSpecifications;
 import com.joblens.jobposting.exception.InvalidPageException;
+import com.joblens.jobposting.exception.JobPostingLimitReachedException;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
 import com.joblens.jobposting.exception.JobPostingVersionConflictException;
 import com.joblens.jobposting.validation.JobPostingSortValidator;
@@ -45,6 +49,8 @@ public class JobPostingService {
     private final JobPostingSortValidator jobPostingSortValidator;
     private final JobPostingRepository jobPostingRepository;
     private final JobPostingStatusHistoryRepository jobPostingStatusHistoryRepository;
+    private final UserRepository userRepository;
+    private final UsageLimits usageLimits;
     private static final List<String> SUPPORTED_SKILLS = List.of(
             "Java",
             "Spring Boot",
@@ -59,6 +65,13 @@ public class JobPostingService {
 
     @Transactional
     public JobPostingResponse create(Long userId, CreateJobPostingRequest request) {
+        // 件数の確認と保存の間に同じユーザーの別の登録が入ると、上限を超えてしまう。
+        userRepository.findLockedById(userId).orElseThrow(UserNoLongerExistsException::new);
+
+        if (jobPostingRepository.countByUserId(userId) >= usageLimits.maxPostingsPerUser()) {
+            throw new JobPostingLimitReachedException(usageLimits.maxPostingsPerUser());
+        }
+
         // 所有者は必ずログイン中のユーザーにする。リクエスト本文からは受け取らない。
         JobPosting jobPosting = new JobPosting(
                 userId,

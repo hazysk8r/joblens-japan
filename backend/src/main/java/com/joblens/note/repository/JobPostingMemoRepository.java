@@ -13,4 +13,6 @@ public interface JobPostingMemoRepository extends JpaRepository<JobPostingMemo, 
 
   // Optionalを使う理由: memoIdとjobPostingIdの組み合わせが存在しない可能性があり、単件取得でもあるため
   Optional<JobPostingMemo> findByIdAndJobPosting_Id(Long memoId, Long jobPostingId);
+
+  long countByJobPosting_Id(Long jobPostingId);
 }

@@ -68,6 +68,10 @@
   font-size: 0.9rem;
 }
 
+.login-page-notice a {
+  color: var(--text-h);
+}
+
 .login-page-error {
   margin: 0 0 1rem;
   color: var(--login-error);

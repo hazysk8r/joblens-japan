@@ -36,6 +36,14 @@ spring:
       # APIの形式ではなくTomcatのHTMLが返ってしまうため。
       filter-dispatcher-types: async,request
 
+joblens:
+  limits:
+    # 1ユーザーの保存量の上限(求人は最大で約60KB、メモは最大で約750B)。
+    max-postings-per-user: 100
+    max-memos-per-posting: 50
+    # 全体の保存量を抑えるための上限。達すると新規登録だけを止める。
+    max-users: 100
+
 server:
   servlet:
     session:

@@ -124,6 +124,19 @@ function SignupPage() {
       <section className="login-page-content">
         <h2>会員登録</h2>
 
+        <div role="note" aria-label="登録情報について" className="login-page-notice">
+          {/* 行を分けるとJSXが半角スペースを入れるため、日本語の文は1行に続けて書く。 */}
+          メールアドレスと、登録した求人の情報を保存します。確認メールは送らないため、実在しないメールアドレスでも登録できます。パスワードを忘れても再設定はできません。お問い合わせは
+          <a
+            href="https://github.com/hazysk8r/joblens-japan/issues"
+            target="_blank"
+            rel="noreferrer"
+          >
+            GitHubのIssues
+          </a>
+          へお願いします。
+        </div>
+
         {/* 入力チェックは画面側で行い、メッセージを統一するためブラウザの検証は使わない。 */}
         <form onSubmit={handleSubmit} noValidate>
           <div className="login-field">
