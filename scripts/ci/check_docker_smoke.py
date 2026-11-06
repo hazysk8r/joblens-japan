@@ -243,6 +243,7 @@ def check(base_url, database_container=None):
     check_body_size_limit(base)
     # 書き込みの制限に達した状態で続けて、ログイン・会員登録の制限が別であることも確かめる。
     check_write_rate_limit(base)
+    check_account_delete_rate_limit(base)
     check_auth_rate_limits(base)
     # DBを止めるため、最後に行う。
     if database_container:
@@ -300,6 +301,7 @@ def check_spring_error_format(base):
 LOGIN_ALLOWED_IN_BURST = 6
 SIGNUP_ALLOWED_IN_BURST = 4
 WRITE_ALLOWED_IN_BURST = 21
+ACCOUNT_DELETE_ALLOWED_IN_BURST = 6
 RATE_LIMITED_CODE = "TOO_MANY_REQUESTS"
 RATE_LIMITED_MESSAGE = "リクエストが多すぎます。しばらくしてから再度お試しください。"
 
@@ -464,6 +466,21 @@ def check_write_rate_limit(base):
         allowed += 1
     require(1 <= allowed <= 2, f"/api/job-postings: {allowed} writes recovered in {WRITE_RECOVERY_WAIT_SECONDS}s")
     print("PASS: writes recover at the configured rate")
+
+
+def check_account_delete_rate_limit(base):
+    # 誤ったパスワードはバックエンドで拒否され、アカウントは削除されない(400)。
+    # 書き込みの制限に達した後でも届くことで、別の制限であることも確かめる。
+    wrong_password = {"password": "wrong-password"}
+    path = "/api/auth/account/delete"
+    for _ in range(ACCOUNT_DELETE_ALLOWED_IN_BURST):
+        content_type, body, _ = post_json(base, path, wrong_password, expected_status=400)
+        error = json_error_of(path, content_type, body)
+        require(error.get("code") == "INVALID_PASSWORD", "Account deletion within the rate limit must reach the backend")
+    content_type, body, headers = post_json(base, path, wrong_password, expected_status=429)
+    require_rate_limited(path, content_type, body, headers)
+    fetch(urljoin(base, "/api/auth/me"))
+    print(f"PASS: account deletion is rate-limited after {ACCOUNT_DELETE_ALLOWED_IN_BURST} attempts and the account remains")
 
 
 def check_auth_rate_limits(base):

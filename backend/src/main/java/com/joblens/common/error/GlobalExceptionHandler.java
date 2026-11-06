@@ -1,6 +1,7 @@
 package com.joblens.common.error;
 
 import com.joblens.auth.exception.EmailAlreadyExistsException;
+import com.joblens.auth.exception.InvalidPasswordException;
 import com.joblens.auth.exception.SignupClosedException;
 import com.joblens.auth.exception.UserNoLongerExistsException;
 import com.joblens.common.web.AuthContextChangedException;
@@ -253,6 +254,23 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(response);
+    }
+
+    // 入力したパスワードの誤り。401にすると、画面はログインの期限切れとして扱ってしまう。
+    @ExceptionHandler(InvalidPasswordException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidPassword(
+            InvalidPasswordException exception,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ApiErrorResponse(
+                        Instant.now(),
+                        HttpStatus.BAD_REQUEST.value(),
+                        "INVALID_PASSWORD",
+                        exception.getMessage(),
+                        request.getRequestURI(),
+                        Map.of("password", exception.getMessage())));
     }
 
     @ExceptionHandler(JobPostingLimitReachedException.class)

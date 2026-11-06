@@ -131,6 +131,22 @@ class SignupLimitTest {
     }
 
     @Test
+    void アカウントを削除すると再び登録できる() throws Exception {
+        MvcResult first = signup("first@example.com").andExpect(status().isCreated()).andReturn();
+        signup("second@example.com").andExpect(status().isCreated());
+        signup("third@example.com").andExpect(status().isConflict());
+
+        mockMvc.perform(post("/api/auth/account/delete")
+                        .cookie(first.getResponse().getCookie("SESSION"))
+                        .with(doubleSubmitCsrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"password\": \"" + PASSWORD + "\"}"))
+                .andExpect(status().isNoContent());
+
+        signup("third@example.com").andExpect(status().isCreated());
+    }
+
+    @Test
     void ユーザーが減ると再び登録できる() throws Exception {
         fillToCap();
         signup("third@example.com").andExpect(status().isConflict());

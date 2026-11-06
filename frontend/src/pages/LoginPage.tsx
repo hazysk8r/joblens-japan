@@ -73,6 +73,14 @@ function LoginPage() {
         {state.reason === 'loggedOutElsewhere' && (
           <p className="login-page-notice">別のタブでログアウトしました。</p>
         )}
+        {state.reason === 'accountDeleted' && (
+          <p className="login-page-notice">アカウントを削除しました。</p>
+        )}
+        {state.reason === 'accountDeletionUnconfirmed' && (
+          <p className="login-page-notice">
+            アカウントの削除を確認できませんでした。ログインできる場合は、アカウントは削除されていません。
+          </p>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div className="login-field">

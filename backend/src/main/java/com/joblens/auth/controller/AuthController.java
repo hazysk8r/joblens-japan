@@ -7,12 +7,15 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.joblens.auth.dto.DeleteAccountRequest;
 import com.joblens.auth.dto.LoginRequest;
 import com.joblens.auth.dto.SignupRequest;
 import com.joblens.auth.dto.UserResponse;
@@ -22,6 +25,7 @@ import com.joblens.auth.service.AuthService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -37,6 +41,7 @@ public class AuthController {
     private final AuthService authService;
     private final AuthenticationManager authenticationManager;
     private final LoginSessionManager loginSessionManager;
+    private final CsrfTokenRepository csrfTokenRepository;
 
     // 登録後はそのままログイン状態にする。
     @PostMapping("/signup")
@@ -71,6 +76,29 @@ public class AuthController {
         loginSessionManager.establish(authentication, httpRequest, httpResponse);
 
         return UserResponse.from((AuthenticatedUser) authentication.getPrincipal());
+    }
+
+    /*
+     * アカウントを削除し、ログアウトと同じように、このリクエストのセッション・認証情報・CSRFトークンを消す。
+     * DBのセッションは削除済みのため、ここではブラウザのCookieと、このリクエストの状態を片付ける。
+     */
+    @PostMapping("/account/delete")
+    public ResponseEntity<Void> deleteAccount(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @Valid @RequestBody DeleteAccountRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse
+    ) {
+        authService.deleteAccount(user.getId(), request.password());
+
+        HttpSession session = httpRequest.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+        SecurityContextHolder.clearContext();
+        csrfTokenRepository.saveToken(null, httpRequest, httpResponse);
+
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/me")

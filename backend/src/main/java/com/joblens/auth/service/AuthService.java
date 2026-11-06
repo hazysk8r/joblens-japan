@@ -10,7 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 import com.joblens.auth.domain.User;
 import com.joblens.auth.dto.SignupRequest;
 import com.joblens.auth.exception.EmailAlreadyExistsException;
+import com.joblens.auth.exception.InvalidPasswordException;
 import com.joblens.auth.exception.SignupClosedException;
+import com.joblens.auth.exception.UserNoLongerExistsException;
 import com.joblens.auth.repository.UserRepository;
 import com.joblens.auth.security.AuthenticatedUser;
 import com.joblens.common.error.DatabaseErrors;
@@ -57,5 +59,25 @@ public class AuthService {
             }
             throw exception;
         }
+    }
+
+    /**
+     * パスワードで本人を確認してから、アカウントを削除する。
+     * 求人・メモ・状態履歴はON DELETE CASCADEで一緒に削除される。
+     *
+     * ロックは取らない。同じユーザーの求人の登録はユーザーの行をロックするため、
+     * 削除はその完了を待ち、削除後の登録はユーザーがいないため失敗する。
+     */
+    @Transactional
+    public void deleteAccount(Long userId, String password) {
+        // セッションにはパスワードのハッシュを残していないため、DBの値で確認する。
+        User user = userRepository.findById(userId).orElseThrow(UserNoLongerExistsException::new);
+
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new InvalidPasswordException();
+        }
+
+        userRepository.deleteSessionsByEmail(user.getEmail());
+        userRepository.delete(user);
     }
 }

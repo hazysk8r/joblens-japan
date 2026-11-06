@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router'
 
 import HomePage from './pages/HomePage';
 import CreateJobPostingPage from './pages/CreateJobPostingPage';
+import AccountPage from './pages/AccountPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -25,6 +26,7 @@ function App() {
             path="/job-postings/new"
             element={<CreateJobPostingPage />}
           />
+          <Route path="/account" element={<AccountPage />} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />

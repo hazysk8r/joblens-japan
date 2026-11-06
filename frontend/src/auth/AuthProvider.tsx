@@ -10,6 +10,7 @@ import {
 } from '../api/apiClient';
 import { ApiError } from '../api/apiError';
 import {
+  deleteAccount as deleteAccountRequest,
   fetchMe,
   login as loginRequest,
   logout as logoutRequest,
@@ -50,6 +51,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ログアウトが進行中(最新の認証作業)かを判定する。
   // その間のセッション切れは、利用者が自分でログアウトした結果として扱う。
   const isLoggingOutRef = useRef<() => boolean>(() => false);
+  // アカウントの削除が進行中(最新の認証作業)かを判定する。
+  // 他のリクエストの401だけでは削除できたか分からないため、その間は削除の応答で判断する。
+  const isDeletingAccountRef = useRef<() => boolean>(() => false);
+  // 削除の進行中に、他のリクエストが401を受け取ったか。
+  const unauthorizedWhileDeletingRef = useRef(false);
 
   // 新しい認証作業を始め、それが最新の作業かを判定する関数を返す。
   // 以前の作業は、この時点で結果を反映できなくなる。
@@ -129,6 +135,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void loadCurrentUser(startOperation());
 
     const unregisterUnauthorized = setUnauthorizedHandler(() => {
+      // 削除の応答を待ち、削除できなかった場合に確認し直す。
+      if (isDeletingAccountRef.current()) {
+        unauthorizedWhileDeletingRef.current = true;
+        return;
+      }
       // ログアウトの応答より先に、サーバーでログアウト済みのリクエストの401が届くことがある。
       // その場合はセッション切れではなく、利用者が自分でログアウトした結果として扱う。
       if (isLoggingOutRef.current()) {
@@ -284,9 +295,88 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [applyAnonymous, applyUser, startOperation]);
 
+  const deleteAccount = useCallback(async (password: string) => {
+    const isLatest = startOperation();
+    isDeletingAccountRef.current = isLatest;
+    unauthorizedWhileDeletingRef.current = false;
+    try {
+      const deletingUser = userRef.current;
+
+      // 削除は失敗することがあり、失敗したらログイン状態のままにするため、
+      // 開始時には世代を切り替えない(サーバーが削除を返した時点で切り替える)。
+      let confirmed = false;
+      try {
+        await deleteAccountRequest(password);
+        confirmed = true;
+      } catch (error) {
+        if (!isLatest()) {
+          throw new AuthContextChangedError();
+        }
+        // 削除のリクエスト自体が401なら、すでにセッションがない。通常の確認に任せる。
+        if (error instanceof ApiError && error.status === 401) {
+          recheck('serverRejected');
+          throw new AuthContextChangedError();
+        }
+        // 4xxなど、処理されていないことが確実な失敗はログイン状態のまま。
+        if (isCertainFailure(error)) {
+          // 待っている間に他のリクエストが401を受け取っていたら、セッションが切れたかを確認する。
+          if (unauthorizedWhileDeletingRef.current) {
+            recheck('serverRejected');
+          }
+          throw error;
+        }
+        // 5xxや応答なしは、サーバーで削除が終わった可能性がある。下で確認する。
+      }
+      if (!isLatest()) {
+        throw new AuthContextChangedError();
+      }
+
+      if (confirmed) {
+        // サーバーでセッションは終わったので、残っているリクエストをここで中断する。
+        switchAuthContext(null);
+      }
+
+      // 削除でCSRFトークンのCookieも削除されるため、この照会で新しいトークンを受け取る。
+      let current: User | null | undefined;
+      try {
+        current = await fetchMe();
+      } catch {
+        // 確認できなかった(undefined)。
+      }
+      if (!isLatest()) {
+        throw new AuthContextChangedError();
+      }
+
+      if (confirmed) {
+        applyAnonymous('accountDeleted');
+        notifyAuthChanged();
+        return;
+      }
+      if (current === null) {
+        // セッションがないことは確かだが、削除されたかは分からない(期限切れの可能性もある)。
+        applyAnonymous('accountDeletionUnconfirmed');
+        notifyAuthChanged();
+        return;
+      }
+      if (current === undefined) {
+        throw new Error('アカウントを削除できたか確認できませんでした。ページを再読み込みして確認してください。');
+      }
+      if (current.id === deletingUser?.id) {
+        applyUser(current);
+        throw new Error('アカウントを削除できませんでした。しばらくしてから再度お試しください。');
+      }
+      // 別のタブなどで別のユーザーがログインしている。その状態に合わせる。
+      applyUser(current);
+    } finally {
+      if (isDeletingAccountRef.current === isLatest) {
+        isDeletingAccountRef.current = () => false;
+      }
+    }
+  }, [applyAnonymous, applyUser, recheck, startOperation]);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ state, login, signup, logout, retry }),
-    [state, login, signup, logout, retry],
+    () => ({ state, login, signup, logout, deleteAccount, retry }),
+    [state, login, signup, logout, deleteAccount, retry],
   );
 
   return (

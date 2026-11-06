@@ -19,8 +19,11 @@ function keepsReturnPath(reason: AnonymousReason): boolean {
     case 'expired':
       return true;
     // 自分でログアウトした場合(別のタブを含む)は、次の利用者を前の画面に戻さない。
+    // アカウントを削除した場合も、削除したアカウントの画面には戻さない。
     case 'loggedOut':
     case 'loggedOutElsewhere':
+    case 'accountDeleted':
+    case 'accountDeletionUnconfirmed':
       return false;
     default: {
       const unhandled: never = reason;

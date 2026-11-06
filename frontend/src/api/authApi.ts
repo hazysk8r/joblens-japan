@@ -95,6 +95,25 @@ export async function logout(): Promise<void> {
   }
 }
 
+/**
+ * パスワードで本人を確認して、ログイン中のアカウントを削除する。成功するとセッションとCSRFトークンのCookieが削除される。
+ * 401は、セッション切れとして通知せずに呼び出し元(AuthProvider)へ渡す。削除の結果と合わせて判断するため。
+ */
+export async function deleteAccount(password: string): Promise<void> {
+  const response = await apiFetch('/api/auth/account/delete', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ password }),
+    notifyUnauthorized: false,
+  });
+
+  if (!response.ok) {
+    throw await parseApiError(response, 'アカウントを削除できませんでした。');
+  }
+}
+
 // 登録に成功すると、そのままログイン状態になる。
 export async function signup(
   email: string,

@@ -9,8 +9,13 @@ export type AuthState =
   // reason: 未ログインになった理由。ログイン画面の案内と、ログイン後の戻り先の扱いが変わる。
   //   initial: 起動時の確認で未ログインだった / expired: ログイン中にセッションが切れた /
   //   loggedOut: 利用者が自分でログアウトした(次の利用者を前の画面に戻さない) /
-  //   loggedOutElsewhere: 同じブラウザの別のタブでログアウトした
-  | { status: 'anonymous'; reason: 'initial' | 'expired' | 'loggedOut' | 'loggedOutElsewhere' }
+  //   loggedOutElsewhere: 同じブラウザの別のタブでログアウトした /
+  //   accountDeleted: 自分でアカウントを削除した /
+  //   accountDeletionUnconfirmed: 削除の応答を受け取れず、その後の確認でログインしていなかった(削除されたとは限らない)
+  | {
+    status: 'anonymous';
+    reason: 'initial' | 'expired' | 'loggedOut' | 'loggedOutElsewhere' | 'accountDeleted' | 'accountDeletionUnconfirmed';
+  }
   // ログイン状態を確認できなかった(サーバー障害・オフラインなど)。未ログインとは区別する。
   | { status: 'error' };
 
@@ -22,6 +27,8 @@ export interface AuthContextValue {
   signup: (email: string, password: string) => Promise<void>;
   // ログアウトできなかった場合はエラーを投げ、ログイン状態のままにする。
   logout: () => Promise<void>;
+  // 削除できなかった場合はエラーを投げ、ログイン状態のままにする。
+  deleteAccount: (password: string) => Promise<void>;
   // ログイン状態の確認をやり直す。
   retry: () => void;
 }

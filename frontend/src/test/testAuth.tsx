@@ -23,6 +23,7 @@ export function TestAuthProvider({
     login: async () => {},
     signup: async () => {},
     logout: async () => {},
+    deleteAccount: async () => {},
     retry: () => {},
   };
 

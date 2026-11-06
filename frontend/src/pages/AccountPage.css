@@ -1,0 +1,128 @@
+.account-page {
+  --account-danger: #b42318;
+
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 2rem;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.account-page-header {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.account-page-header h1 {
+  margin: 0 0 8px;
+}
+
+.account-page-content {
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.account-page-email {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+}
+
+.account-page-email dt {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.account-page-email dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.account-page-warning {
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
+  color: var(--text-h);
+}
+
+.account-page-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.account-page-field label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.account-page-field input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+}
+
+.account-page-field input[aria-invalid='true'] {
+  border-color: var(--account-danger);
+}
+
+.account-page-error {
+  margin: 0 0 1rem;
+  color: var(--account-danger);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.account-page-field .account-page-error {
+  margin: 0;
+}
+
+.account-page-delete {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid var(--account-danger);
+  border-radius: 8px;
+  background: var(--account-danger);
+  color: #fff;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.account-page-delete:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.account-page :is(input, button, a):focus-visible {
+  outline: 2px solid var(--text-h);
+  outline-offset: 3px;
+}
+
+@media (max-width: 640px) {
+  .account-page {
+    padding: 24px 16px;
+  }
+
+  .account-page-content {
+    padding: 1rem;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .account-page {
+    --account-danger: #f04438;
+  }
+}

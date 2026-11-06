@@ -127,6 +127,7 @@ class SecurityAccessTest {
     static Stream<MockHttpServletRequestBuilder> stateChangingRequests() {
         return Stream.of(
                 post("/api/job-postings"),
+                post("/api/auth/account/delete"),
                 put("/api/job-postings/1"),
                 patch("/api/job-postings/1/status"),
                 delete("/api/job-postings/1"));

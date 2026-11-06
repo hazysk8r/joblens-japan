@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet } from 'react-router';
+import { Link, Outlet } from 'react-router';
 
 import { AuthContextChangedError } from '../api/apiClient';
 import { ApiError } from '../api/apiError';
@@ -46,6 +46,7 @@ function AuthenticatedLayout({ user }: { user: User }) {
     <>
       <header className="account-bar">
         <span className="account-bar-email">{user.email}</span>
+        <Link to="/account">アカウント設定</Link>
         <button type="button" onClick={handleLogout} disabled={loggingOut}>
           {loggingOut ? 'ログアウト中…' : 'ログアウト'}
         </button>
