@@ -1,5 +1,8 @@
 .account-page {
+  /* ボタンの背景と白い文字の対比を両方のモードで保つため、背景は暗い赤のままにする。 */
   --account-danger: #b42318;
+  /* 文字の色は、背景の明るさに合わせてモードごとに変える。 */
+  --account-danger-text: #b42318;
 
   width: 100%;
   max-width: 640px;
@@ -74,12 +77,12 @@
 }
 
 .account-page-field input[aria-invalid='true'] {
-  border-color: var(--account-danger);
+  border-color: var(--account-danger-text);
 }
 
 .account-page-error {
   margin: 0 0 1rem;
-  color: var(--account-danger);
+  color: var(--account-danger-text);
   font-size: 0.85rem;
   overflow-wrap: anywhere;
 }
@@ -123,6 +126,6 @@
 
 @media (prefers-color-scheme: dark) {
   .account-page {
-    --account-danger: #f04438;
+    --account-danger-text: #fda29b;
   }
 }

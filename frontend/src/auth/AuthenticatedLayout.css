@@ -9,6 +9,12 @@
   font-size: 0.9rem;
 }
 
+/* 既定のリンクの色(青・紫)ではなく、アカウントバーの文字に合わせる。下線でリンクと分かるようにする。 */
+.account-bar a {
+  color: var(--text-h);
+  text-underline-offset: 2px;
+}
+
 .account-bar-email {
   overflow-wrap: anywhere;
 }

@@ -272,6 +272,33 @@ class AccountDeletionTest {
     // ---- 同時実行 ----
 
     @Test
+    void 二つの端末から同時に削除しても_一方は204でもう一方は401になりサーバーエラーにしない() throws Exception {
+        Cookie otherDevice = login(userA);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            Future<Integer> first = executor.submit(() -> {
+                start.await();
+                return requestDelete(userA.session(), PASSWORD).andReturn().getResponse().getStatus();
+            });
+            Future<Integer> second = executor.submit(() -> {
+                start.await();
+                return requestDelete(otherDevice, PASSWORD).andReturn().getResponse().getStatus();
+            });
+
+            start.countDown();
+
+            List<Integer> statuses = new ArrayList<>(List.of(first.get(), second.get()));
+            statuses.sort(null);
+            assertEquals(List.of(204, 401), statuses);
+        } finally {
+            executor.shutdownNow();
+        }
+
+        assertEquals(0, rowsOf(userA));
+    }
+
+    @Test
     void 削除と求人の登録が同時に起きても_削除したユーザーのデータは残らない() throws Exception {
         int creators = 8;
         ExecutorService executor = Executors.newFixedThreadPool(creators + 1);

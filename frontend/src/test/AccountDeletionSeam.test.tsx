@@ -230,6 +230,18 @@ describe('削除の結果', () => {
     expect(await screen.findByText('アカウントを削除しました。')).toBeInTheDocument();
   });
 
+  test('204の後の/meが別のユーザーなら、そのユーザーに合わせる(別のタブでログインされた場合)', async () => {
+    stubServer({
+      deleteResponse: () => new Response(null, { status: 204 }),
+      meAfterDelete: () => jsonResponse(200, userB),
+    });
+    await submitDeletion();
+
+    await waitFor(() => expect(screen.getByText(userB.email)).toBeInTheDocument());
+    expect(location()).toBe('/');
+    expect(screen.queryByText('アカウントを削除しました。')).not.toBeInTheDocument();
+  });
+
   test('削除後に別のアカウントでログインすると、アカウント設定ではなくトップへ移動し、案内を残さない', async () => {
     stubServer({
       deleteResponse: () => new Response(null, { status: 204 }),
@@ -258,6 +270,8 @@ describe('削除の結果', () => {
     await waitFor(() => expect(password).toHaveAccessibleDescription('パスワードが正しくありません。'));
     expect(password).toHaveAttribute('aria-invalid', 'true');
     expect(password).toHaveValue('');
+    // ボタンで送信して無効になった後も、読み上げと再入力のためにパスワードの欄へ戻す。
+    expect(password).toHaveFocus();
     expect(location()).toBe('/account');
     expect(callsTo('/api/auth/me')).toBe(1);
   });

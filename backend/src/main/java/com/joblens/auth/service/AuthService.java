@@ -65,13 +65,14 @@ public class AuthService {
      * パスワードで本人を確認してから、アカウントを削除する。
      * 求人・メモ・状態履歴はON DELETE CASCADEで一緒に削除される。
      *
-     * ロックは取らない。同じユーザーの求人の登録はユーザーの行をロックするため、
-     * 削除はその完了を待ち、削除後の登録はユーザーがいないため失敗する。
+     * 求人の登録と同じくユーザーの行をロックし、同じユーザーへの変更を1つずつ処理する。
+     * 2つの端末から同時に削除された場合、後の削除はロックを待ち、ユーザーがいないため401になる。
+     * (ロックしないと、両方が確認を通過し、後の削除が0行の削除としてサーバーエラーになる。)
      */
     @Transactional
     public void deleteAccount(Long userId, String password) {
         // セッションにはパスワードのハッシュを残していないため、DBの値で確認する。
-        User user = userRepository.findById(userId).orElseThrow(UserNoLongerExistsException::new);
+        User user = userRepository.findLockedById(userId).orElseThrow(UserNoLongerExistsException::new);
 
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             throw new InvalidPasswordException();

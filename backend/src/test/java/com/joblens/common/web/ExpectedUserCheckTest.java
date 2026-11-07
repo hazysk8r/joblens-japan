@@ -250,4 +250,18 @@ class ExpectedUserCheckTest {
                             """))
                 .andExpect(status().isOk());
     }
+
+    @Test
+    void 会員登録のリクエストは想定ユーザーが違っても検査しない() throws Exception {
+        mockMvc.perform(as(userB, post("/api/auth/signup"))
+                        .header(EXPECTED_USER_HEADER, String.valueOf(userA.id()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                              "email": "user-c@example.com",
+                              "password": "password123"
+                            }
+                            """))
+                .andExpect(status().isCreated());
+    }
 }

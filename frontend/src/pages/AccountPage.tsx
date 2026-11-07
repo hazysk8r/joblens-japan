@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router';
 
@@ -21,6 +21,15 @@ function AccountPage() {
   const [submitting, setSubmitting] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+
+  // 送信中にボタンが無効になると、フォーカスが外れる。
+  // 項目のエラーを読み上げ、すぐに入力し直せるよう、パスワードの欄へ戻す。
+  useEffect(() => {
+    if (passwordError) {
+      passwordInputRef.current?.focus();
+    }
+  }, [passwordError]);
 
   // RequireAuthの内側でだけ表示されるため、ここでは常にログイン済み。
   if (state.status !== 'authenticated') {
@@ -85,6 +94,7 @@ function AccountPage() {
           <div className="account-page-field">
             <label htmlFor="account-delete-password">パスワード</label>
             <input
+              ref={passwordInputRef}
               id="account-delete-password"
               type="password"
               autoComplete="current-password"

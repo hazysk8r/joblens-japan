@@ -348,6 +348,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (confirmed) {
+        // 削除の後に、別のタブなどで別のユーザーがログインしている。ログアウトと同じく、その状態に合わせる。
+        // 削除したユーザーが返ることはないため、同じユーザーなら削除の応答を信じる。
+        if (current && current.id !== deletingUser?.id) {
+          applyUser(current);
+          return;
+        }
         applyAnonymous('accountDeleted');
         notifyAuthChanged();
         return;

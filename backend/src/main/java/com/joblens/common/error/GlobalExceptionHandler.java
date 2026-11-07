@@ -256,7 +256,7 @@ public class GlobalExceptionHandler {
                 .body(response);
     }
 
-    // 入力したパスワードの誤り。401にすると、画面はログインの期限切れとして扱ってしまう。
+    // 本人確認のために入力したパスワードの誤り。ほかの入力エラーと同じく、400で項目のエラーとして返す。
     @ExceptionHandler(InvalidPasswordException.class)
     public ResponseEntity<ApiErrorResponse> handleInvalidPassword(
             InvalidPasswordException exception,
