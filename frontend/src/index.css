@@ -147,3 +147,37 @@ code {
   outline: 2px solid currentColor;
   outline-offset: 4px;
 }
+
+/*
+ * 求人の登録・アカウント設定の画面から一覧へ戻るリンク。
+ * 一覧の画面から移動するときの「＋ 求人を登録する」と同じ見た目にする。
+ * 複数の画面で使うため、ここにまとめる。
+ */
+.back-to-home-link {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  min-height: 2.5rem;
+  margin-top: 16px;
+  padding: 0.55rem 0.95rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.5;
+  text-decoration: none;
+}
+
+.back-to-home-link:hover {
+  border-color: var(--text);
+  background: var(--code-bg);
+}
+
+.back-to-home-link:focus-visible {
+  outline: 2px solid var(--text-h);
+  outline-offset: 3px;
+}
