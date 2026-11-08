@@ -5,28 +5,24 @@ import type {
 	UpdateJobPostingRequest,
 } from '../types/jobPosting';
 
-import { useRef, useState, useEffect } from 'react';
+import { useState } from 'react';
+import { Link, useLocation } from 'react-router';
 import './JobPostingListItem.css';
 import { formatDateTime } from '../utils/date';
+import { APPLICATION_STATUS_LABELS, formatSalaryRange } from '../utils/jobPostingFormat';
+import { listReturnState } from '../utils/listReturn';
 import { isHttpUrl } from '../utils/httpUrl';
 
 import JobPostingMemoCreateForm from './JobPostingMemoCreateForm';
 import JobPostingEditForm from './JobPostingEditForm';
 import JobPostingMemoEditForm from './JobPostingMemoEditForm';
 
-import { extractRequiredSkills, fetchApplicationStatusHistory } from '../api/jobPostingApi';
+import JobPostingAnalysisPanel from './JobPostingAnalysisPanel';
+
+import { fetchApplicationStatusHistory } from '../api/jobPostingApi';
+import { useJobPostingAnalysis } from '../hooks/useJobPostingAnalysis';
 import { useJobPostingMemos } from '../hooks/useJobPostingMemos';
 import { ApiError } from '../api/apiError';
-
-// ApplicationStatusの全ての値に対応する画面表示用の日本語ラベルを定義する。
-const APPLICATION_STATUS_LABELS:
-	Record<ApplicationStatus, string> = {
-	SAVED: '保存済み',
-	APPLIED: '応募済み',
-	INTERVIEWING: '面接中',
-	OFFERED: '内定',
-	REJECTED: '不採用',
-};
 
 interface JobPostingListItemProps {
 	jobPosting: JobPosting;
@@ -72,23 +68,20 @@ function JobPostingListItem({
 	onDelete,
 	onApplicationStatusChange,
 }: JobPostingListItemProps) {
-	const [skills, setSkills] = useState<string[] | null>(null);
-	const [skillsError, setSkillsError] = useState<string | null>(null);
-	const [loading, setLoading] = useState(false);
-	const [skillsVisible, setSkillsVisible] = useState(false);
-	const [skillsOriginalText, setSkillsOriginalText] = useState<string | null>(null);
+	const location = useLocation();
+	const {
+		analysis,
+		error: analysisError,
+		loading: analysisLoading,
+		isShown: isAnalysisShown,
+		toggle: toggleAnalysis,
+	} = useJobPostingAnalysis(jobPosting);
+	const analysisPanelId = `job-posting-analysis-${jobPosting.id}`;
 
 	const [statusHistory, setStatusHistory] = useState<JobPostingStatusHistory[]>([]);
 	const [statusHistoryError, setStatusHistoryError] = useState<string | null>(null);
   const [isStatusHistoryVisible, setIsStatusHistoryVisible] = useState(false);
   const [isLoadingStatusHistory, setIsLoadingStatusHistory] = useState(false);
-
-	const skillsAbortControllerRef = useRef<AbortController | null>(null);
-	useEffect(() => {
-		return () => {
-			skillsAbortControllerRef.current?.abort();
-		};
-	}, [jobPosting.id, jobPosting.originalText]);
 
 	// Memoの表示・非表示はView側で管理する
 	const [memoVisible, setMemoVisible] = useState(false);
@@ -109,79 +102,6 @@ function JobPostingListItem({
 		saveMemoEdit,
 		deleteMemo,
 	} = useJobPostingMemos(jobPosting.id);
-
-	// 求人原文が更新された場合、以前の原文から取得したSkillsを使用しないようにする。
-	const isSkillsCacheValid =
-		skillsOriginalText === jobPosting.originalText;
-
-	// skillsVisibleだけでは、原文の更新で古い一覧を隠している間もtrueのままになる。
-	const isSkillsShown =
-		isSkillsCacheValid && skills !== null && skillsVisible;
-	const skillsPanelId = `job-posting-skills-${jobPosting.id}`;
-
-	async function handlePostingSkill() {
-
-		if (skills !== null && isSkillsCacheValid) {
-			setSkillsVisible(
-				previous => !previous,
-			);
-			return;
-		}
-
-		const requestOriginalText = jobPosting.originalText;
-
-		skillsAbortControllerRef.current?.abort();
-
-		const controller = new AbortController();
-		skillsAbortControllerRef.current = controller;
-
-		setLoading(true);
-		setSkillsError(null);
-
-		try {
-			const extractedSkills =
-				await extractRequiredSkills(
-					jobPosting.id,
-					controller.signal,
-				);
-
-			// すでに新しいリクエストが開始されている場合は、この結果を反映しない
-			if (controller.signal.aborted) {
-				return;
-			}
-
-			setSkills(extractedSkills);
-			setSkillsOriginalText(requestOriginalText);
-			setSkillsVisible(true);
-		} catch (error) {
-			// 意図的にキャンセルされた場合は、エラー表示用のStateを変更しない
-			if (
-				error instanceof DOMException &&
-				error.name === 'AbortError'
-			) {
-				return;
-			}
-
-			setSkills(null);
-			setSkillsOriginalText(requestOriginalText);
-			setSkillsVisible(false);
-
-			if (error instanceof Error) {
-				setSkillsError(error.message);
-			} else {
-				setSkillsError(
-					'技術スタックの取得に失敗しました。',
-				);
-			}
-		} finally {
-			// 現在のリクエストが最新の場合のみ、ローディング状態を終了する
-			if (
-				skillsAbortControllerRef.current === controller
-			) {
-				setLoading(false);
-			}
-		}
-	}
 
 	function handleToggleMemo() {
 		if (memoVisible) {
@@ -279,14 +199,7 @@ function JobPostingListItem({
 		}
 	}
 
-	const { salaryMin, salaryMax } = jobPosting;
-	const salaryText = salaryMin !== null && salaryMax !== null
-		? `${salaryMin.toLocaleString('ja-JP')}円 ～ ${salaryMax.toLocaleString('ja-JP')}円`
-		: salaryMin !== null
-			? `${salaryMin.toLocaleString('ja-JP')}円以上`
-			: salaryMax !== null
-				? `${salaryMax.toLocaleString('ja-JP')}円以下`
-				: '給与未登録';
+	const salaryText = formatSalaryRange(jobPosting.salaryMin, jobPosting.salaryMax);
 
 	return (
 		<li className="job-posting-card">
@@ -307,7 +220,13 @@ function JobPostingListItem({
 					<div className="job-posting-card__header">
 						<div className="job-posting-card__heading">
 							<h2 className="job-posting-card__title">
-								{jobPosting.title}
+								{/* 一覧の検索条件を渡し、詳細画面から同じ条件の一覧へ戻れるようにする。 */}
+								<Link
+									to={`/job-postings/${jobPosting.id}`}
+									state={listReturnState(location.search)}
+								>
+									{jobPosting.title}
+								</Link>
 							</h2>
 							<p className="job-posting-card__company">
 								{jobPosting.companyName ??
@@ -410,18 +329,18 @@ function JobPostingListItem({
 			<div className="job-posting-card__actions">
 				<button
 					type="button"
-					disabled={loading}
+					disabled={analysisLoading}
 					onClick={() => {
-						void handlePostingSkill();
+						void toggleAnalysis();
 					}}
-					aria-expanded={isSkillsShown}
-					aria-controls={skillsPanelId}
+					aria-expanded={isAnalysisShown}
+					aria-controls={analysisPanelId}
 				>
-					{loading
+					{analysisLoading
 						? '処理中…'
-						: isSkillsShown
-							? '技術スタックを閉じる'
-							: '技術スタックを見る'}
+						: isAnalysisShown
+							? '分析を閉じる'
+							: '求人票を分析'}
 				</button>
 
 				<button
@@ -455,33 +374,18 @@ function JobPostingListItem({
 			</div>
 
 			<div className="job-posting-card__details">
-				{isSkillsShown && (
-						skills.length > 0 ? (
-							<ul
-								id={skillsPanelId}
-								className="job-posting-card__skills"
-							>
-								{skills.map(
-									(skill) => (
-										<li key={skill}>
-											{skill}
-										</li>
-									),
-								)}
-							</ul>
-						) : (
-							<p id={skillsPanelId}>
-								抽出された技術スタックはありません。
-							</p>
-						)
-					)}
+				{analysis !== null && (
+					<JobPostingAnalysisPanel
+						id={analysisPanelId}
+						analysis={analysis}
+					/>
+				)}
 
-				{isSkillsCacheValid &&
-					skillsError !== null && (
-						<p role="alert">
-							{skillsError}
-						</p>
-					)}
+				{analysisError !== null && (
+					<p role="alert">
+						{analysisError}
+					</p>
+				)}
 
 				{isStatusHistoryVisible && (
 					<div

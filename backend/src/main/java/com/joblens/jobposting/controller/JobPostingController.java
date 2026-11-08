@@ -4,6 +4,7 @@ import com.joblens.auth.security.AuthenticatedUser;
 import com.joblens.common.response.PageResponse;
 import com.joblens.jobposting.dto.ApplicationStatusSummaryResponse;
 import com.joblens.jobposting.dto.CreateJobPostingRequest;
+import com.joblens.jobposting.dto.JobPostingAnalysisResponse;
 import com.joblens.jobposting.dto.JobPostingDeadlineFilterRequest;
 import com.joblens.jobposting.dto.JobPostingResponse;
 import com.joblens.jobposting.dto.JobPostingSalaryFilterRequest;
@@ -194,6 +195,14 @@ public class JobPostingController {
             @PathVariable Long id
     ) {
         return jobPostingService.extractSkills(user.getId(), id);
+    }
+
+    @GetMapping("/{id}/analysis")
+    public JobPostingAnalysisResponse analyze(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @PathVariable Long id
+    ) {
+        return jobPostingService.analyze(user.getId(), id);
     }
 
     @GetMapping("/{id}/status-history")

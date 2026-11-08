@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router'
 import HomePage from './pages/HomePage';
 import CreateJobPostingPage from './pages/CreateJobPostingPage';
 import AccountPage from './pages/AccountPage';
+import JobPostingDetailPage from './pages/JobPostingDetailPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -25,6 +26,10 @@ function App() {
           <Route
             path="/job-postings/new"
             element={<CreateJobPostingPage />}
+          />
+          <Route
+            path="/job-postings/:id"
+            element={<JobPostingDetailPage />}
           />
           <Route path="/account" element={<AccountPage />} />
         </Route>

@@ -1,12 +1,14 @@
-import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, render as rtlRender, screen, waitFor, within } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { MemoryRouter } from 'react-router';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, vi, test, expect, describe } from 'vitest';
 
 import '@testing-library/jest-dom/vitest';
 
-import { extractRequiredSkills, fetchApplicationStatusHistory } from '../api/jobPostingApi';
+import { fetchJobPostingAnalysis, fetchApplicationStatusHistory } from '../api/jobPostingApi';
 import { deleteJobPostingMemo, getJobPostingMemos, updateJobPostingMemo, } from '../api/jobPostingMemoApi';
-import type { JobPosting, JobPostingStatusHistory } from '../types/jobPosting';
+import type { JobPosting, JobPostingAnalysis, JobPostingStatusHistory } from '../types/jobPosting';
 import JobPostingListItem from '../components/JobPostingListItem';
 import type { JobPostingMemo } from '../types/jobPostingMemo';
 import { ApiError } from '../api/apiError';
@@ -34,11 +36,25 @@ function deferred<T>() {
 }
 
 vi.mock('../api/jobPostingApi');
+
+// 求人のタイトルが詳細画面へのリンクのため、Routerの中で表示する。
+function render(ui: ReactElement) {
+  return rtlRender(ui, { wrapper: MemoryRouter });
+}
+
+// 技術スタックだけを確認するテスト用。固定残業代は記載なしにしておく。
+function analysisWith(skills: string[]): JobPostingAnalysis {
+  return {
+    fixedOvertime: { status: 'NOT_MENTIONED', hours: null, excessPayStated: null, evidence: [] },
+    skills,
+  };
+}
+
 vi.mock('../api/jobPostingMemoApi')
 
 describe('skills', () => {
 
-  test('技術がある求人で「技術スタックを見る」を押すと技術スタックを見られる', async () => {
+  test('技術がある求人で「求人票を分析」を押すと技術スタックを見られる', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -52,8 +68,8 @@ describe('skills', () => {
       applicationDeadline: null,
       version: 0,
     };
-    vi.mocked(extractRequiredSkills)
-      .mockResolvedValueOnce(["AWS"]);
+    vi.mocked(fetchJobPostingAnalysis)
+      .mockResolvedValueOnce(analysisWith(["AWS"]));
 
     const user = userEvent.setup();
     render(
@@ -72,11 +88,11 @@ describe('skills', () => {
     );
 
     const extractSkills = await screen.findByRole('button', {
-      name: '技術スタックを見る',
+      name: '求人票を分析',
     });
     await user.click(extractSkills);
 
-    expect(extractRequiredSkills)
+    expect(fetchJobPostingAnalysis)
       .toHaveBeenLastCalledWith(
         1,
         expect.any(AbortSignal),
@@ -86,7 +102,7 @@ describe('skills', () => {
 
   });
 
-  test('技術がない求人で「技術スタックを見る」を押すと技術なしのメッセージを表示する', async () => {
+  test('技術がない求人で「求人票を分析」を押すと技術なしのメッセージを表示する', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -100,8 +116,8 @@ describe('skills', () => {
       applicationDeadline: null,
       version: 0,
     };
-    vi.mocked(extractRequiredSkills)
-      .mockResolvedValueOnce([]);
+    vi.mocked(fetchJobPostingAnalysis)
+      .mockResolvedValueOnce(analysisWith([]));
 
     const user = userEvent.setup();
     render(
@@ -120,11 +136,11 @@ describe('skills', () => {
     );
 
     const extractSkills = await screen.findByRole('button', {
-      name: '技術スタックを見る',
+      name: '求人票を分析',
     });
     await user.click(extractSkills);
 
-    expect(extractRequiredSkills)
+    expect(fetchJobPostingAnalysis)
       .toHaveBeenLastCalledWith(
         1,
         expect.any(AbortSignal),
@@ -134,7 +150,7 @@ describe('skills', () => {
 
   })
 
-  test('存在しない求人で「技術スタックを見る」を押すとエラーメッセージを表示する', async () => {
+  test('存在しない求人で「求人票を分析」を押すとエラーメッセージを表示する', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -148,7 +164,7 @@ describe('skills', () => {
       applicationDeadline: null,
       version: 0,
     };
-    vi.mocked(extractRequiredSkills)
+    vi.mocked(fetchJobPostingAnalysis)
       .mockRejectedValueOnce(new Error('存在しない求人です。'));
 
     const user = userEvent.setup();
@@ -168,11 +184,11 @@ describe('skills', () => {
     );
 
     const extractSkills = await screen.findByRole('button', {
-      name: '技術スタックを見る',
+      name: '求人票を分析',
     });
     await user.click(extractSkills);
 
-    expect(extractRequiredSkills)
+    expect(fetchJobPostingAnalysis)
       .toHaveBeenLastCalledWith(
         1,
         expect.any(AbortSignal),
@@ -182,7 +198,7 @@ describe('skills', () => {
 
   })
 
-  test('技術スタックのリクエストを処理中はボタンを無効にし、二重送信を防ぐ', async () => {
+  test('分析のリクエストを処理中はボタンを無効にし、二重送信を防ぐ', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -197,11 +213,11 @@ describe('skills', () => {
       version: 0,
     };
     // 非同期処理のためresolve関数を外に取り出す
-    let resolveSkills: (value: string[]) => void = () => { };
-    const skillsPromise = new Promise<string[]>((resolve) => {
+    let resolveSkills: (value: JobPostingAnalysis) => void = () => { };
+    const skillsPromise = new Promise<JobPostingAnalysis>((resolve) => {
       resolveSkills = resolve;
     })
-    vi.mocked(extractRequiredSkills).mockReturnValueOnce(skillsPromise);
+    vi.mocked(fetchJobPostingAnalysis).mockReturnValueOnce(skillsPromise);
 
     const user = userEvent.setup();
     render(
@@ -220,7 +236,7 @@ describe('skills', () => {
     );
 
     const extractSkills = await screen.findByRole('button', {
-      name: '技術スタックを見る',
+      name: '求人票を分析',
     });
     await user.click(extractSkills);
 
@@ -231,9 +247,9 @@ describe('skills', () => {
     expect(loadingButton).toBeDisabled();
 
     await user.click(extractSkills);
-    expect(extractRequiredSkills).toHaveBeenCalledTimes(1);
+    expect(fetchJobPostingAnalysis).toHaveBeenCalledTimes(1);
 
-    resolveSkills(['AWS']);
+    resolveSkills(analysisWith(['AWS']));
     // resolveSkillの後、Reactがstateを更新して画面を表示する処理が非同期に続く場合がある。 
     // AWSが画面に表示されるまで待つ
     expect(await screen.findByText('AWS')).toBeInTheDocument();
@@ -256,9 +272,9 @@ describe('skills', () => {
       version: 0,
     };
 
-    vi.mocked(extractRequiredSkills)
-      .mockRejectedValueOnce(new Error('技術スタックの取得に失敗しました。'))
-      .mockResolvedValueOnce(['AWS']);
+    vi.mocked(fetchJobPostingAnalysis)
+      .mockRejectedValueOnce(new Error('求人票の分析に失敗しました。'))
+      .mockResolvedValueOnce(analysisWith(['AWS']));
 
     const user = userEvent.setup();
     render(
@@ -277,21 +293,21 @@ describe('skills', () => {
     );
 
     const extractSkills = await screen.findByRole('button', {
-      name: '技術スタックを見る',
+      name: '求人票を分析',
     });
     await user.click(extractSkills);
 
-    expect(await screen.findByText('技術スタックの取得に失敗しました。')).toBeInTheDocument();
+    expect(await screen.findByText('求人票の分析に失敗しました。')).toBeInTheDocument();
     expect(extractSkills).toBeEnabled();
 
     await user.click(extractSkills);
     expect(await screen.findByText('AWS')).toBeInTheDocument();
 
-    expect(extractRequiredSkills).toHaveBeenCalledTimes(2);
+    expect(fetchJobPostingAnalysis).toHaveBeenCalledTimes(2);
 
   })
 
-  test('「技術スタックを見る」を押すと技術がデータに残り、追加のAPI呼び出しなしで使える', async () => {
+  test('「求人票を分析」を押すと技術がデータに残り、追加のAPI呼び出しなしで使える', async () => {
     const mockContent: JobPosting = {
       id: 1,
       companyName: '黄猿',
@@ -306,8 +322,8 @@ describe('skills', () => {
       version: 0,
     };
 
-    vi.mocked(extractRequiredSkills)
-      .mockResolvedValueOnce(['AWS']);
+    vi.mocked(fetchJobPostingAnalysis)
+      .mockResolvedValueOnce(analysisWith(['AWS']));
 
     const user = userEvent.setup();
     render(
@@ -326,25 +342,25 @@ describe('skills', () => {
     );
 
     const extractedSkills = await screen.findByRole('button', {
-      name: '技術スタックを見る',
+      name: '求人票を分析',
     });
     await user.click(extractedSkills);
     expect(await screen.findByText('AWS')).toBeInTheDocument();
-    expect(extractRequiredSkills).toHaveBeenCalledTimes(1);
+    expect(fetchJobPostingAnalysis).toHaveBeenCalledTimes(1);
 
     await user.click(extractedSkills);
     expect(await screen.queryByText('AWS')).not.toBeInTheDocument();
-    expect(extractRequiredSkills).toHaveBeenCalledTimes(1);
+    expect(fetchJobPostingAnalysis).toHaveBeenCalledTimes(1);
 
     await user.click(extractedSkills);
     expect(await screen.findByText('AWS')).toBeInTheDocument();
-    expect(extractRequiredSkills).toHaveBeenCalledTimes(1);
+    expect(fetchJobPostingAnalysis).toHaveBeenCalledTimes(1);
 
   })
 
-  test('originalTextが変更されると進行中のSkillsリクエストを取り消す', async() => {
-    const awsRequest = deferred<string[]>();
-    const javaRequest = deferred<string[]>();
+  test('originalTextが変更されると進行中の分析リクエストを取り消す', async() => {
+    const awsRequest = deferred<JobPostingAnalysis>();
+    const javaRequest = deferred<JobPostingAnalysis>();
 
     const jobPosting: JobPosting = {
       id: 1,
@@ -360,7 +376,7 @@ describe('skills', () => {
       version: 0,
     };
 
-    vi.mocked(extractRequiredSkills)
+    vi.mocked(fetchJobPostingAnalysis)
       .mockReturnValueOnce(awsRequest.promise)
       .mockReturnValueOnce(javaRequest.promise);
 
@@ -389,12 +405,12 @@ describe('skills', () => {
     );
 
     const awsSkillsButton = screen.getByRole('button', {
-      name: '技術スタックを見る',
+      name: '求人票を分析',
     });
 
     await userEvent.click(awsSkillsButton);
 
-    const firstSignal = vi.mocked(extractRequiredSkills).mock.calls[0][1];
+    const firstSignal = vi.mocked(fetchJobPostingAnalysis).mock.calls[0][1];
 
     const javaJobPosting = {
       ...awsJobPosting,
@@ -418,13 +434,13 @@ describe('skills', () => {
     );
 
     const javaSkillsButton = await screen.findByRole('button', {
-      name: '技術スタックを見る',
+      name: '求人票を分析',
     });
     expect(javaSkillsButton).toBeEnabled();
 
     await userEvent.click(javaSkillsButton);
 
-    javaRequest.resolve(['Java']);
+    javaRequest.resolve(analysisWith(['Java']));
 
     expect(
       await screen.findByText('Java'),
@@ -434,14 +450,14 @@ describe('skills', () => {
       screen.getByText('Java'),
     ).toBeInTheDocument();
 
-    expect(extractRequiredSkills).toHaveBeenCalledTimes(2);
+    expect(fetchJobPostingAnalysis).toHaveBeenCalledTimes(2);
   });
 
 })
 
-describe('技術スタックボタンの表示', () => {
-  const OPEN_LABEL = '技術スタックを見る';
-  const CLOSE_LABEL = '技術スタックを閉じる';
+describe('求人票の分析ボタンの表示', () => {
+  const OPEN_LABEL = '求人票を分析';
+  const CLOSE_LABEL = '分析を閉じる';
 
   const jobPosting: JobPosting = {
     id: 7,
@@ -475,7 +491,7 @@ describe('技術スタックボタンの表示', () => {
   }
 
   test('開閉に合わせて文言とaria-expandedが変わり、リクエストは1回だけ送る', async () => {
-    vi.mocked(extractRequiredSkills).mockResolvedValueOnce(['AWS']);
+    vi.mocked(fetchJobPostingAnalysis).mockResolvedValueOnce(analysisWith(['AWS']));
     const user = userEvent.setup();
     render(item(jobPosting));
 
@@ -495,14 +511,14 @@ describe('技術スタックボタンの表示', () => {
     await user.click(button);
     await screen.findByText('AWS');
     expect(button).toHaveTextContent(CLOSE_LABEL);
-    expect(extractRequiredSkills).toHaveBeenCalledTimes(1);
+    expect(fetchJobPostingAnalysis).toHaveBeenCalledTimes(1);
   });
 
   test.each([
     ['技術がある', ['AWS'], 'AWS'],
     ['技術がない', [], '抽出された技術スタックはありません。'],
   ])('%s場合、aria-controlsが表示中の領域を指す', async (_name, skills, text) => {
-    vi.mocked(extractRequiredSkills).mockResolvedValueOnce(skills);
+    vi.mocked(fetchJobPostingAnalysis).mockResolvedValueOnce(analysisWith(skills));
     const user = userEvent.setup();
     render(item(jobPosting));
 
@@ -515,7 +531,7 @@ describe('技術スタックボタンの表示', () => {
   });
 
   test('取得に失敗すると「見る」に戻る', async () => {
-    vi.mocked(extractRequiredSkills).mockRejectedValueOnce(new Error('取得失敗'));
+    vi.mocked(fetchJobPostingAnalysis).mockRejectedValueOnce(new Error('取得失敗'));
     const user = userEvent.setup();
     render(item(jobPosting));
 
@@ -528,7 +544,7 @@ describe('技術スタックボタンの表示', () => {
   });
 
   test('表示中に原文が変わると、古い一覧を隠して「見る」に戻る', async () => {
-    vi.mocked(extractRequiredSkills).mockResolvedValueOnce(['AWS']);
+    vi.mocked(fetchJobPostingAnalysis).mockResolvedValueOnce(analysisWith(['AWS']));
     const user = userEvent.setup();
     const { rerender } = render(item(jobPosting));
 
@@ -541,6 +557,19 @@ describe('技術スタックボタンの表示', () => {
     expect(screen.queryByText('AWS')).not.toBeInTheDocument();
     expect(button).toHaveTextContent(OPEN_LABEL);
     expect(button).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('失敗のエラーは、原文が変わると以前の原文のものとして表示しない', async () => {
+    vi.mocked(fetchJobPostingAnalysis).mockRejectedValueOnce(new Error('取得失敗'));
+    const user = userEvent.setup();
+    const { rerender } = render(item(jobPosting));
+
+    await user.click(screen.getByRole('button', { name: OPEN_LABEL }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('取得失敗');
+
+    rerender(item({ ...jobPosting, originalText: 'Javaエンジニア求人', version: 1 }));
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
 
@@ -2321,7 +2350,7 @@ describe('求人原文のリンク', () => {
       />
     );
 
-    await screen.findByRole('button', { name: '技術スタックを見る' });
+    await screen.findByRole('button', { name: '求人票を分析' });
   };
 
   test('httpとhttpsのURLは新しいタブで開くリンクとして表示する', async () => {
@@ -2350,5 +2379,43 @@ describe('求人原文のリンク', () => {
     await renderWithSourceUrl(null);
 
     expect(screen.queryByRole('link', { name: '原文を見る' })).not.toBeInTheDocument();
+  });
+});
+
+describe('詳細画面へのリンク', () => {
+  test('タイトルが詳細画面へのリンクになる', () => {
+    const jobPosting: JobPosting = {
+      id: 42,
+      companyName: '○○株式会社',
+      title: 'バックエンドエンジニア',
+      sourceUrl: null,
+      originalText: '原文',
+      createdAt: '2026-11-08T00:00:00Z',
+      applicationStatus: 'SAVED',
+      salaryMin: null,
+      salaryMax: null,
+      applicationDeadline: null,
+      version: 0,
+    };
+
+    render(
+      <JobPostingListItem
+        jobPosting={jobPosting}
+        isEditing={false}
+        isSaving={false}
+        isDeleting={false}
+        isUpdatingStatus={false}
+        onStartEdit={vi.fn()}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        onDelete={vi.fn()}
+        onApplicationStatusChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('link', { name: 'バックエンドエンジニア' }))
+      .toHaveAttribute('href', '/job-postings/42');
+    expect(screen.getByRole('heading', { level: 2, name: 'バックエンドエンジニア' }))
+      .toBeInTheDocument();
   });
 });

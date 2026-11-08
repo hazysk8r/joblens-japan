@@ -1,0 +1,67 @@
+.detail-page {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  box-sizing: border-box;
+}
+
+.detail-page-header {
+  margin-bottom: 24px;
+}
+
+.detail-page-header h1 {
+  margin: 0 0 8px;
+}
+
+.detail-page-content {
+  margin-top: 32px;
+  /* 全体の中央揃えを引き継ぐと、原文の行頭がそろわず読みにくいため左揃えにする。 */
+  text-align: left;
+}
+
+.detail-page-message {
+  line-height: 1.75;
+}
+
+.detail-posting__title {
+  margin: 0 0 4px;
+  overflow-wrap: anywhere;
+}
+
+.detail-posting__company {
+  margin: 0;
+}
+
+.detail-posting__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px 24px;
+  margin: 24px 0;
+}
+
+.detail-posting__facts dt {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.detail-posting__facts dd {
+  margin: 2px 0 0;
+}
+
+.detail-posting__original {
+  margin-top: 32px;
+}
+
+.detail-posting__original-text {
+  white-space: pre-wrap;
+  /* 長いURLなどが狭い画面からはみ出さないよう、途中でも折り返す。 */
+  overflow-wrap: anywhere;
+  line-height: 1.75;
+}
+
+@media (max-width: 640px) {
+  .detail-page {
+    padding: 24px 16px;
+  }
+}

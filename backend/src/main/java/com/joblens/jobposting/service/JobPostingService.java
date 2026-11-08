@@ -4,11 +4,15 @@ import com.joblens.auth.exception.UserNoLongerExistsException;
 import com.joblens.auth.repository.UserRepository;
 import com.joblens.common.limit.UsageLimits;
 import com.joblens.common.response.PageResponse;
+import com.joblens.jobposting.analysis.FixedOvertimeAnalyzer;
+import com.joblens.jobposting.analysis.PostingSection;
+import com.joblens.jobposting.analysis.PostingSectionSplitter;
 import com.joblens.jobposting.domain.ApplicationStatus;
 import com.joblens.jobposting.domain.JobPosting;
 import com.joblens.jobposting.domain.JobPostingStatusHistory;
 import com.joblens.jobposting.dto.ApplicationStatusSummaryResponse;
 import com.joblens.jobposting.dto.CreateJobPostingRequest;
+import com.joblens.jobposting.dto.JobPostingAnalysisResponse;
 import com.joblens.jobposting.dto.JobPostingResponse;
 import com.joblens.jobposting.dto.JobPostingStatusHistoryResponse;
 import com.joblens.jobposting.dto.UpdateJobPostingRequest;
@@ -32,6 +36,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -309,10 +315,29 @@ public class JobPostingService {
         );
     }
 
+    public JobPostingAnalysisResponse analyze(Long userId, Long id) {
+        JobPosting jobPosting = findEntityById(userId, id);
+        List<PostingSection> sections = PostingSectionSplitter.split(jobPosting.getOriginalText());
+
+        // サイトが付け加えた他社の求人を除いた本文だけから技術名を探す。
+        // 「【Java経験者歓迎】」のように見出しにも技術名が書かれるため、見出しも含める。
+        String body = sections.stream()
+                .flatMap(section -> Stream.concat(
+                        Stream.ofNullable(section.heading()),
+                        section.lines().stream()))
+                .collect(Collectors.joining("\n"));
+
+        return new JobPostingAnalysisResponse(
+                FixedOvertimeAnalyzer.analyze(sections),
+                extractSkillsFrom(body));
+    }
+
     public List<String> extractSkills(Long userId, Long id) {
         JobPosting jobPosting = findEntityById(userId, id);
-        String originalText = jobPosting.getOriginalText();
-        
+        return extractSkillsFrom(jobPosting.getOriginalText());
+    }
+
+    private List<String> extractSkillsFrom(String originalText) {
         if (originalText == null || originalText.isBlank()) {
             return List.of();
         }

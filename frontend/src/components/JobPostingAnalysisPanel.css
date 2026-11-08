@@ -1,0 +1,62 @@
+/* 求人カードの変数(--card-*)を使うため、カードの中に置く前提。 */
+.job-posting-analysis {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card-muted-bg);
+}
+
+.job-posting-analysis section + section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.job-posting-analysis__heading {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  color: var(--text-h);
+}
+
+.job-posting-analysis__verdict {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+/* 注意が必要な判定(固定残業代あり・判定できず)は目立たせる。 */
+.job-posting-analysis__verdict--warning {
+  color: var(--card-danger);
+}
+
+.job-posting-analysis__detail,
+.job-posting-analysis__note {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+}
+
+.job-posting-analysis__evidence {
+  margin: 0.75rem 0 0;
+  padding-left: 1.25rem;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.job-posting-analysis__evidence li + li {
+  margin-top: 0.25rem;
+}
+
+.job-posting-analysis__evidence-section {
+  display: inline-block;
+  margin-right: 0.5rem;
+  padding: 0 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  font-size: 0.75rem;
+}
+
+.job-posting-analysis__disclaimer {
+  margin: 1rem 0 0;
+  font-size: 0.75rem;
+}

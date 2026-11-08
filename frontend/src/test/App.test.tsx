@@ -6,8 +6,8 @@ import { afterEach, beforeEach, vi, test, expect, describe, } from 'vitest';
 
 import { AuthenticatedApp } from './testAuth';
 import { ApiError } from '../api/apiError';
-import { fetchApplicationStatusSummary, fetchJobPostings, deleteJobPosting, updateJobPosting, createJobPosting, extractRequiredSkills, updateApplicationStatus } from '../api/jobPostingApi';
-import type { JobPosting, PageResponse } from '../types/jobPosting';
+import { fetchApplicationStatusSummary, fetchJobPostings, deleteJobPosting, updateJobPosting, createJobPosting, fetchJobPostingAnalysis, updateApplicationStatus } from '../api/jobPostingApi';
+import type { JobPosting, JobPostingAnalysis, PageResponse } from '../types/jobPosting';
 import JobPostingListItem from '../components/JobPostingListItem';
 
 // 以前のMock呼び出し履歴を削除
@@ -20,6 +20,14 @@ afterEach(() => {
 });
 
 vi.mock('../api/jobPostingApi');
+
+// 技術スタックだけを確認するテスト用。固定残業代は記載なしにしておく。
+function analysisWith(skills: string[]): JobPostingAnalysis {
+  return {
+    fixedOvertime: { status: 'NOT_MENTIONED', hours: null, excessPayStated: null, evidence: [] },
+    skills,
+  };
+}
 
 const renderApp = (initialEntry = '/') => {
   return render(
@@ -388,7 +396,7 @@ test('現在のページが範囲を超えたら、最後の有効なページ�
 
 });
 
-test('求人原文が変更されたら、以前の技術スタックのキャッシュを使わず再取得する', async () => {
+test('求人原文が変更されたら、以前の分析結果のキャッシュを使わず再取得する', async () => {
   const user = userEvent.setup();
 
   const jobPosting: JobPosting = {
@@ -405,9 +413,9 @@ test('求人原文が変更されたら、以前の技術スタックのキャ�
     version: 0,
   };
 
-  vi.mocked(extractRequiredSkills)
-    .mockResolvedValueOnce(['AWS'])
-    .mockResolvedValueOnce(['Java']);
+  vi.mocked(fetchJobPostingAnalysis)
+    .mockResolvedValueOnce(analysisWith(['AWS']))
+    .mockResolvedValueOnce(analysisWith(['Java']));
 
   const props = {
     isEditing: false,
@@ -426,10 +434,11 @@ test('求人原文が変更されたら、以前の技術スタックのキャ�
       jobPosting={jobPosting}
       {...props}
     />,
+    { wrapper: MemoryRouter },
   );
 
   const skillsButton = screen.getByRole('button', {
-    name: '技術スタックを見る',
+    name: '求人票を分析',
   });
 
   // 最初取得
@@ -439,7 +448,7 @@ test('求人原文が変更されたら、以前の技術スタックのキャ�
     await screen.findByText('AWS'),
   ).toBeDefined();
 
-  expect(extractRequiredSkills)
+  expect(fetchJobPostingAnalysis)
     .toHaveBeenCalledTimes(1);
 
   // 原文が変更された求人情報をrerender
@@ -460,7 +469,7 @@ test('求人原文が変更されたら、以前の技術スタックのキャ�
 
   await user.click(
     screen.getByRole('button', {
-      name: '技術スタックを見る',
+      name: '求人票を分析',
     }),
   );
 
@@ -468,7 +477,7 @@ test('求人原文が変更されたら、以前の技術スタックのキャ�
     await screen.findByText('Java'),
   ).toBeDefined();
 
-  expect(extractRequiredSkills)
+  expect(fetchJobPostingAnalysis)
     .toHaveBeenCalledTimes(2);
 });
 

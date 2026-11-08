@@ -52,6 +52,7 @@ DevOps
 - Application deadline registration and editing
 - Application status change history with automatic refresh
 - Rule-based technical keyword extraction from job posting text
+- Rule-based job posting analysis: splits pasted text into sections by heading, ignores other listings that job sites append, and detects fixed overtime pay (固定残業代) with its hours and the source lines as evidence, keeping "not mentioned" separate from "cannot determine"
 - Application status summaries using a single grouped database query
 
 ### Search and Filtering
@@ -90,7 +91,7 @@ DevOps
 
 ### Frontend Reliability
 
-- Required skills stale-response prevention with `AbortController`
+- Job posting analysis stale-response prevention with `AbortController`
 - Job posting list stale-response protection
 - Memo lazy loading and cache invalidation
 - Memo mutation retry handling

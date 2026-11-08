@@ -993,6 +993,79 @@ class JobPostingControllerTest {
     }
 
     @Nested
+    class AnalysisTests {
+        @Test
+        void 固定残業代の判定と根拠と技術名を一つの応答で返す() throws Exception {
+                JobPosting posting = jobPostingRepository.save(
+                                new JobPosting(testUsers.defaultUserId(), "テスト会社", "開発者", null,
+                                                "必須スキル・条件\nJavaとDockerの実務経験\n給与\n月給30万円（固定残業代40時間分を含む）\n超過分は別途支給",
+                                                null, null, null));
+
+                mockMvc.perform(get("/api/job-postings/{id}/analysis", posting.getId()))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.fixedOvertime.status").value("PRESENT"))
+                                .andExpect(jsonPath("$.fixedOvertime.hours").value(40))
+                                .andExpect(jsonPath("$.fixedOvertime.excessPayStated").value(true))
+                                .andExpect(jsonPath("$.fixedOvertime.evidence", hasSize(2)))
+                                .andExpect(jsonPath("$.fixedOvertime.evidence[0].section").value("給与"))
+                                .andExpect(jsonPath("$.fixedOvertime.evidence[0].text")
+                                                .value("月給30万円（固定残業代40時間分を含む）"))
+                                .andExpect(jsonPath("$.fixedOvertime.evidence[1].text").value("超過分は別途支給"))
+                                .andExpect(jsonPath("$.skills", hasSize(2)))
+                                .andExpect(jsonPath("$.skills[0]").value("Java"))
+                                .andExpect(jsonPath("$.skills[1]").value("Docker"));
+        }
+
+        @Test
+        void 判定できない項目はnullとして返し_キーを省略しない() throws Exception {
+                JobPosting posting = jobPostingRepository.save(
+                                new JobPosting(testUsers.defaultUserId(), "テスト会社", "開発者", null,
+                                                "営業職の求人です", null, null, null));
+
+                mockMvc.perform(get("/api/job-postings/{id}/analysis", posting.getId()))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.fixedOvertime.status").value("NOT_MENTIONED"))
+                                .andExpect(jsonPath("$.fixedOvertime.hours").value(org.hamcrest.Matchers.nullValue()))
+                                .andExpect(jsonPath("$.fixedOvertime.excessPayStated")
+                                                .value(org.hamcrest.Matchers.nullValue()))
+                                .andExpect(jsonPath("$.fixedOvertime.evidence").isEmpty())
+                                .andExpect(jsonPath("$.skills").isEmpty());
+        }
+
+        @Test
+        void サイトが付け加えた他社の求人の技術名は返さない() throws Exception {
+                JobPosting posting = jobPostingRepository.save(
+                                new JobPosting(testUsers.defaultUserId(), "テスト会社", "開発者", null,
+                                                "Javaの開発経験\nこの企業が募集中のほかの求人\nDocker活用の開発エンジニア",
+                                                null, null, null));
+
+                mockMvc.perform(get("/api/job-postings/{id}/analysis", posting.getId()))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.skills", hasSize(1)))
+                                .andExpect(jsonPath("$.skills[0]").value("Java"));
+        }
+
+        @Test
+        void 隅付き括弧の見出しにある技術名も返す() throws Exception {
+                JobPosting posting = jobPostingRepository.save(
+                                new JobPosting(testUsers.defaultUserId(), "テスト会社", "開発者", null,
+                                                "【Java経験者歓迎】\n月給30万円", null, null, null));
+
+                mockMvc.perform(get("/api/job-postings/{id}/analysis", posting.getId()))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.skills", hasSize(1)))
+                                .andExpect(jsonPath("$.skills[0]").value("Java"));
+        }
+
+        @Test
+        void 存在しない求人を分析すると_404を返す() throws Exception {
+                mockMvc.perform(get("/api/job-postings/{id}/analysis", 9999L))
+                                .andExpect(status().isNotFound())
+                                .andExpect(jsonPath("$.code").value("JOB_POSTING_NOT_FOUND"));
+        }
+    }
+
+    @Nested
     class SalaryFilterTests {
         @Test
         void SalaryRangeが有効なら正しく出力される() throws Exception {

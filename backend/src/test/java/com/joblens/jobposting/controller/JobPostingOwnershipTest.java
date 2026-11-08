@@ -249,6 +249,15 @@ class JobPostingOwnershipTest {
     }
 
     @Test
+    void 別のユーザーの求人を分析すると_404を返す() throws Exception {
+        long postingId = createPostingId(userB);
+
+        mockMvc.perform(as(userA, get("/api/job-postings/{id}/analysis", postingId)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("JOB_POSTING_NOT_FOUND"));
+    }
+
+    @Test
     void 別のユーザーの求人のステータス履歴を取得すると_404を返す() throws Exception {
         long postingId = createPostingId(userB);
 

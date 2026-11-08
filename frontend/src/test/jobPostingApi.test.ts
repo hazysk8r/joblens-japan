@@ -1,7 +1,7 @@
 import {
   createJobPosting,
   deleteJobPosting,
-  extractRequiredSkills,
+  fetchJobPostingAnalysis,
   fetchApplicationStatusHistory,
   fetchApplicationStatusSummary,
   fetchJobPostings,
@@ -177,10 +177,10 @@ const apiOperations = [
     }],
   },
   {
-    name: '技術スタックの取得',
-    run: () => extractRequiredSkills(1, new AbortController().signal),
-    fallback: '技術スタックの取得に失敗しました。',
-    successBody: ['Java', 'AWS'],
+    name: '求人票の分析',
+    run: () => fetchJobPostingAnalysis(1, new AbortController().signal),
+    fallback: '求人票の分析に失敗しました。',
+    successBody: { fixedOvertime: { status: 'NOT_MENTIONED', hours: null, excessPayStated: null, evidence: [] }, skills: ['Java'] },
   },
 ];
 
@@ -262,14 +262,14 @@ describe('jobPostingApiの共通HTTPエラーの契約', () => {
     },
   );
 
-  test('技術スタックのエラー応答の本文を読む途中で起きたAbortErrorはそのまま伝える', async () => {
+  test('求人票の分析のエラー応答の本文を読む途中で起きたAbortErrorはそのまま伝える', async () => {
     const error = new DOMException('The operation was aborted.', 'AbortError');
     const response = new Response('{"message":"サーバーエラー"}', { status: 500 });
     vi.spyOn(response, 'json').mockRejectedValue(error);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response));
 
     await expect(
-      extractRequiredSkills(1, new AbortController().signal),
+      fetchJobPostingAnalysis(1, new AbortController().signal),
     ).rejects.toBe(error);
   });
 

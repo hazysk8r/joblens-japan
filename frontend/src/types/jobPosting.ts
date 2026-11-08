@@ -89,3 +89,29 @@ export interface UpdateJobPostingRequest {
 export interface UpdateApplicationStatusRequest {
   status: ApplicationStatus;
 }
+// 求人票の分析結果(GET /api/job-postings/{id}/analysis)
+export type FixedOvertimeStatus =
+  | 'PRESENT'
+  | 'ABSENT'
+  | 'NOT_MENTIONED'
+  | 'UNDETERMINED';
+
+// 判定の根拠となった原文の行。sectionは見出しより前の行ではnull。
+export type AnalysisEvidence = {
+  section: string | null;
+  text: string;
+};
+
+export type FixedOvertimeAnalysis = {
+  status: FixedOvertimeStatus;
+  // PRESENTで時間数を一つに特定できた場合だけ値を持つ。
+  hours: number | null;
+  // PRESENT以外ではnull。
+  excessPayStated: boolean | null;
+  evidence: AnalysisEvidence[];
+};
+
+export type JobPostingAnalysis = {
+  fixedOvertime: FixedOvertimeAnalysis;
+  skills: string[];
+};

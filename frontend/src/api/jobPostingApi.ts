@@ -6,6 +6,7 @@ import type {
   UpdateApplicationStatusRequest,
   ApplicationStatusSummaryResponse,
   JobPostingStatusHistory,
+  JobPostingAnalysis,
   StatusFilter,
   SalaryFilter,
   JobPostingSorting,
@@ -81,6 +82,31 @@ export async function fetchJobPostings(
   }
 
   return (await response.json()) as PageResponse<JobPosting>;
+}
+
+/**
+ * 指定したIDの求人を1件取得する。
+ * 他のユーザーの求人は、存在しない求人と同じく404になる。
+ */
+export async function fetchJobPosting(
+  id: number,
+  signal: AbortSignal,
+): Promise<JobPosting> {
+  const response = await apiFetch(
+    `/api/job-postings/${id}`,
+    {
+      signal,
+    },
+  );
+
+  if (!response.ok) {
+    throw await parseApiError(
+      response,
+      '求人の取得に失敗しました。',
+    );
+  }
+
+  return (await response.json()) as JobPosting;
 }
 
 /**
@@ -224,12 +250,16 @@ export async function fetchApplicationStatusHistory(
   return (await response.json()) as JobPostingStatusHistory[];
 }
 
-export async function extractRequiredSkills(
+/**
+ * 求人票の原文を分析した結果(固定残業代の判定と技術スタック)を取得する。
+ * 結果は保存されず、呼び出すたびに現在の原文から分析される。
+ */
+export async function fetchJobPostingAnalysis(
   id: number,
   signal: AbortSignal,
-): Promise<string[]> {
+): Promise<JobPostingAnalysis> {
   const response = await apiFetch(
-    `/api/job-postings/${id}/skills`,
+    `/api/job-postings/${id}/analysis`,
     {
       signal,
     },
@@ -238,10 +268,10 @@ export async function extractRequiredSkills(
   if (!response.ok) {
     throw await parseApiError(
       response,
-      '技術スタックの取得に失敗しました。',
+      '求人票の分析に失敗しました。',
     );
   }
 
-  return (await response.json()) as string[];
+  return (await response.json()) as JobPostingAnalysis;
 }
 
