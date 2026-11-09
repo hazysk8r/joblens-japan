@@ -1,101 +1,70 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
+import { ApiError } from '../api/apiError';
 import { fetchJobPostingAnalysis } from '../api/jobPostingApi';
 import type { JobPosting, JobPostingAnalysis } from '../types/jobPosting';
 
+export type JobPostingAnalysisState =
+  | { status: 'loading' }
+  | { status: 'loaded'; analysis: JobPostingAnalysis }
+  | { status: 'error'; message: string };
+
+const LOADING: JobPostingAnalysisState = { status: 'loading' };
+
 /**
- * 求人票の分析結果の取得と、表示・非表示の切り替えを管理する。
+ * 詳細画面で表示する求人票の分析結果を取得する。結果は保存されず、原文から毎回分析される。
  *
- * 状態の遷移:
- * - 閉じている → (toggle) → 取得中 → 表示 / エラー
- * - 表示 → (toggle) → 閉じている(結果は残し、次に開くときは再取得しない)
- * - 原文が変わる → 以前の結果とエラーは使わない(次のtoggleで再取得する)
+ * 結果は「どの求人のどの原文の何回目の取得か」と一緒に保持し、今の値と合わない結果は読み込み中として扱う。
+ * 原文が変わった直後や再試行の直後に、前の結果やエラーを表示しないため。
+ * 前の通信は取り消し、取り消した通信の結果は反映しない。
  */
-export function useJobPostingAnalysis(
-  jobPosting: Pick<JobPosting, 'id' | 'originalText'>,
-) {
-  const [analysis, setAnalysis] = useState<JobPostingAnalysis | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [visible, setVisible] = useState(false);
-  // 結果を取得したときの原文。現在の原文と違えば、その結果は古い。
-  const [analyzedOriginalText, setAnalyzedOriginalText] = useState<string | null>(null);
+export function useJobPostingAnalysis({
+  id,
+  originalText,
+}: Pick<JobPosting, 'id' | 'originalText'>) {
+  const [attempt, setAttempt] = useState(0);
+  const [result, setResult] = useState<{
+    id: number;
+    originalText: string;
+    attempt: number;
+    state: JobPostingAnalysisState;
+  } | null>(null);
 
-  const abortControllerRef = useRef<AbortController | null>(null);
   useEffect(() => {
-    return () => {
-      abortControllerRef.current?.abort();
-    };
-  }, [jobPosting.id, jobPosting.originalText]);
-
-  // 求人原文が更新された場合、以前の原文から取得した結果を使用しないようにする。
-  const isCacheValid = analyzedOriginalText === jobPosting.originalText;
-
-  // visibleだけでは、原文の更新で古い結果を隠している間もtrueのままになる。
-  const isShown = isCacheValid && analysis !== null && visible;
-
-  async function toggle() {
-    if (analysis !== null && isCacheValid) {
-      setVisible((previous) => !previous);
-      return;
-    }
-
-    const requestOriginalText = jobPosting.originalText;
-
-    abortControllerRef.current?.abort();
-
     const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const result = await fetchJobPostingAnalysis(
-        jobPosting.id,
-        controller.signal,
-      );
-
-      // すでに新しいリクエストが開始されている場合は、この結果を反映しない
-      if (controller.signal.aborted) {
-        return;
+    const settle = (state: JobPostingAnalysisState) => {
+      if (!controller.signal.aborted) {
+        setResult({ id, originalText, attempt, state });
       }
+    };
 
-      setAnalysis(result);
-      setAnalyzedOriginalText(requestOriginalText);
-      setVisible(true);
-    } catch (caught) {
-      // 意図的にキャンセルされた場合は、エラー表示用のStateを変更しない
-      if (
-        caught instanceof DOMException &&
-        caught.name === 'AbortError'
-      ) {
-        return;
-      }
+    fetchJobPostingAnalysis(id, controller.signal).then(
+      (analysis) => settle({ status: 'loaded', analysis }),
+      (caught: unknown) => {
+        // サーバーのメッセージだけを表示する。通信エラーやJSONの解析エラーの文言は英語で、応答の本文を含むこともある。
+        settle({
+          status: 'error',
+          message: caught instanceof ApiError ? caught.message : '求人票の分析に失敗しました。',
+        });
+      },
+    );
 
-      setAnalysis(null);
-      setAnalyzedOriginalText(requestOriginalText);
-      setVisible(false);
+    return () => {
+      controller.abort();
+    };
+  }, [id, originalText, attempt]);
 
-      if (caught instanceof Error) {
-        setError(caught.message);
-      } else {
-        setError('求人票の分析に失敗しました。');
-      }
-    } finally {
-      // 現在のリクエストが最新の場合のみ、ローディング状態を終了する
-      if (abortControllerRef.current === controller) {
-        setLoading(false);
-      }
-    }
-  }
+  const retry = useCallback(() => {
+    setAttempt((current) => current + 1);
+  }, []);
+
+  const isCurrent = result !== null
+    && result.id === id
+    && result.originalText === originalText
+    && result.attempt === attempt;
 
   return {
-    analysis: isShown ? analysis : null,
-    // 原文が変わった後は、以前の原文に対するエラーを表示しない。
-    error: isCacheValid ? error : null,
-    loading,
-    isShown,
-    toggle,
+    state: isCurrent ? result.state : LOADING,
+    retry,
   };
 }

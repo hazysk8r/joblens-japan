@@ -112,13 +112,6 @@ function HomePage() {
   const pageFromUrl = parsePage(searchParams.get('page'));
   const currentUrlSearch = searchParams.toString();
 
-  // 初回表示時のURL検索条件を固定し、初期データ取得にのみ使用する。
-  const initialSearchRef = useRef({
-    keyword: keywordFromUrl,
-    status: statusFromUrl,
-    page: pageFromUrl,
-  });
-
   // 最新の一覧取得リクエストだけがStateを更新できるようにする。
   const latestListRequestIdRef = useRef(0);
   const latestListQueryRef = useRef<JobPostingListQuery>([
@@ -468,63 +461,10 @@ function HomePage() {
     await fetchAndApplyApplicationStatusSummary(requestId);
   }, [fetchAndApplyApplicationStatusSummary]);
 
-  /*
-  * 初回表示時はURLの検索条件をもとに
-  * 求人一覧を取得する。
-  */
+  // 初回表示時はURLの検索条件で取得する。範囲外のページの補正と古い応答の破棄は共通処理に任せる。
   useEffect(() => {
-    let ignore = false;
-    const requestId = ++latestListRequestIdRef.current;
-
-    const {
-      keyword: initialKeyword,
-      status: initialStatus,
-      page: initialPage,
-    } = initialSearchRef.current;
-
-    const loadInitialData = async () => {
-      try {
-        const page =
-          await fetchJobPostings(
-            initialKeyword,
-            initialStatus,
-            initialPage,
-            DEFAULT_SORTING,
-            null,
-            null,
-            null,
-            null,
-          );
-
-        if (ignore) {
-          return;
-        }
-
-        applyListPage(page, requestId);
-      } catch (caughtError) {
-        if (ignore || requestId !== latestListRequestIdRef.current) {
-          return;
-        }
-
-        const message =
-          caughtError instanceof Error
-            ? caughtError.message
-            : '初期データの読み込み中に不明なエラーが発生しました。';
-
-        setError(message);
-      } finally {
-        if (!ignore && requestId === latestListRequestIdRef.current) {
-          setLoading(false);
-        }
-      }
-    };
-
-    void loadInitialData();
-
-    return () => {
-      ignore = true;
-    };
-  }, [applyListPage]);
+    void loadJobPostings(...latestListQueryRef.current);
+  }, [loadJobPostings]);
 
   useEffect(() => {
     // 初期状態は取得中のため、Effectでは状態をリセットせず要求だけを開始する。
@@ -900,7 +840,11 @@ function HomePage() {
     setAppliedDeadlineTo(null);
     setShowAdvancedFilters(false);
     setSorting(DEFAULT_SORTING);
+    setDeadlineRangeError(null);
+    setMutationError(null);
     // Server Data
+    setLoading(true);
+    setError(null);
     await loadJobPostings('', '', 0, DEFAULT_SORTING, null, null, null, null);
   };
 
@@ -1109,6 +1053,11 @@ function HomePage() {
                 const nextSorting =
                   event.target.value as JobPostingSorting;
                 setSorting(nextSorting);
+
+                // 並び順はURLにないため、新しい履歴は作らず、1ページ目に戻ったことだけを反映する。
+                const nextSearchParams = new URLSearchParams(searchParams);
+                nextSearchParams.delete('page');
+                setSearchParams(nextSearchParams, { replace: true });
 
                 setLoading(true);
                 setError(null);

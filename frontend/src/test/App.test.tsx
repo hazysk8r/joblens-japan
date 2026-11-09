@@ -6,9 +6,8 @@ import { afterEach, beforeEach, vi, test, expect, describe, } from 'vitest';
 
 import { AuthenticatedApp } from './testAuth';
 import { ApiError } from '../api/apiError';
-import { fetchApplicationStatusSummary, fetchJobPostings, deleteJobPosting, updateJobPosting, createJobPosting, fetchJobPostingAnalysis, updateApplicationStatus } from '../api/jobPostingApi';
-import type { JobPosting, JobPostingAnalysis, PageResponse } from '../types/jobPosting';
-import JobPostingListItem from '../components/JobPostingListItem';
+import { fetchApplicationStatusSummary, fetchJobPostings, deleteJobPosting, updateJobPosting, createJobPosting, updateApplicationStatus } from '../api/jobPostingApi';
+import type { JobPosting, PageResponse } from '../types/jobPosting';
 
 // 以前のMock呼び出し履歴を削除
 beforeEach(() => {
@@ -20,14 +19,6 @@ afterEach(() => {
 });
 
 vi.mock('../api/jobPostingApi');
-
-// 技術スタックだけを確認するテスト用。固定残業代は記載なしにしておく。
-function analysisWith(skills: string[]): JobPostingAnalysis {
-  return {
-    fixedOvertime: { status: 'NOT_MENTIONED', hours: null, excessPayStated: null, evidence: [] },
-    skills,
-  };
-}
 
 const renderApp = (initialEntry = '/') => {
   return render(
@@ -394,91 +385,6 @@ test('現在のページが範囲を超えたら、最後の有効なページ�
     screen.getByText('2 / 2')
   ).toBeDefined();
 
-});
-
-test('求人原文が変更されたら、以前の分析結果のキャッシュを使わず再取得する', async () => {
-  const user = userEvent.setup();
-
-  const jobPosting: JobPosting = {
-    id: 1,
-    companyName: '黄猿',
-    title: 'エンジニア求人',
-    sourceUrl: null,
-    originalText: 'AWSエンジニア求人',
-    createdAt: '2026-08-14T00:00:00Z',
-    applicationStatus: 'SAVED',
-    salaryMin: null,
-    salaryMax: null,
-    applicationDeadline: null,
-    version: 0,
-  };
-
-  vi.mocked(fetchJobPostingAnalysis)
-    .mockResolvedValueOnce(analysisWith(['AWS']))
-    .mockResolvedValueOnce(analysisWith(['Java']));
-
-  const props = {
-    isEditing: false,
-    isSaving: false,
-    isDeleting: false,
-    isUpdatingStatus: false,
-    onStartEdit: vi.fn(),
-    onSave: vi.fn(),
-    onCancel: vi.fn(),
-    onDelete: vi.fn(),
-    onApplicationStatusChange: vi.fn(),
-  };
-
-  const { rerender } = render(
-    <JobPostingListItem
-      jobPosting={jobPosting}
-      {...props}
-    />,
-    { wrapper: MemoryRouter },
-  );
-
-  const skillsButton = screen.getByRole('button', {
-    name: '求人票を分析',
-  });
-
-  // 最初取得
-  await user.click(skillsButton);
-
-  expect(
-    await screen.findByText('AWS'),
-  ).toBeDefined();
-
-  expect(fetchJobPostingAnalysis)
-    .toHaveBeenCalledTimes(1);
-
-  // 原文が変更された求人情報をrerender
-  rerender(
-    <JobPostingListItem
-      jobPosting={{
-        ...jobPosting,
-        originalText: 'Javaエンジニア求人',
-        version: 1,
-      }}
-      {...props}
-    />,
-  );
-
-  expect(
-    screen.queryByText('AWS'),
-  ).toBeNull();
-
-  await user.click(
-    screen.getByRole('button', {
-      name: '求人票を分析',
-    }),
-  );
-
-  expect(
-    await screen.findByText('Java'),
-  ).toBeDefined();
-
-  expect(fetchJobPostingAnalysis)
-    .toHaveBeenCalledTimes(2);
 });
 
 test('特定の並び順で削除しても、ユーザーが選んだ並び順を維持できる', async () => {

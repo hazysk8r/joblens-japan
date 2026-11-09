@@ -1,20 +1,22 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
+import App from '../App';
 import { switchAuthContext } from '../api/apiClient';
-import JobPostingListItem from '../components/JobPostingListItem';
-import type { JobPosting } from '../types/jobPosting';
+import { AuthProvider } from '../auth/AuthProvider';
 
 /**
- * 求人票の分析ボタンから画面表示までのつながりを検証する。
+ * 詳細画面の求人票の分析から通信までのつながりを検証する。
  * mockするのはfetchだけ(画面 → フック → jobPostingApi → apiClient は実際のコード)。
  * 応答の形はバックエンドのJobPostingControllerTestのAnalysisTestsと合わせる。
  */
 
-const jobPosting: JobPosting = {
+const ANALYSIS_URL = '/api/job-postings/1/analysis';
+
+const jobPosting = {
   id: 1,
   companyName: '○○株式会社',
   title: 'バックエンドエンジニア',
@@ -28,39 +30,36 @@ const jobPosting: JobPosting = {
   version: 0,
 };
 
-function stubAnalysisResponse(response: () => Response | Promise<Response>) {
-  const fetchMock = vi.fn(async (url: string) => {
-    if (url === '/api/job-postings/1/analysis') return response();
-    return new Response('{}', { status: 404, headers: { 'Content-Type': 'application/json' } });
-  });
-  vi.stubGlobal('fetch', fetchMock);
-  return fetchMock;
-}
-
 function json(body: unknown, status: number) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 }
 
-async function clickAnalyze() {
-  const user = userEvent.setup();
+function stubServer(analysisResponse: () => Response | Promise<Response>) {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url === '/api/auth/me') return json({ id: 1, email: 'test-user@example.com' }, 200);
+    if (url === '/api/job-postings/1') return json(jobPosting, 200);
+    if (url === ANALYSIS_URL) return analysisResponse();
+    return json({}, 500);
+  }));
+}
+
+function analysisCalls() {
+  return vi.mocked(fetch).mock.calls.filter(([url]) => url === ANALYSIS_URL);
+}
+
+function renderDetail() {
   render(
-    <JobPostingListItem
-      jobPosting={jobPosting}
-      isEditing={false}
-      isSaving={false}
-      isDeleting={false}
-      isUpdatingStatus={false}
-      onStartEdit={vi.fn()}
-      onSave={vi.fn()}
-      onCancel={vi.fn()}
-      onDelete={vi.fn()}
-      onApplicationStatusChange={vi.fn()}
-    />,
-    { wrapper: MemoryRouter },
+    <MemoryRouter initialEntries={['/job-postings/1']}>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </MemoryRouter>,
   );
-  const button = screen.getByRole('button', { name: '求人票を分析' });
-  await user.click(button);
-  return button;
+}
+
+async function expectOriginalTextIsShown() {
+  expect(within(await screen.findByRole('region', { name: '求人票の原文' }))
+    .getByText(/月給30万円/)).toBeInTheDocument();
 }
 
 afterEach(() => {
@@ -70,8 +69,8 @@ afterEach(() => {
 });
 
 describe('求人票の分析', () => {
-  test('分析結果の応答を受けると固定残業代の判定と根拠と技術スタックを表示する', async () => {
-    const fetchMock = stubAnalysisResponse(() => json({
+  test('詳細画面を開くと分析のAPIを1回呼び、判定と根拠と技術スタックを表示する', async () => {
+    stubServer(() => json({
       fixedOvertime: {
         status: 'PRESENT',
         hours: 40,
@@ -81,54 +80,61 @@ describe('求人票の分析', () => {
       skills: ['Java'],
     }, 200));
 
-    const button = await clickAnalyze();
+    renderDetail();
 
     const fixedOvertime = await screen.findByRole('region', { name: '固定残業代' });
     expect(within(fixedOvertime).getByText('あり（月40時間分）')).toBeInTheDocument();
     expect(within(fixedOvertime).getByRole('list', { name: '根拠' }))
       .toHaveTextContent('給与月給30万円（固定残業代40時間分を含む）');
     expect(within(screen.getByRole('region', { name: '技術スタック' })).getByText('Java')).toBeInTheDocument();
-    expect(button).toHaveTextContent('分析を閉じる');
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(analysisCalls()).toHaveLength(1);
   });
 
-  test('404の応答を受けるとサーバーのメッセージを表示し、ボタンを元に戻す', async () => {
-    stubAnalysisResponse(() => json({
+  test('404の応答を受けるとサーバーのメッセージを表示し、原文は表示したまま', async () => {
+    stubServer(() => json({
       status: 404,
       code: 'JOB_POSTING_NOT_FOUND',
       message: '求人が見つかりません。',
-      path: '/api/job-postings/1/analysis',
+      path: ANALYSIS_URL,
       fieldErrors: {},
     }, 404));
 
-    const button = await clickAnalyze();
+    renderDetail();
 
     expect(await screen.findByRole('alert')).toHaveTextContent('求人が見つかりません。');
-    expect(button).toHaveTextContent('求人票を分析');
-    expect(button).toHaveAttribute('aria-expanded', 'false');
+    await expectOriginalTextIsShown();
+  });
+
+  // ブラウザやJSONの解析が出す英語の文言や応答の本文を、そのまま画面に出さない。
+  test.each<[string, () => Response | Promise<Response>]>([
+    ['通信に失敗した', () => Promise.reject(new TypeError('Failed to fetch'))],
+    ['エラーの応答の本文がJSONでない', () => new Response('<html>502 Bad Gateway</html>', {
+      status: 502,
+      headers: { 'Content-Type': 'text/html' },
+    })],
+    ['成功の応答の本文がJSONでない', () => new Response('<html>ok</html>', { status: 200 })],
+  ])('%s場合は既定のメッセージと再試行を表示する', async (_, response) => {
+    stubServer(response);
+
+    renderDetail();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/^求人票の分析に失敗しました。$/);
+    expect(screen.getByRole('button', { name: '分析を再試行' })).toBeInTheDocument();
+    await expectOriginalTextIsShown();
   });
 
   // apiClientは認証用のsignalを常に付けるため、signalの有無ではなく、実際に中断されることを確かめる。
-  test('応答を待っている間に画面からなくなると、通信を中断する', async () => {
-    stubAnalysisResponse(() => new Promise<Response>(() => {}));
+  test('応答を待っている間に一覧へ戻ると、通信を中断する', async () => {
+    stubServer(() => new Promise<Response>(() => {}));
+    const user = userEvent.setup();
 
-    await clickAnalyze();
-    const signal = vi.mocked(fetch).mock.calls[0][1]?.signal;
+    renderDetail();
+    await waitFor(() => expect(analysisCalls()).toHaveLength(1));
+    const signal = analysisCalls()[0][1]?.signal;
     expect(signal?.aborted).toBe(false);
 
-    cleanup();
+    await user.click(screen.getByRole('link', { name: '← 求人一覧に戻る' }));
 
     expect(signal?.aborted).toBe(true);
-  });
-
-  test('応答の本文がJSONでなければ既定のメッセージを表示する', async () => {
-    stubAnalysisResponse(() => new Response('<html>502 Bad Gateway</html>', {
-      status: 502,
-      headers: { 'Content-Type': 'text/html' },
-    }));
-
-    await clickAnalyze();
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('求人票の分析に失敗しました。');
   });
 });

@@ -508,7 +508,7 @@ describe('認証状態の変更とリクエスト', () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(pendingUntilAborted));
     const controller = new AbortController();
 
-    const request = apiFetch('/api/job-postings/1/skills', { signal: controller.signal });
+    const request = apiFetch('/api/job-postings/1/analysis', { signal: controller.signal });
     controller.abort();
 
     const error = await request.catch((cause: unknown) => cause);

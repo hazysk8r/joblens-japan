@@ -1,6 +1,7 @@
 package com.joblens.jobposting.analysis;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -25,20 +26,25 @@ public final class FixedOvertimeAnalyzer {
 
     private static final String KEYWORD = "(?:固定残業|みなし残業|定額残業|固定時間外)";
 
+    /** キーワードと否定の間に置ける語。「固定残業代の支給はありません」の「の支給は」など。 */
+    private static final String NEGATION_CONNECTOR =
+            "(?:の(?:支給|適用|導入|設定|採用|制度|有無))?(?:は|が|も|を|では|:)?[、,]?\\s*";
+    private static final String NEGATION = "(?:なし|無し|ナシ|ない|なく|ありません|ございません"
+            + "|含まない|含みません|含まず|含まれない|含まれません|含まれず|含まれていません|含まれておりません"
+            + "|(?:支給|導入|適用|採用|設定)?(?:していません|しておりません|しません|しない|せず|なし)"
+            + "|無(?=$|[\\s()、。,/]))";
     /**
      * 「固定残業代なし」「固定残業代の支給はありません」のような否定。
      * 「みなし」の「なし」と区別するため、キーワードの後ろだけを見る。
-     * 間に挟める語は10文字までとし、文や読点の区切り(「。」「、」)、括弧、「含」は越えない。
-     * 「固定残業代を含むため住宅手当はありません」「みなし残業手当あり（無理な残業なし）」のように、
-     * 別の物の否定を拾わないため。
+     * 「なし」は利用者を安心させる判定のため、間に置ける語を決まった表現に限る。
+     * 「固定残業代3万円/交通費なし」のような別の項目の否定を拾わないため。
+     * 知らない言い回しは否定と読まず、ありの判定と根拠の表示で利用者に確認してもらう。
      */
     private static final Pattern NEGATED_KEYWORD = Pattern.compile(
-            KEYWORD + "(?:代|手当|時間)?(?:制度|制)?[^。、,含()]{0,10}?(?:は|では|:)?[、,]?\\s*"
-                    + "(?:なし|無し|ナシ|ありません|ございません|していません|しておりません|含まない|含みません"
-                    + "|無(?=$|[\\s()、。,/]))");
+            KEYWORD + "(?:代|手当|時間)?(?:制度|制)?" + NEGATION_CONNECTOR + NEGATION);
     private static final Pattern POSITIVE_KEYWORD = Pattern.compile(KEYWORD);
     private static final Pattern OVERTIME_PAY = Pattern.compile("(?:残業|時間外(?:労働|勤務)?)(?:代|手当)");
-    /** 「時間外手当30時間分」のように、「固定」の語がなくても時間数の「分」が付いた残業代は固定残業代。 */
+    /** 「時間外手当30時間分」のように、「固定」の語がなくても同じ文で時間数の「分」が付いた残業代は固定残業代。 */
     private static final Pattern HOURS_PORTION = Pattern.compile("(?<![\\d.,])\\d{1,3}\\s*(?:時間|h)\\s*(?:相当)?分",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern FULL_PAY = Pattern.compile("全額(?:支給|支払)|1分単位|100%支給");
@@ -127,6 +133,12 @@ public final class FixedOvertimeAnalyzer {
         return List.copyOf(evidence);
     }
 
+    /** 残業代の語と時間数の「分」が同じ文にあるか。別の文の「研修40時間分」などを固定残業代と読まない。 */
+    private static boolean statesHoursPortion(String normalized) {
+        return Arrays.stream(normalized.split("。")).anyMatch(sentence ->
+                OVERTIME_PAY.matcher(sentence).find() && HOURS_PORTION.matcher(sentence).find());
+    }
+
     private static String truncate(String text) {
         if (text.length() <= MAX_EVIDENCE_LENGTH) {
             return text;
@@ -152,7 +164,7 @@ public final class FixedOvertimeAnalyzer {
             // 否定された箇所を取り除いても残るキーワードだけを「あり」の記載とみなす。
             boolean positive = POSITIVE_KEYWORD.matcher(
                     NEGATED_KEYWORD.matcher(normalized).replaceAll("")).find()
-                    || (mentionsOvertimePay && HOURS_PORTION.matcher(normalized).find());
+                    || statesHoursPortion(normalized);
             boolean fullPay = mentionsOvertimePay && FULL_PAY.matcher(normalized).find();
             boolean excessPay = EXCESS_PAY.matcher(normalized).find();
             return new Line(section, original, normalized, positive, negated, fullPay, mentionsOvertimePay,

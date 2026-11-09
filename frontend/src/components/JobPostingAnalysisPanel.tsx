@@ -8,7 +8,6 @@ import type {
 import './JobPostingAnalysisPanel.css';
 
 type JobPostingAnalysisPanelProps = {
-  id: string;
   analysis: JobPostingAnalysis;
 };
 
@@ -76,7 +75,6 @@ function EvidenceList({ evidence }: { evidence: AnalysisEvidence[] }) {
 }
 
 export default function JobPostingAnalysisPanel({
-  id,
   analysis,
 }: JobPostingAnalysisPanelProps) {
   const headingId = useId();
@@ -86,11 +84,11 @@ export default function JobPostingAnalysisPanel({
   const verdict = fixedOvertimeVerdict(fixedOvertime);
 
   return (
-    <div id={id} className="job-posting-analysis">
+    <div className="job-posting-analysis">
       <section aria-labelledby={fixedOvertimeHeadingId}>
-        <h3 id={fixedOvertimeHeadingId} className="job-posting-analysis__heading">
+        <h4 id={fixedOvertimeHeadingId} className="job-posting-analysis__heading">
           固定残業代
-        </h3>
+        </h4>
         <p
           className={`job-posting-analysis__verdict job-posting-analysis__verdict--${verdict.tone}`}
         >
@@ -110,11 +108,11 @@ export default function JobPostingAnalysisPanel({
       </section>
 
       <section aria-labelledby={skillsHeadingId}>
-        <h3 id={skillsHeadingId} className="job-posting-analysis__heading">
+        <h4 id={skillsHeadingId} className="job-posting-analysis__heading">
           技術スタック
-        </h3>
+        </h4>
         {skills.length > 0 ? (
-          <ul className="job-posting-card__skills">
+          <ul className="job-posting-analysis__skills">
             {skills.map((skill) => (
               <li key={skill}>{skill}</li>
             ))}

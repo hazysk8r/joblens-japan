@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
 
 import './JobPostingDetailPage.css';
+import JobPostingAnalysisPanel from '../components/JobPostingAnalysisPanel';
+import { useJobPostingAnalysis } from '../hooks/useJobPostingAnalysis';
 import { useJobPostingDetail } from '../hooks/useJobPostingDetail';
 import type { JobPosting } from '../types/jobPosting';
 import { formatDateTime } from '../utils/date';
@@ -54,6 +56,33 @@ function NotFound() {
   );
 }
 
+// 分析は求人を取得できてから要求する。失敗しても、求人の情報と原文の表示には影響させない。
+function JobPostingAnalysisBody({ jobPosting }: { jobPosting: JobPosting }) {
+  const { state, retry } = useJobPostingAnalysis(jobPosting);
+
+  switch (state.status) {
+    case 'loading':
+      return <p>分析中…</p>;
+
+    case 'error':
+      return (
+        <>
+          <p role="alert">{state.message}</p>
+          <button type="button" onClick={retry}>分析を再試行</button>
+        </>
+      );
+
+    case 'loaded':
+      return <JobPostingAnalysisPanel analysis={state.analysis} />;
+
+    default: {
+      // 状態を追加して、ここでの表示を書き忘れた場合に型エラーになる。
+      const unhandled: never = state;
+      return unhandled;
+    }
+  }
+}
+
 function JobPostingDetail({ jobPosting }: { jobPosting: JobPosting }) {
   return (
     <article className="detail-posting">
@@ -90,6 +119,14 @@ function JobPostingDetail({ jobPosting }: { jobPosting: JobPosting }) {
           </a>
         </p>
       )}
+
+      <section
+        className="detail-posting__analysis"
+        aria-labelledby="detail-analysis-heading"
+      >
+        <h3 id="detail-analysis-heading">求人票の分析</h3>
+        <JobPostingAnalysisBody jobPosting={jobPosting} />
+      </section>
 
       <section
         className="detail-posting__original"

@@ -132,15 +132,6 @@
   margin-top: 1rem;
 }
 
-.job-posting-card__skills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1.5rem;
-  margin-bottom: 0;
-  padding-left: 1.25rem;
-  font-size: 0.9rem;
-}
-
 .job-posting-card__details > p {
   margin-top: 1rem;
 }

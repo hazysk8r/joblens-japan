@@ -9,9 +9,10 @@ import { ApiError } from '../api/apiError';
 import {
   fetchApplicationStatusSummary,
   fetchJobPosting,
+  fetchJobPostingAnalysis,
   fetchJobPostings,
 } from '../api/jobPostingApi';
-import type { JobPosting } from '../types/jobPosting';
+import type { JobPosting, JobPostingAnalysis } from '../types/jobPosting';
 
 vi.mock('../api/jobPostingApi');
 
@@ -27,6 +28,16 @@ const jobPosting: JobPosting = {
   salaryMax: 450000,
   applicationDeadline: '2026-12-01',
   version: 3,
+};
+
+const analysis: JobPostingAnalysis = {
+  fixedOvertime: {
+    status: 'PRESENT',
+    hours: 40,
+    excessPayStated: true,
+    evidence: [{ section: '給与', text: '固定残業代40時間分を含む' }],
+  },
+  skills: ['Java'],
 };
 
 function deferred<T>() {
@@ -77,6 +88,7 @@ beforeEach(() => {
   vi.mocked(fetchApplicationStatusSummary).mockResolvedValue({
     saved: 0, applied: 1, interviewing: 0, offered: 0, rejected: 0,
   });
+  vi.mocked(fetchJobPostingAnalysis).mockResolvedValue(analysis);
 });
 
 afterEach(() => {
@@ -234,6 +246,74 @@ describe('取得の失敗', () => {
     renderAt('/job-postings/5');
 
     expect(await screen.findByRole('alert')).toHaveTextContent('求人の取得に失敗しました。');
+  });
+});
+
+describe('求人票の分析', () => {
+  test('開くとボタンを押さなくても分析を表示し、原文より上に置く', async () => {
+    vi.mocked(fetchJobPosting).mockResolvedValue(jobPosting);
+
+    renderAt('/job-postings/5');
+
+    const fixedOvertime = await screen.findByRole('region', { name: '固定残業代' });
+    expect(within(fixedOvertime).getByText('あり（月40時間分）')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '求人票を分析' })).not.toBeInTheDocument();
+    expect(fetchJobPostingAnalysis).toHaveBeenCalledWith(5, expect.any(AbortSignal));
+
+    const analysisHeading = screen.getByRole('heading', { level: 3, name: '求人票の分析' });
+    const originalHeading = screen.getByRole('heading', { level: 3, name: '求人票の原文' });
+    expect(analysisHeading.compareDocumentPosition(originalHeading))
+      .toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  test('分析中でも求人の情報と原文は表示する', async () => {
+    vi.mocked(fetchJobPosting).mockResolvedValue(jobPosting);
+    vi.mocked(fetchJobPostingAnalysis).mockReturnValue(new Promise(() => {}));
+
+    renderAt('/job-postings/5');
+
+    expect(await screen.findByText('分析中…')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'バックエンドエンジニア' })).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: '求人票の原文' })).getByText(/【給与】/))
+      .toBeInTheDocument();
+  });
+
+  test('分析に失敗しても原文は表示し、再試行では分析だけを取り直す', async () => {
+    vi.mocked(fetchJobPosting).mockResolvedValue(jobPosting);
+    vi.mocked(fetchJobPostingAnalysis)
+      .mockRejectedValueOnce(new ApiError('サーバーでエラーが発生しました。', 500))
+      .mockResolvedValueOnce(analysis);
+    const user = userEvent.setup();
+
+    renderAt('/job-postings/5');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('サーバーでエラーが発生しました。');
+    expect(within(screen.getByRole('region', { name: '求人票の原文' })).getByText(/【給与】/))
+      .toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '分析を再試行' }));
+
+    expect(await screen.findByRole('region', { name: '固定残業代' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(fetchJobPostingAnalysis).toHaveBeenCalledTimes(2);
+    expect(fetchJobPosting).toHaveBeenCalledTimes(1);
+  });
+
+  test('求人を取得できなかったときは分析を要求しない', async () => {
+    vi.mocked(fetchJobPosting).mockRejectedValue(notFoundError());
+
+    renderAt('/job-postings/5');
+
+    await screen.findByText('求人が見つかりません');
+    expect(fetchJobPostingAnalysis).not.toHaveBeenCalled();
+  });
+
+  test('一覧を開いても分析は要求せず、分析のボタンもない', async () => {
+    renderAt('/');
+
+    await screen.findByRole('link', { name: 'バックエンドエンジニア' });
+    expect(screen.queryByRole('button', { name: '求人票を分析' })).not.toBeInTheDocument();
+    expect(fetchJobPostingAnalysis).not.toHaveBeenCalled();
   });
 });
 

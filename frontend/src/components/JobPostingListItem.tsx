@@ -17,10 +17,8 @@ import JobPostingMemoCreateForm from './JobPostingMemoCreateForm';
 import JobPostingEditForm from './JobPostingEditForm';
 import JobPostingMemoEditForm from './JobPostingMemoEditForm';
 
-import JobPostingAnalysisPanel from './JobPostingAnalysisPanel';
 
 import { fetchApplicationStatusHistory } from '../api/jobPostingApi';
-import { useJobPostingAnalysis } from '../hooks/useJobPostingAnalysis';
 import { useJobPostingMemos } from '../hooks/useJobPostingMemos';
 import { ApiError } from '../api/apiError';
 
@@ -69,14 +67,6 @@ function JobPostingListItem({
 	onApplicationStatusChange,
 }: JobPostingListItemProps) {
 	const location = useLocation();
-	const {
-		analysis,
-		error: analysisError,
-		loading: analysisLoading,
-		isShown: isAnalysisShown,
-		toggle: toggleAnalysis,
-	} = useJobPostingAnalysis(jobPosting);
-	const analysisPanelId = `job-posting-analysis-${jobPosting.id}`;
 
 	const [statusHistory, setStatusHistory] = useState<JobPostingStatusHistory[]>([]);
 	const [statusHistoryError, setStatusHistoryError] = useState<string | null>(null);
@@ -329,22 +319,6 @@ function JobPostingListItem({
 			<div className="job-posting-card__actions">
 				<button
 					type="button"
-					disabled={analysisLoading}
-					onClick={() => {
-						void toggleAnalysis();
-					}}
-					aria-expanded={isAnalysisShown}
-					aria-controls={analysisPanelId}
-				>
-					{analysisLoading
-						? '処理中…'
-						: isAnalysisShown
-							? '分析を閉じる'
-							: '求人票を分析'}
-				</button>
-
-				<button
-					type="button"
 					onClick={handleToggleMemo}
 					aria-expanded={memoVisible}
 					aria-controls={
@@ -374,19 +348,6 @@ function JobPostingListItem({
 			</div>
 
 			<div className="job-posting-card__details">
-				{analysis !== null && (
-					<JobPostingAnalysisPanel
-						id={analysisPanelId}
-						analysis={analysis}
-					/>
-				)}
-
-				{analysisError !== null && (
-					<p role="alert">
-						{analysisError}
-					</p>
-				)}
-
 				{isStatusHistoryVisible && (
 					<div
 						id={`job-posting-status-history-${jobPosting.id}`}

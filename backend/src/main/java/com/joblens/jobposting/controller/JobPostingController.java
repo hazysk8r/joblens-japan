@@ -189,14 +189,6 @@ public class JobPostingController {
         return jobPostingService.getApplicationStatusSummary(user.getId());
     }
     
-    @GetMapping("/{id}/skills")
-    public List<String> getExtractedSkills(
-            @AuthenticationPrincipal AuthenticatedUser user,
-            @PathVariable Long id
-    ) {
-        return jobPostingService.extractSkills(user.getId(), id);
-    }
-
     @GetMapping("/{id}/analysis")
     public JobPostingAnalysisResponse analyze(
             @AuthenticationPrincipal AuthenticatedUser user,

@@ -1,9 +1,19 @@
-/* 求人カードの変数(--card-*)を使うため、カードの中に置く前提。 */
+/* 求人カードの外(詳細画面)に置くため、色の変数はこのパネル自身で持つ。 */
 .job-posting-analysis {
+  --analysis-muted-bg: #f7f8fa;
+  --analysis-warning: #b42318;
+
   padding: 1rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--card-muted-bg);
+  background: var(--analysis-muted-bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  .job-posting-analysis {
+    --analysis-muted-bg: #1f2028;
+    --analysis-warning: #fda29b;
+  }
 }
 
 .job-posting-analysis section + section {
@@ -26,7 +36,7 @@
 
 /* 注意が必要な判定(固定残業代あり・判定できず)は目立たせる。 */
 .job-posting-analysis__verdict--warning {
-  color: var(--card-danger);
+  color: var(--analysis-warning);
 }
 
 .job-posting-analysis__detail,
@@ -54,6 +64,15 @@
   border-radius: 4px;
   background: var(--bg);
   font-size: 0.75rem;
+}
+
+.job-posting-analysis__skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.9rem;
 }
 
 .job-posting-analysis__disclaimer {

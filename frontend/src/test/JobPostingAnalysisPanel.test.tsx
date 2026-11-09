@@ -11,12 +11,21 @@ afterEach(() => {
 
 function renderPanel(fixedOvertime: FixedOvertimeAnalysis, skills: string[] = []) {
   const analysis: JobPostingAnalysis = { fixedOvertime, skills };
-  render(<JobPostingAnalysisPanel id="analysis-1" analysis={analysis} />);
+  render(<JobPostingAnalysisPanel analysis={analysis} />);
 }
 
 function fixedOvertimeSection() {
   return screen.getByRole('region', { name: '固定残業代' });
 }
+
+describe('見出しの構造', () => {
+  test('詳細画面の「求人票の分析」の下に置くため、見出しは4階層目にする', () => {
+    renderPanel({ status: 'NOT_MENTIONED', hours: null, excessPayStated: null, evidence: [] });
+
+    expect(screen.getByRole('heading', { level: 4, name: '固定残業代' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 4, name: '技術スタック' })).toBeInTheDocument();
+  });
+});
 
 describe('固定残業代の判定の表示', () => {
   test('ありの場合は時間数と超過分の支給と根拠を表示する', () => {
@@ -102,10 +111,9 @@ describe('技術スタックと注意書きの表示', () => {
     expect(within(section).getByText('抽出された技術スタックはありません。')).toBeInTheDocument();
   });
 
-  test('自動判定であることを常に表示し、パネルにidを付ける', () => {
+  test('自動判定であることを常に表示する', () => {
     renderPanel(notMentioned);
 
     expect(screen.getByText('自動判定のため、誤りがある可能性があります。')).toBeInTheDocument();
-    expect(document.getElementById('analysis-1')).toContainElement(fixedOvertimeSection());
   });
 });

@@ -332,16 +332,8 @@ public class JobPostingService {
                 extractSkillsFrom(body));
     }
 
-    public List<String> extractSkills(Long userId, Long id) {
-        JobPosting jobPosting = findEntityById(userId, id);
-        return extractSkillsFrom(jobPosting.getOriginalText());
-    }
-
-    private List<String> extractSkillsFrom(String originalText) {
-        if (originalText == null || originalText.isBlank()) {
-            return List.of();
-        }
-        String normalizedOriginalText = originalText.toLowerCase(Locale.ROOT);
+    private List<String> extractSkillsFrom(String text) {
+        String normalizedText = text.toLowerCase(Locale.ROOT);
         List<String> extractedSkills = new ArrayList<>();
         String lookbehind = "(?<![a-zA-Z0-9+#.])";
         // 文末のピリオドは許可し、ドットで接続された識別子は除外する。
@@ -351,7 +343,7 @@ public class JobPostingService {
             String escapedSkill = Pattern.quote(normalizedSkill);
             String finalRegex = lookbehind + escapedSkill + lookahead;
             Pattern pattern = Pattern.compile(finalRegex);
-            Matcher matcher = pattern.matcher(normalizedOriginalText);
+            Matcher matcher = pattern.matcher(normalizedText);
             
             if (matcher.find()) {
                 extractedSkills.add(skill);

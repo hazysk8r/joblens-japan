@@ -70,6 +70,69 @@ class FixedOvertimeAnalyzerTest {
         assertThat(analyze(line).status()).isEqualTo(PRESENT);
     }
 
+    // 「なし」は利用者を安心させる判定のため、別の項目の否定を固定残業代の否定として読まない。
+    @ParameterizedTest
+    @MethodSource("別の項目の否定が続く固定残業代の表現")
+    void 別の項目の否定が続いても固定残業代ありと判定する(String line, Integer expectedHours) {
+        FixedOvertimeAnalysis result = analyze(line);
+
+        assertThat(result.status()).isEqualTo(PRESENT);
+        assertThat(result.hours()).isEqualTo(expectedHours);
+    }
+
+    private static Stream<Arguments> 別の項目の否定が続く固定残業代の表現() {
+        return Stream.of(
+                Arguments.of("固定残業代3万円/交通費なし", null),
+                Arguments.of("みなし残業30時間 退職金なし", 30),
+                Arguments.of("固定残業代30時間分 賞与なし", 30),
+                Arguments.of("固定残業代あり賞与なし", null),
+                Arguments.of("固定残業代は少ない", null));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "固定残業代はない",
+            "固定残業代がない求人です",
+            "固定残業代はなく、残業代は別途支給します",
+            "固定残業代もありません",
+            "固定残業代ナシ",
+            "固定残業代はございません",
+            "固定残業代を含まず",
+            "固定残業代は含まれない",
+            "固定残業代は含まれません",
+            "固定残業代は含まれず",
+            "固定残業代は含まれていません",
+            "固定残業代は含まれておりません",
+            "固定残業代は支給しません",
+            "固定残業代は導入しない",
+            "固定残業代は適用せず",
+            "固定残業代は採用していません",
+            "固定残業代は設定しておりません",
+            "固定残業代は支給なし",
+            "固定残業代の支給なし",
+            "固定残業代の適用はありません",
+            "固定残業代の導入はありません",
+            "固定残業代の設定はありません",
+            "固定残業代の採用はありません",
+            "固定残業代の制度はありません",
+            "固定残業代の有無：無",
+            "残業代は固定残業代ではなく、全額支給します"
+    })
+    void 固定残業代を否定するさまざまな表現をなしと判定する(String line) {
+        FixedOvertimeAnalysis result = analyze(line);
+
+        assertThat(result.status()).isEqualTo(ABSENT);
+        assertThat(result.evidence()).containsExactly(new AnalysisEvidence(null, line));
+    }
+
+    @Test
+    void 別の文の時間数は固定残業代の時間数とみなさない() {
+        FixedOvertimeAnalysis result = analyze("残業代なし。研修40時間分");
+
+        assertThat(result.status()).isEqualTo(UNDETERMINED);
+        assertThat(result.hours()).isNull();
+    }
+
     @Test
     void 残業代の語がなければ時間数の分があっても固定残業代とみなさない() {
         assertThat(analyze("研修は40時間分のカリキュラム").status()).isEqualTo(NOT_MENTIONED);
