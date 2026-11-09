@@ -102,7 +102,7 @@ function JobPostingDetail({ jobPosting }: { jobPosting: JobPosting }) {
   );
 }
 
-function JobPostingDetailPage({ id }: { id: number }) {
+function JobPostingDetailContent({ id }: { id: number }) {
   const { state, retry } = useJobPostingDetail(id);
 
   switch (state.status) {
@@ -135,7 +135,7 @@ function JobPostingDetailPage({ id }: { id: number }) {
  * 求人の詳細画面(/job-postings/:id)。
  * 形の正しくないIDは、通信せずに見つからない求人として扱う。
  */
-function JobPostingDetailRoute() {
+function JobPostingDetailPage() {
   const { id } = useParams();
   const jobPostingId = parseJobPostingId(id);
 
@@ -143,9 +143,9 @@ function JobPostingDetailRoute() {
     <DetailLayout>
       {jobPostingId === null
         ? <NotFound />
-        : <JobPostingDetailPage id={jobPostingId} />}
+        : <JobPostingDetailContent id={jobPostingId} />}
     </DetailLayout>
   );
 }
 
-export default JobPostingDetailRoute;
+export default JobPostingDetailPage;

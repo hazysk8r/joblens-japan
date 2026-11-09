@@ -28,7 +28,7 @@ const jobPosting: JobPosting = {
   version: 0,
 };
 
-function stubAnalysisResponse(response: () => Response) {
+function stubAnalysisResponse(response: () => Response | Promise<Response>) {
   const fetchMock = vi.fn(async (url: string) => {
     if (url === '/api/job-postings/1/analysis') return response();
     return new Response('{}', { status: 404, headers: { 'Content-Type': 'application/json' } });
@@ -106,6 +106,19 @@ describe('求人票の分析', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('求人が見つかりません。');
     expect(button).toHaveTextContent('求人票を分析');
     expect(button).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  // apiClientは認証用のsignalを常に付けるため、signalの有無ではなく、実際に中断されることを確かめる。
+  test('応答を待っている間に画面からなくなると、通信を中断する', async () => {
+    stubAnalysisResponse(() => new Promise<Response>(() => {}));
+
+    await clickAnalyze();
+    const signal = vi.mocked(fetch).mock.calls[0][1]?.signal;
+    expect(signal?.aborted).toBe(false);
+
+    cleanup();
+
+    expect(signal?.aborted).toBe(true);
   });
 
   test('応答の本文がJSONでなければ既定のメッセージを表示する', async () => {

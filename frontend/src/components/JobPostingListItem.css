@@ -36,6 +36,16 @@
   line-height: 1.4;
 }
 
+/* ブラウザ既定のリンク色(訪問済みの紫など)にせず、見出しの色のままにする。 */
+.job-posting-card__title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.job-posting-card__title a:hover {
+  text-decoration: underline;
+}
+
 .job-posting-card__company {
   color: var(--text);
   font-size: 0.95rem;

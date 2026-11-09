@@ -43,9 +43,10 @@ export function useJobPostingDetail(id: number) {
           settle({ status: 'notFound' });
           return;
         }
+        // サーバーのメッセージだけを表示する。通信エラーやJSONの解析エラーの文言は英語で、応答の本文を含むこともある。
         settle({
           status: 'error',
-          message: caught instanceof Error ? caught.message : '求人の取得に失敗しました。',
+          message: caught instanceof ApiError ? caught.message : '求人の取得に失敗しました。',
         });
       },
     );

@@ -1,7 +1,7 @@
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, useLocation } from 'react-router';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { AuthenticatedApp } from './testAuth';
@@ -42,6 +42,12 @@ function deferred<T>() {
 function LocationDisplay() {
   const location = useLocation();
   return <div data-testid="location">{location.pathname + location.search}</div>;
+}
+
+// ブラウザの「戻る」と同じ履歴の移動(POP)を起こす。
+function BrowserBackButton() {
+  const navigate = useNavigate();
+  return <button type="button" onClick={() => navigate(-1)}>ブラウザで戻る</button>;
 }
 
 function renderAt(entry: string | { pathname: string; state?: unknown }) {
@@ -156,6 +162,9 @@ describe('見つからない求人', () => {
     '-1',
     '1.5',
     '1e3',
+    // Number()では16や5として読めてしまい、URLと違う求人を開くことになる。
+    '0x10',
+    '+5',
     '007',
     ' 5',
     // JavaScriptの数値で正確に表せない(丸められると別のIDになる)。
@@ -255,6 +264,32 @@ describe('一覧に戻る', () => {
       'Java', 'APPLIED', 0, expect.anything(), null, null, null, null,
     ));
     expect(screen.getByRole('textbox', { name: '検索キーワード' })).toHaveValue('Java');
+  });
+
+  test('ブラウザの戻るでも一覧の検索条件が復元され、一覧の取得は1回だけ', async () => {
+    vi.mocked(fetchJobPosting).mockResolvedValue(jobPosting);
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={['/?keyword=Java&status=APPLIED']}>
+        <AuthenticatedApp />
+        <LocationDisplay />
+        <BrowserBackButton />
+      </MemoryRouter>,
+    );
+    await user.click(await screen.findByRole('link', { name: 'バックエンドエンジニア' }));
+    await screen.findByRole('heading', { level: 2, name: 'バックエンドエンジニア' });
+    vi.mocked(fetchJobPostings).mockClear();
+
+    await user.click(screen.getByRole('button', { name: 'ブラウザで戻る' }));
+
+    await screen.findByRole('link', { name: 'バックエンドエンジニア' });
+    expect(screen.getByTestId('location')).toHaveTextContent('/?keyword=Java&status=APPLIED');
+    expect(screen.getByRole('textbox', { name: '検索キーワード' })).toHaveValue('Java');
+    expect(fetchJobPostings).toHaveBeenCalledTimes(1);
+    expect(fetchJobPostings).toHaveBeenCalledWith(
+      'Java', 'APPLIED', 0, expect.anything(), null, null, null, null,
+    );
   });
 
   test.each([

@@ -1,5 +1,6 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
@@ -37,7 +38,7 @@ const jobPosting = {
 
 // ログイン済みのユーザー1で始まり、求人の取得だけをテストごとに変えるサーバー。
 // 求人の取得が401になった後は、実際のサーバーと同じく照会(/me)も401にする。
-function stubServer(jobPostingResponse: () => Response) {
+function stubServer(jobPostingResponse: () => Response | Promise<Response>) {
   let expired = false;
   const fetchMock = vi.fn(async (url: string) => {
     if (url === '/api/auth/me') {
@@ -46,7 +47,7 @@ function stubServer(jobPostingResponse: () => Response) {
         : json(200, { id: 1, email: 'test-user@example.com' });
     }
     if (url === '/api/job-postings/5') {
-      const response = jobPostingResponse();
+      const response = await jobPostingResponse();
       expired = response.status === 401;
       return response;
     }
@@ -84,15 +85,31 @@ afterEach(() => {
 });
 
 describe('求人の詳細画面', () => {
-  test('求人のAPIを取り消し用のsignal付きで呼び、応答を表示する', async () => {
+  test('求人のAPIを呼び、応答を表示する', async () => {
     stubServer(() => json(200, jobPosting));
 
     renderApp('/job-postings/5');
 
     expect(await screen.findByRole('heading', { level: 2, name: 'バックエンドエンジニア' }))
       .toBeInTheDocument();
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => url === '/api/job-postings/5')).toBe(true);
+  });
+
+  // apiClientは認証用のsignalを常に付けるため、signalの有無ではなく、画面を離れて実際に中断されることを確かめる。
+  test('応答を待っている間に一覧へ戻ると、通信を中断する', async () => {
+    stubServer(() => new Promise<Response>(() => {}));
+    const user = userEvent.setup();
+
+    renderApp('/job-postings/5');
+    await waitFor(() => expect(
+      vi.mocked(fetch).mock.calls.some(([url]) => url === '/api/job-postings/5'),
+    ).toBe(true));
     const call = vi.mocked(fetch).mock.calls.find(([url]) => url === '/api/job-postings/5');
-    expect(call?.[1]).toMatchObject({ signal: expect.any(AbortSignal) });
+    expect(call?.[1]?.signal?.aborted).toBe(false);
+
+    await user.click(screen.getByRole('link', { name: '← 求人一覧に戻る' }));
+
+    expect(call?.[1]?.signal?.aborted).toBe(true);
   });
 
   test('404の本文を受けると見つからないと表示する', async () => {
@@ -108,6 +125,19 @@ describe('求人の詳細画面', () => {
 
     expect(await screen.findByText('求人が見つかりません')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '再試行' })).not.toBeInTheDocument();
+  });
+
+  // ブラウザやJSONの解析が出す英語の文言や応答の本文を、そのまま画面に出さない。
+  test.each<[string, () => Response | Promise<Response>]>([
+    ['通信に失敗した', () => Promise.reject(new TypeError('Failed to fetch'))],
+    ['成功の応答の本文がJSONでない', () => new Response('<html>ok</html>', { status: 200 })],
+  ])('%s場合は既定のメッセージと再試行を表示する', async (_, response) => {
+    stubServer(response);
+
+    renderApp('/job-postings/5');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/^求人の取得に失敗しました。$/);
+    expect(screen.getByRole('button', { name: '再試行' })).toBeInTheDocument();
   });
 
   test('401を受けるとログイン画面へ移動し、ログイン後の戻り先は詳細画面になる', async () => {

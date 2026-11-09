@@ -26,6 +26,36 @@ const analysis: JobPostingAnalysis = {
   skills: ['Java'],
 };
 
+test('取り消した古いリクエストの応答が後から届いても、新しいリクエストの結果を上書きしない', async () => {
+  const oldRequest = deferred<JobPostingAnalysis>();
+  const newRequest = deferred<JobPostingAnalysis>();
+  vi.mocked(fetchJobPostingAnalysis)
+    .mockReturnValueOnce(oldRequest.promise)
+    .mockReturnValueOnce(newRequest.promise);
+
+  const { result } = renderHook(() => useJobPostingAnalysis({ id: 1, originalText: '求人' }));
+
+  let oldToggle!: Promise<void>;
+  let newToggle!: Promise<void>;
+  act(() => {
+    oldToggle = result.current.toggle();
+  });
+  act(() => {
+    newToggle = result.current.toggle();
+  });
+
+  await act(async () => {
+    newRequest.resolve(analysis);
+    await newToggle;
+  });
+  await act(async () => {
+    oldRequest.resolve({ ...analysis, skills: ['古い応答'] });
+    await oldToggle;
+  });
+
+  expect(result.current.analysis).toEqual(analysis);
+});
+
 // 画面では処理中にボタンを無効にしているため、フックを直接呼んで重なった場合を確かめる。
 test('取り消した古いリクエストが後から終わっても、新しいリクエストの処理中の状態を解除しない', async () => {
   const oldRequest = deferred<JobPostingAnalysis>();
