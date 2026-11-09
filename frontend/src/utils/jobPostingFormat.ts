@@ -10,6 +10,15 @@ export const APPLICATION_STATUS_LABELS:
   REJECTED: '不採用',
 };
 
+// 選択欄に表示する順番。
+export const APPLICATION_STATUSES: ApplicationStatus[] = [
+  'SAVED',
+  'APPLIED',
+  'INTERVIEWING',
+  'OFFERED',
+  'REJECTED',
+];
+
 // 給与の範囲を、登録されている値に合わせた文言にする。
 export function formatSalaryRange(
   salaryMin: number | null,

@@ -5,12 +5,10 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { AuthenticatedApp } from './testAuth';
-import { ApiError } from '../api/apiError';
 import {
   deleteJobPosting,
   fetchApplicationStatusSummary,
   fetchJobPostings,
-  updateApplicationStatus,
 } from '../api/jobPostingApi';
 import type { JobPosting, PageResponse } from '../types/jobPosting';
 
@@ -110,16 +108,16 @@ afterEach(() => {
 });
 
 describe('更新完了後の一覧再取得', () => {
-  test('状態変更の完了時は新しい検索の全条件とページを維持する', async () => {
-    const mutation = deferred<JobPosting>();
+  test('削除の完了時は新しい検索の全条件とページを維持する', async () => {
+    const mutation = deferred<void>();
     const user = userEvent.setup();
-    vi.mocked(updateApplicationStatus).mockReturnValueOnce(mutation.promise);
+    vi.mocked(deleteJobPosting).mockReturnValueOnce(mutation.promise);
     vi.mocked(fetchJobPostings).mockImplementation(async (keyword, _status, page) =>
       pageOf([keyword === 'AWS' ? awsPosting : javaPosting], page, 2),
     );
     await renderJava();
-    await user.selectOptions(within(cardFor(javaPosting.title)).getByRole('combobox'), 'APPLIED');
-    expect(updateApplicationStatus).toHaveBeenCalledWith(javaPosting.id, { status: 'APPLIED' }, javaPosting.version);
+    await user.click(within(cardFor(javaPosting.title)).getByRole('button', { name: '削除' }));
+    expect(deleteJobPosting).toHaveBeenCalledWith(javaPosting.id);
 
     await user.click(screen.getByRole('button', { name: '＋ 詳細条件' }));
     await user.selectOptions(screen.getByRole('combobox', { name: 'ステータス' }), 'APPLIED');
@@ -134,7 +132,7 @@ describe('更新完了後の一覧再取得', () => {
     await screen.findByText('2 / 2');
 
     const callsBeforeCompletion = vi.mocked(fetchJobPostings).mock.calls.length;
-    await act(async () => mutation.resolve(posting({ applicationStatus: 'APPLIED', version: 4 })));
+    await act(async () => mutation.resolve());
     await waitFor(() => expect(fetchJobPostings).toHaveBeenCalledTimes(callsBeforeCompletion + 1));
 
     expect(fetchJobPostings).toHaveBeenLastCalledWith(
@@ -167,27 +165,6 @@ describe('更新完了後の一覧再取得', () => {
     expect(screen.getByRole('heading', { name: awsPosting.title })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: javaPosting.title })).not.toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '検索キーワード' })).toHaveValue('AWS');
-  });
-
-  test('状態変更の競合復旧も完了時点の新しい検索条件で再取得する', async () => {
-    const mutation = deferred<JobPosting>();
-    const user = userEvent.setup();
-    vi.mocked(updateApplicationStatus).mockReturnValueOnce(mutation.promise);
-    await renderJava();
-    await user.selectOptions(within(cardFor(javaPosting.title)).getByRole('combobox'), 'APPLIED');
-    await searchAws(user);
-
-    const callsBeforeCompletion = vi.mocked(fetchJobPostings).mock.calls.length;
-    await act(async () => mutation.reject(new ApiError(
-      '競合が発生しました。', 412, 'JOB_POSTING_VERSION_CONFLICT',
-    )));
-    await waitFor(() => expect(fetchJobPostings).toHaveBeenCalledTimes(callsBeforeCompletion + 1));
-
-    expect(fetchJobPostings).toHaveBeenLastCalledWith('AWS', '', 0, 'createdAt,desc', null, null, null, null);
-    expect(screen.getByRole('heading', { name: awsPosting.title })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: javaPosting.title })).not.toBeInTheDocument();
-    expect(screen.getByRole('alert')).toHaveTextContent('別の画面で求人が編集されました。');
-    expect(updateApplicationStatus).toHaveBeenCalledTimes(1);
   });
 
   test('最終ページの最後の求人を削除したら最後の有効ページを表示する', async () => {
@@ -223,10 +200,7 @@ describe('更新完了後の一覧再取得', () => {
     expect(screen.queryByRole('button', { name: '次へ' })).not.toBeInTheDocument();
   });
 
-  test.each([
-    ['状態変更', 'status'],
-    ['削除', 'delete'],
-  ] as const)('%s後の再取得が遅れても後から開始した検索結果を上書きしない', async (_label, kind) => {
+  test('削除後の再取得が遅れても後から開始した検索結果を上書きしない', async () => {
     const refresh = deferred<PageResponse<JobPosting>>();
     const newerSearch = deferred<PageResponse<JobPosting>>();
     const user = userEvent.setup();
@@ -234,14 +208,9 @@ describe('更新完了後の一覧再取得', () => {
     vi.mocked(fetchJobPostings)
       .mockReturnValueOnce(refresh.promise)
       .mockReturnValueOnce(newerSearch.promise);
-    vi.mocked(updateApplicationStatus).mockResolvedValueOnce(posting({ version: 4 }));
     vi.mocked(deleteJobPosting).mockResolvedValueOnce();
 
-    if (kind === 'status') {
-      await user.selectOptions(within(cardFor(javaPosting.title)).getByRole('combobox'), 'APPLIED');
-    } else {
-      await user.click(within(cardFor(javaPosting.title)).getByRole('button', { name: '削除' }));
-    }
+    await user.click(within(cardFor(javaPosting.title)).getByRole('button', { name: '削除' }));
     await waitFor(() => expect(fetchJobPostings).toHaveBeenCalledTimes(2));
     const input = screen.getByRole('textbox', { name: '検索キーワード' });
     await user.clear(input);

@@ -5,22 +5,34 @@ import {
   getJobPostingMemos,
   updateJobPostingMemo,
 } from '../api/jobPostingMemoApi';
-import { errorMessageOf } from '../api/apiError';
+import { ApiError, errorMessageOf } from '../api/apiError';
+import { useRefreshableResource } from './useRefreshableResource';
 
-import type {
-  JobPostingMemo,
-  UpdateJobPostingMemoRequest,
-} from '../types/jobPostingMemo';
+import type { UpdateJobPostingMemoRequest } from '../types/jobPostingMemo';
 
+// 別の画面で削除されたメモへの操作かを判定する。求人自体がない場合(JOB_POSTING_NOT_FOUND)は含めない。
+function isMemoAlreadyDeleted(error: unknown): boolean {
+  return error instanceof ApiError && error.code === 'JOB_POSTING_MEMO_NOT_FOUND';
+}
+
+/**
+ * 詳細画面のメモの取得と、編集・削除の状態を管理する。
+ *
+ * 変更の後は裏で一覧を取り直す。別のメモを編集している途中の入力を失わないため。
+ */
 export function useJobPostingMemos(jobPostingId: number) {
-  const [memos, setMemos] = useState<JobPostingMemo[]>([]);
-  const [memosError, setMemosError] = useState<string | null>(null);
+  const {
+    state: memosState,
+    retry: retryMemos,
+    refresh: refreshMemos,
+  } = useRefreshableResource(
+    jobPostingId,
+    getJobPostingMemos,
+    'メモの取得に失敗しました。',
+  );
 
-  // 取得エラーと変更処理のエラーを分離し、 削除失敗時でも取得済みのMemo一覧を維持する
+  // 削除に失敗しても取得済みの一覧は残すため、取得のエラーとは分けて持つ。
   const [memoMutationError, setMemoMutationError] = useState<string | null>(null);
-
-  const [memosLoading, setMemosLoading] = useState(false);
-  const [memosLoaded, setMemosLoaded] = useState(false);
 
   const [deletingMemoId, setDeletingMemoId] =
     useState<number | null>(null);
@@ -35,62 +47,13 @@ export function useJobPostingMemos(jobPostingId: number) {
     useState<string | null>(null);
 
   /**
-   * Memo一覧を取得する。
-   *
-   * force=false:
-   *   すでに取得済みならCacheを利用して再取得しない。
-   *
-   * force=true:
-   *   Mutation後などServerの状態が変わった可能性があるため、
-   *   Cacheを無視して最新一覧を再取得する。
-   */
-  async function loadMemos(force = false) {
-    if (memosLoaded && !force) {
-      return;
-    }
-
-    setMemosLoading(true);
-    setMemosError(null);
-
-    try {
-      const loadedMemos =
-        await getJobPostingMemos(jobPostingId);
-
-      setMemos(loadedMemos);
-      setMemosLoaded(true); // 空配列でも正常取得なら「取得済み」として扱う
-    } catch (error) {
-      // 失敗した結果をCacheとして誤って再利用しない
-      setMemos([]);
-      setMemosLoaded(false);
-
-      setMemosError(
-        error instanceof Error
-          ? error.message
-          : 'メモの取得に失敗しました。',
-      );
-    } finally {
-      setMemosLoading(false);
-    }
-  }
-
-  /**
-   * Memo作成API自体はCreate Form側が担当する。
-   * 作成成功後はServer側のMemoが変わっているため、
-   * 既存Cacheを無効化して最新一覧を再取得する。
-   */
-  async function handleMemoCreated() {
-    setMemosLoaded(false);
-
-    await loadMemos(true);
-  }
-
-  /**
    * Memo編集開始時に対象IDを保持し、
    * 前回の更新Errorが残らないように初期化する。
    */
   function startMemoEdit(memoId: number) {
     setEditingMemoId(memoId);
     setMemoUpdateError(null);
+    setMemoMutationError(null);
   }
 
   function cancelMemoEdit() {
@@ -100,7 +63,7 @@ export function useJobPostingMemos(jobPostingId: number) {
 
   /**
    * 成功:
-   *   Edit Formを閉じてServerから最新一覧を再取得する。
+   *   最新の一覧を受け取ってからEdit Formを閉じる。先に閉じると古い内容が一瞬見えるため。
    * 失敗:
    *   editingMemoIdは維持し、Edit Formを閉じない。
    */
@@ -110,6 +73,7 @@ export function useJobPostingMemos(jobPostingId: number) {
   ) {
     setSavingMemoId(memoId);
     setMemoUpdateError(null);
+    setMemoMutationError(null);
 
     try {
       await updateJobPostingMemo(
@@ -118,19 +82,27 @@ export function useJobPostingMemos(jobPostingId: number) {
         request,
       );
 
+      await refreshMemos();
+
       // 保存開始後に別のMemoが編集された場合、その編集状態を古いResponseで解除しない
-      setEditingMemoId((currentEditingMemoId) => 
+      setEditingMemoId((currentEditingMemoId) =>
         currentEditingMemoId === memoId
           ? null
           : currentEditingMemoId,
       );
-
-      // Server側のMemo内容・updatedAtが変更されたため
-      // 現在のCacheを無効化する
-      setMemosLoaded(false);
-
-      await loadMemos(true);
     } catch (error) {
+      if (isMemoAlreadyDeleted(error)) {
+        // メモごとフォームが消えるため、フォームの外の領域に案内する。
+        setEditingMemoId((currentEditingMemoId) =>
+          currentEditingMemoId === memoId
+            ? null
+            : currentEditingMemoId,
+        );
+        setMemoMutationError('このメモは別の画面で削除されました。');
+        await refreshMemos();
+        return;
+      }
+
       setMemoUpdateError(errorMessageOf(
         error,
         'content',
@@ -160,42 +132,40 @@ export function useJobPostingMemos(jobPostingId: number) {
         memoId,
       );
 
-      // Server側からMemoが消えているため
-      // 現在の一覧Cacheをそのまま使わない
-      setMemosLoaded(false);
-
-      await loadMemos(true);
+      await refreshMemos();
     } catch (error) {
+      if (isMemoAlreadyDeleted(error)) {
+        // すでに望んだ結果になっているため、エラーにせず一覧だけを最新にする。
+        await refreshMemos();
+        return;
+      }
+
       setMemoMutationError(
-        error instanceof Error
+        error instanceof ApiError
           ? error.message
           : '削除中に不明なエラーが発生しました。',
       );
     } finally {
-      setDeletingMemoId(null);
+      // 別のMemoが削除中の場合、その削除状態を解除しない。
+      setDeletingMemoId((currentDeletingMemoId) =>
+        currentDeletingMemoId === memoId
+          ? null
+          : currentDeletingMemoId,
+      );
     }
   }
 
-  /**
-   * Componentには表示に必要なStateと、
-   * ユーザー操作に対応する関数だけ公開する。
-   *
-   * setMemosLoadedなどの内部setterは公開せず、
-   * Cache管理の詳細をComponentから隠す。
-   */
   return {
-    memos,
-    memosError,
+    memosState,
+    retryMemos,
+    refreshMemos,
     memoMutationError,
-    memosLoading,
 
     deletingMemoId,
     editingMemoId,
     savingMemoId,
     memoUpdateError,
 
-    loadMemos,
-    handleMemoCreated,
     startMemoEdit,
     cancelMemoEdit,
     saveMemoEdit,

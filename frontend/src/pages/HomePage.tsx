@@ -7,14 +7,12 @@ import {
   deleteJobPosting,
   fetchApplicationStatusSummary,
   fetchJobPostings,
-  updateApplicationStatus,
   updateJobPosting,
 } from '../api/jobPostingApi';
 
 import { ApiError, isJobPostingVersionConflict } from '../api/apiError';
 
 import {
-  type ApplicationStatus,
   type JobPosting,
   type UpdateJobPostingRequest,
   type ApplicationStatusSummaryResponse,
@@ -154,7 +152,6 @@ function HomePage() {
   const [editFieldErrors, setEditFieldErrors] = useState<EditFieldErrors | null>(null);
   const [savingSessionId, setSavingSessionId] = useState<number | null>(null);
   const [editRecoveries, setEditRecoveries] = useState<Record<number, EditRecovery>>({});
-  const [updatingStatusId, setUpdatingStatusId] = useState<number | null>(null);
   const [statusSummary, setStatusSummary] = useState<ApplicationStatusSummaryResponse | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [summaryError, setSummaryError] = useState<string | null>(null);
@@ -775,53 +772,6 @@ function HomePage() {
     }
   };
 
-  const handleApplicationStatusChange = async (
-    id: number,
-    status: ApplicationStatus,
-    expectedVersion: number,
-  ): Promise<boolean> => {
-    setUpdatingStatusId(id);
-    setMutationError(null);
-
-    try {
-      await updateApplicationStatus(id, { status }, expectedVersion);
-
-      await loadJobPostings(...latestListQueryRef.current);
-
-      await loadApplicationStatusSummary();
-
-      return true;
-
-    } catch (caughtError) {
-      if (
-        isJobPostingVersionConflict(caughtError)
-      ) {
-        /*
-         * Version競合時はServerを最新状態のSource of Truthとして再取得し、
-         * 古いJobPosting情報を画面に残さないようにする。
-         */
-        setMutationError(
-          '別の画面で求人が編集されました。',
-        );
-
-        await loadJobPostings(...latestListQueryRef.current);
-
-        await loadApplicationStatusSummary();
-
-        return false;
-      }
-
-      const message =
-        caughtError instanceof Error
-          ? caughtError.message
-          : 'ステータスの更新に失敗しました。';
-      setMutationError(message);
-      return false;
-    } finally {
-      setUpdatingStatusId(null);
-    }
-  };
-
   const handleGoBackToHomepage = async () => {
     // Query Parameterを空にする
     setSearchParams({});
@@ -1141,12 +1091,6 @@ function HomePage() {
                 }}
                 onCancel={handleCancelEdit}
                 onDelete={handleDelete}
-                isUpdatingStatus={
-                  updatingStatusId === jobPosting.id
-                }
-                onApplicationStatusChange={
-                  handleApplicationStatusChange
-                }
               />
             ))}
           </ul>

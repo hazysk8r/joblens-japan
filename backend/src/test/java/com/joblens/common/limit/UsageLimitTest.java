@@ -53,7 +53,8 @@ import tools.jackson.databind.ObjectMapper;
  */
 @SpringBootTest(properties = {
         "joblens.limits.max-postings-per-user=2",
-        "joblens.limits.max-memos-per-posting=2"
+        "joblens.limits.max-memos-per-posting=2",
+        "joblens.limits.max-status-histories-per-posting=2"
 })
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
@@ -339,6 +340,86 @@ class UsageLimitTest {
         assertEquals(2, memoCount(id));
         assertTrue(result.rejected().stream().allMatch("MemoLimitReachedException"::equals),
                 () -> "想定外の失敗: " + result.rejected());
+    }
+
+    // ---- 変更履歴の上限 ----
+
+    // 応募ステータスを変更し、応答の新しいversionを返す。
+    private long changeStatus(LoginUser user, long jobPostingId, long version, String status) throws Exception {
+        MvcResult result = mockMvc.perform(as(user, patch("/api/job-postings/{id}/status", jobPostingId))
+                        .header("If-Match", "\"" + version + "\"")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\": \"%s\"}".formatted(status)))
+                .andExpect(status().isOk())
+                .andReturn();
+        return json(result).get("version").asLong();
+    }
+
+    private List<String> historyToStatuses(long jobPostingId) {
+        return jdbcTemplate.queryForList(
+                "SELECT to_status FROM job_posting_status_histories WHERE job_posting_id = ? "
+                        + "ORDER BY changed_at DESC, id DESC",
+                String.class, jobPostingId);
+    }
+
+    @Test
+    void 変更履歴が上限を超えると最も古いものだけを削除する() throws Exception {
+        JsonNode posting = createPosting(userA);
+        long id = posting.get("id").asLong();
+        long version = changeStatus(userA, id, posting.get("version").asLong(), "APPLIED");
+        version = changeStatus(userA, id, version, "INTERVIEWING");
+
+        changeStatus(userA, id, version, "OFFERED");
+
+        assertEquals(List.of("OFFERED", "INTERVIEWING"), historyToStatuses(id));
+        mockMvc.perform(as(userA, get("/api/job-postings/{id}/status-history", id)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].toStatus").value("OFFERED"));
+    }
+
+    @Test
+    void 変更履歴の上限は他の求人の履歴を削除しない() throws Exception {
+        JsonNode other = createPosting(userA);
+        long otherId = other.get("id").asLong();
+        long otherVersion = changeStatus(userA, otherId, other.get("version").asLong(), "APPLIED");
+        changeStatus(userA, otherId, otherVersion, "REJECTED");
+
+        JsonNode posting = createPosting(userA);
+        long id = posting.get("id").asLong();
+        long version = changeStatus(userA, id, posting.get("version").asLong(), "APPLIED");
+        version = changeStatus(userA, id, version, "INTERVIEWING");
+        changeStatus(userA, id, version, "OFFERED");
+
+        assertEquals(List.of("REJECTED", "APPLIED"), historyToStatuses(otherId));
+    }
+
+    @Test
+    void 残す履歴は全体の新しい順ではなくその求人の新しい順で選ぶ() throws Exception {
+        JsonNode posting = createPosting(userA);
+        long id = posting.get("id").asLong();
+        long version = changeStatus(userA, id, posting.get("version").asLong(), "APPLIED");
+        version = changeStatus(userA, id, version, "INTERVIEWING");
+        // 全体では2番目に新しい履歴が、別の求人のものになるようにする。
+        JsonNode other = createPosting(userA);
+        changeStatus(userA, other.get("id").asLong(), other.get("version").asLong(), "APPLIED");
+
+        changeStatus(userA, id, version, "OFFERED");
+
+        assertEquals(List.of("OFFERED", "INTERVIEWING"), historyToStatuses(id));
+    }
+
+    @Test
+    void 上限ちょうどまでと同じ状態への変更では変更履歴を削除しない() throws Exception {
+        JsonNode posting = createPosting(userA);
+        long id = posting.get("id").asLong();
+        long version = changeStatus(userA, id, posting.get("version").asLong(), "APPLIED");
+        version = changeStatus(userA, id, version, "INTERVIEWING");
+        assertEquals(List.of("INTERVIEWING", "APPLIED"), historyToStatuses(id));
+
+        changeStatus(userA, id, version, "INTERVIEWING");
+
+        assertEquals(List.of("INTERVIEWING", "APPLIED"), historyToStatuses(id));
     }
 
     // ---- ユーザーが存在しないセッション ----

@@ -293,6 +293,13 @@ public class JobPostingService {
                     toStatus
                 )
             );
+
+            // 履歴だけは件数の制限がなく、状態を往復させるだけで増え続けるため、古いものから削除する。
+            // 同じ求人の変更はこの時点で行ロックにより順番に処理される。
+            jobPostingStatusHistoryRepository.deleteAllExceptLatest(
+                id,
+                usageLimits.maxStatusHistoriesPerPosting()
+            );
         }
 
         return JobPostingResponse.from(jobPosting);

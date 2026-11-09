@@ -1,19 +1,25 @@
 import { act, cleanup, render, renderHook, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import JobPostingMemoCreateForm from '../components/JobPostingMemoCreateForm';
 import { useJobPostingMemos } from '../hooks/useJobPostingMemos';
 import { ApiError } from '../api/apiError';
 import {
   createJobPostingMemo,
+  getJobPostingMemos,
   updateJobPostingMemo,
 } from '../api/jobPostingMemoApi';
 
 vi.mock('../api/jobPostingMemoApi');
 
 const contentFieldError = 'メモは250文字以内で入力してください。';
+
+beforeEach(() => {
+  sessionStorage.clear();
+  vi.mocked(getJobPostingMemos).mockResolvedValue([]);
+});
 
 function validationError(fieldErrors: Record<string, string>) {
   return new ApiError('入力値が正しくありません。', 400, 'VALIDATION_FAILED', fieldErrors);
@@ -27,7 +33,7 @@ afterEach(() => {
 describe('メモ登録フォームのエラー表示', () => {
   async function submitMemo() {
     const user = userEvent.setup();
-    render(<JobPostingMemoCreateForm jobPostingId={1} onCreated={vi.fn()} />);
+    render(<JobPostingMemoCreateForm jobPostingId={1} draftKey="test-draft" onCreated={vi.fn()} />);
 
     await user.type(screen.getByLabelText('メモ内容'), 'memo');
     await user.click(screen.getByRole('button', { name: '登録' }));
@@ -75,7 +81,7 @@ describe('メモ編集のエラー表示', () => {
 
   test('項目のエラーがなければサーバーのメッセージを編集エラーとして表示する', async () => {
     vi.mocked(updateJobPostingMemo).mockRejectedValue(
-      new ApiError('メモが見つかりません。', 404, 'MEMO_NOT_FOUND'),
+      new ApiError('メモが見つかりません。', 404, 'JOB_POSTING_NOT_FOUND'),
     );
     const { result } = renderHook(() => useJobPostingMemos(1));
 

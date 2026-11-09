@@ -18,6 +18,7 @@ class UsageLimitsValidationTest {
     private static final String POSTINGS = "joblens.limits.max-postings-per-user";
     private static final String MEMOS = "joblens.limits.max-memos-per-posting";
     private static final String USERS = "joblens.limits.max-users";
+    private static final String HISTORIES = "joblens.limits.max-status-histories-per-posting";
 
     @EnableConfigurationProperties(UsageLimits.class)
     static class LimitsConfiguration {
@@ -27,26 +28,28 @@ class UsageLimitsValidationTest {
             .withUserConfiguration(LimitsConfiguration.class)
             .withConfiguration(AutoConfigurations.of(ValidationAutoConfiguration.class));
 
-    private static String[] limits(String postings, String memos, String users) {
-        return new String[] {POSTINGS + "=" + postings, MEMOS + "=" + memos, USERS + "=" + users};
+    private static String[] limits(String postings, String memos, String users, String histories) {
+        return new String[] {
+                POSTINGS + "=" + postings, MEMOS + "=" + memos, USERS + "=" + users, HISTORIES + "=" + histories
+        };
     }
 
     @Test
     void 正の値なら起動して設定を読み込む() {
-        runner.withPropertyValues(limits("1", "2", "3")).run(context -> {
+        runner.withPropertyValues(limits("1", "2", "3", "4")).run(context -> {
             assertThat(context).hasNotFailed();
-            assertThat(context.getBean(UsageLimits.class)).isEqualTo(new UsageLimits(1, 2, 3));
+            assertThat(context.getBean(UsageLimits.class)).isEqualTo(new UsageLimits(1, 2, 3, 4));
         });
     }
 
     @ParameterizedTest
     @CsvSource({
-            "0,1,1", "1,0,1", "1,1,0",
-            "-1,1,1", "1,-1,1", "1,1,-1",
-            "abc,1,1", "1,abc,1", "1,1,abc",
+            "0,1,1,1", "1,0,1,1", "1,1,0,1", "1,1,1,0",
+            "-1,1,1,1", "1,-1,1,1", "1,1,-1,1", "1,1,1,-1",
+            "abc,1,1,1", "1,abc,1,1", "1,1,abc,1", "1,1,1,abc",
     })
-    void 正の数でなければ起動しない(String postings, String memos, String users) {
-        runner.withPropertyValues(limits(postings, memos, users))
+    void 正の数でなければ起動しない(String postings, String memos, String users, String histories) {
+        runner.withPropertyValues(limits(postings, memos, users, histories))
                 .run(context -> assertThat(context).hasFailed());
     }
 

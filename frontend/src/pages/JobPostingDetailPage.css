@@ -1,4 +1,9 @@
 .detail-page {
+  /* メモや変更履歴は求人カードの外にあるため、カードの変数に頼らず、ここで色を定義する。 */
+  --detail-muted-bg: #f7f8fa;
+  --detail-action: #334e68;
+  --detail-danger: #b42318;
+
   width: 100%;
   max-width: 800px;
   margin: 0 auto;
@@ -61,8 +66,176 @@
   line-height: 1.75;
 }
 
+.detail-posting__status-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.detail-posting__status-select,
+.detail-activity textarea {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+}
+
+.detail-posting__status-select {
+  flex: 1 1 8rem;
+  width: auto;
+}
+
+.detail-posting__status-updating {
+  flex-basis: 100%;
+  font-size: 0.85rem;
+}
+
+/* 固定した移動バーの下に見出しが隠れないようにする。 */
+.detail-posting h3 {
+  scroll-margin-top: 4rem;
+}
+
+.detail-posting__section-nav {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.detail-posting__status-error,
+.detail-activity [role='alert'] {
+  color: var(--detail-danger);
+}
+
+.detail-activity {
+  margin-top: 32px;
+  overflow-wrap: anywhere;
+}
+
+.detail-activity h4 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.detail-activity form > div {
+  margin-bottom: 0.75rem;
+}
+
+.detail-activity form label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.detail-activity textarea {
+  display: block;
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.detail-activity button,
+.detail-posting__status-button,
+.detail-posting__section-nav button {
+  max-width: 100%;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--detail-action);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.detail-activity button {
+  margin: 0.25rem 0.5rem 0.25rem 0;
+}
+
+.detail-activity button:hover:not(:disabled),
+.detail-posting__status-button:hover:not([aria-disabled='true']),
+.detail-posting__section-nav button:hover {
+  border-color: var(--detail-action);
+  background: var(--detail-muted-bg);
+}
+
+.detail-activity :is(button, textarea):focus-visible,
+.detail-posting__status-select:focus-visible,
+.detail-posting__status-button:focus-visible,
+.detail-posting__section-nav button:focus-visible {
+  outline: 2px solid var(--detail-action);
+  outline-offset: 3px;
+}
+
+.detail-activity :is(button, textarea):disabled,
+.detail-posting__status-select:disabled,
+.detail-posting__status-button[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.detail-memos {
+  margin-top: 1rem;
+}
+
+.detail-memos__list,
+.detail-history__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.detail-memos__list > li + li,
+.detail-history__list > li + li {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.detail-memos__list > li > span {
+  white-space: pre-wrap;
+}
+
+.detail-memos__list > li > p {
+  margin: 0.4rem 0 0.65rem;
+  font-size: 0.8rem;
+}
+
+.detail-history__list > li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+}
+
+.detail-history__list time {
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
 @media (max-width: 640px) {
   .detail-page {
     padding: 24px 16px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .detail-page {
+    --detail-muted-bg: #1f2028;
+    --detail-action: #b1cbe4;
+    --detail-danger: #fda29b;
   }
 }

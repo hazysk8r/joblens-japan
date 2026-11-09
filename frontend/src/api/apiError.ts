@@ -76,10 +76,11 @@ export function errorMessageOf(
   field: string,
   fallbackMessage: string,
 ): string {
-  if (error instanceof ApiError && error.fieldErrors[field]) {
-    return error.fieldErrors[field];
+  if (error instanceof ApiError) {
+    return error.fieldErrors[field] || error.message;
   }
-  return error instanceof Error ? error.message : fallbackMessage;
+  // 通信エラーやJSONの解析エラーの文言は英語で、応答の本文を含むこともあるため表示しない。
+  return fallbackMessage;
 }
 
 export const isJobPostingVersionConflict = (

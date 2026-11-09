@@ -39,6 +39,7 @@ function stubServer(analysisResponse: () => Response | Promise<Response>) {
     if (url === '/api/auth/me') return json({ id: 1, email: 'test-user@example.com' }, 200);
     if (url === '/api/job-postings/1') return json(jobPosting, 200);
     if (url === ANALYSIS_URL) return analysisResponse();
+    if (url === '/api/job-postings/1/notes' || url === '/api/job-postings/1/status-history') return json([], 200);
     return json({}, 500);
   }));
 }

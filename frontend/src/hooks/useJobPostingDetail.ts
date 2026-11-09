@@ -60,10 +60,20 @@ export function useJobPostingDetail(id: number) {
     setAttempt((current) => current + 1);
   }, []);
 
+  // 読み込み中に戻さず表示中の求人を置き換える。入力中のメモや分析の結果を失わないため。
+  // 別の求人へ移動した後に届いた応答で、移動先の表示を上書きしない。
+  const replaceJobPosting = useCallback((jobPosting: JobPosting) => {
+    setResult((current) =>
+      current !== null && current.id === jobPosting.id
+        ? { ...current, state: { status: 'loaded', jobPosting } }
+        : current);
+  }, []);
+
   const isCurrent = result !== null && result.id === id && result.attempt === attempt;
 
   return {
     state: isCurrent ? result.state : LOADING,
     retry,
+    replaceJobPosting,
   };
 }

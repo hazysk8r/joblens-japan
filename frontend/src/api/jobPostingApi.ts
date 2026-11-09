@@ -235,9 +235,13 @@ export async function fetchApplicationStatusSummary(
 
 export async function fetchApplicationStatusHistory(
   id: number,
+  signal: AbortSignal,
 ): Promise<JobPostingStatusHistory[]> {
   const response = await apiFetch(
-    `/api/job-postings/${id}/status-history`
+    `/api/job-postings/${id}/status-history`,
+    {
+      signal,
+    },
   );
 
   if (!response.ok) {

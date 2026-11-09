@@ -7,14 +7,17 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { AuthenticatedApp } from './testAuth';
 import { ApiError } from '../api/apiError';
 import {
+  fetchApplicationStatusHistory,
   fetchApplicationStatusSummary,
   fetchJobPosting,
   fetchJobPostingAnalysis,
   fetchJobPostings,
 } from '../api/jobPostingApi';
+import { getJobPostingMemos } from '../api/jobPostingMemoApi';
 import type { JobPosting, JobPostingAnalysis } from '../types/jobPosting';
 
 vi.mock('../api/jobPostingApi');
+vi.mock('../api/jobPostingMemoApi');
 
 const jobPosting: JobPosting = {
   id: 5,
@@ -89,6 +92,8 @@ beforeEach(() => {
     saved: 0, applied: 1, interviewing: 0, offered: 0, rejected: 0,
   });
   vi.mocked(fetchJobPostingAnalysis).mockResolvedValue(analysis);
+  vi.mocked(fetchApplicationStatusHistory).mockResolvedValue([]);
+  vi.mocked(getJobPostingMemos).mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -106,7 +111,7 @@ describe('表示', () => {
     expect(screen.getByText('○○株式会社')).toBeInTheDocument();
     expect(screen.getByText('300,000円 ～ 450,000円')).toBeInTheDocument();
     expect(screen.getByText('2026-12-01')).toBeInTheDocument();
-    expect(screen.getByText('応募済み')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '応募ステータス' })).toHaveValue('APPLIED');
     expect(screen.getByRole('link', { name: '原文を見る' }))
       .toHaveAttribute('href', 'https://example.com/jobs/5');
 

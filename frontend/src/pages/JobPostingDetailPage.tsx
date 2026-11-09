@@ -2,13 +2,18 @@ import type { ReactNode } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
 
 import './JobPostingDetailPage.css';
+import ApplicationStatusControl from '../components/ApplicationStatusControl';
 import JobPostingAnalysisPanel from '../components/JobPostingAnalysisPanel';
+import JobPostingMemoSection from '../components/JobPostingMemoSection';
+import JobPostingStatusHistorySection from '../components/JobPostingStatusHistorySection';
 import { useJobPostingAnalysis } from '../hooks/useJobPostingAnalysis';
 import { useJobPostingDetail } from '../hooks/useJobPostingDetail';
+import { useJobPostingStatusChange } from '../hooks/useJobPostingStatusChange';
+import { useJobPostingStatusHistory } from '../hooks/useJobPostingStatusHistory';
 import type { JobPosting } from '../types/jobPosting';
 import { formatDateTime } from '../utils/date';
 import { isHttpUrl } from '../utils/httpUrl';
-import { APPLICATION_STATUS_LABELS, formatSalaryRange } from '../utils/jobPostingFormat';
+import { formatSalaryRange } from '../utils/jobPostingFormat';
 import { listPathFromState } from '../utils/listReturn';
 
 // URLのIDとして受け付ける形。先頭の0や符号、小数、指数表記は受け付けない。
@@ -83,7 +88,49 @@ function JobPostingAnalysisBody({ jobPosting }: { jobPosting: JobPosting }) {
   }
 }
 
-function JobPostingDetail({ jobPosting }: { jobPosting: JobPosting }) {
+const PAGE_SECTIONS = [
+  { headingId: 'detail-analysis-heading', label: '分析' },
+  { headingId: 'detail-original-heading', label: '原文' },
+  { headingId: 'detail-memo-heading', label: 'メモ' },
+  { headingId: 'detail-history-heading', label: '変更履歴' },
+];
+
+// URLのハッシュで移動すると履歴のstateが失われ、検索条件の付いた一覧へ戻れなくなるため、ボタンで移動する。
+function PageSectionNav() {
+  function moveTo(headingId: string) {
+    const heading = document.getElementById(headingId);
+    heading?.scrollIntoView();
+    heading?.focus({ preventScroll: true });
+  }
+
+  return (
+    <nav className="detail-posting__section-nav" aria-label="ページ内の移動">
+      {PAGE_SECTIONS.map(({ headingId, label }) => (
+        <button key={headingId} type="button" onClick={() => moveTo(headingId)}>
+          {label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+// 分析は原文から作るため、応募ステータスを変更しても取り直さない。
+function JobPostingDetail({
+  jobPosting,
+  onJobPostingChange,
+}: {
+  jobPosting: JobPosting;
+  onJobPostingChange: (jobPosting: JobPosting) => void;
+}) {
+  const statusHistory = useJobPostingStatusHistory(jobPosting.id);
+  const { updating, error: statusError, changeStatus } = useJobPostingStatusChange({
+    jobPosting,
+    onChanged: (changed) => {
+      onJobPostingChange(changed);
+      void statusHistory.refresh();
+    },
+  });
+
   return (
     <article className="detail-posting">
       <header className="detail-posting__header">
@@ -103,14 +150,27 @@ function JobPostingDetail({ jobPosting }: { jobPosting: JobPosting }) {
           <dd>{jobPosting.applicationDeadline ?? '未登録'}</dd>
         </div>
         <div>
-          <dt>応募ステータス</dt>
-          <dd>{APPLICATION_STATUS_LABELS[jobPosting.applicationStatus]}</dd>
+          <dt><label htmlFor="detail-application-status">応募ステータス</label></dt>
+          <dd>
+            <ApplicationStatusControl
+              id="detail-application-status"
+              jobPosting={jobPosting}
+              updating={updating}
+              onSubmit={(status) => {
+                void changeStatus(status);
+              }}
+            />
+          </dd>
         </div>
         <div>
           <dt>登録日時</dt>
           <dd>{formatDateTime(jobPosting.createdAt)}</dd>
         </div>
       </dl>
+
+      {statusError !== null && (
+        <p role="alert" className="detail-posting__status-error">{statusError}</p>
+      )}
 
       {jobPosting.sourceUrl && isHttpUrl(jobPosting.sourceUrl) && (
         <p className="detail-posting__source">
@@ -120,11 +180,13 @@ function JobPostingDetail({ jobPosting }: { jobPosting: JobPosting }) {
         </p>
       )}
 
+      <PageSectionNav />
+
       <section
         className="detail-posting__analysis"
         aria-labelledby="detail-analysis-heading"
       >
-        <h3 id="detail-analysis-heading">求人票の分析</h3>
+        <h3 id="detail-analysis-heading" tabIndex={-1}>求人票の分析</h3>
         <JobPostingAnalysisBody jobPosting={jobPosting} />
       </section>
 
@@ -132,15 +194,25 @@ function JobPostingDetail({ jobPosting }: { jobPosting: JobPosting }) {
         className="detail-posting__original"
         aria-labelledby="detail-original-heading"
       >
-        <h3 id="detail-original-heading">求人票の原文</h3>
+        <h3 id="detail-original-heading" tabIndex={-1}>求人票の原文</h3>
         <p className="detail-posting__original-text">{jobPosting.originalText}</p>
       </section>
+
+      <JobPostingMemoSection jobPostingId={jobPosting.id} />
+
+      <JobPostingStatusHistorySection
+        state={statusHistory.state}
+        onRetry={statusHistory.retry}
+        onRefresh={() => {
+          void statusHistory.refresh();
+        }}
+      />
     </article>
   );
 }
 
 function JobPostingDetailContent({ id }: { id: number }) {
-  const { state, retry } = useJobPostingDetail(id);
+  const { state, retry, replaceJobPosting } = useJobPostingDetail(id);
 
   switch (state.status) {
     case 'loading':
@@ -158,7 +230,12 @@ function JobPostingDetailContent({ id }: { id: number }) {
       );
 
     case 'loaded':
-      return <JobPostingDetail jobPosting={state.jobPosting} />;
+      return (
+        <JobPostingDetail
+          jobPosting={state.jobPosting}
+          onJobPostingChange={replaceJobPosting}
+        />
+      );
 
     default: {
       // 状態を追加して、ここでの表示を書き忘れた場合に型エラーになる。

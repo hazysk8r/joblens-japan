@@ -167,7 +167,7 @@ const apiOperations = [
   },
   {
     name: '応募ステータス履歴の取得',
-    run: () => fetchApplicationStatusHistory(1),
+    run: () => fetchApplicationStatusHistory(1, new AbortController().signal),
     fallback: '変更履歴の取得に失敗しました。',
     successBody: [{
       id: 1,

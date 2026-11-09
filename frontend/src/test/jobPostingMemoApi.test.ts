@@ -31,7 +31,7 @@ const memoOperations = [
   },
   {
     name: 'メモ一覧の取得',
-    run: () => getJobPostingMemos(1),
+    run: () => getJobPostingMemos(1, new AbortController().signal),
     fallback: 'メモの取得に失敗しました。',
     successBody: [memo],
   },

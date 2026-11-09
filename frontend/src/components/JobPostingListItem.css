@@ -83,16 +83,6 @@
   color: var(--text);
 }
 
-.job-posting-card__status label {
-  display: grid;
-  gap: 0.4rem;
-}
-
-.job-posting-card__status > span {
-  display: block;
-  margin-top: 0.4rem;
-}
-
 .job-posting-card__body {
   margin-top: 1.25rem;
   padding-top: 1.25rem;
@@ -114,7 +104,6 @@
   text-underline-offset: 3px;
 }
 
-.job-posting-card__actions,
 .job-posting-card__footer {
   display: flex;
   flex-wrap: wrap;
@@ -126,53 +115,6 @@
   justify-content: flex-end;
   padding-top: 1rem;
   border-top: 1px solid var(--border);
-}
-
-.job-posting-card__details > * + * {
-  margin-top: 1rem;
-}
-
-.job-posting-card__details > p {
-  margin-top: 1rem;
-}
-
-.job-posting-card__memo-area {
-  margin-top: 1.25rem;
-  padding: 1rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--card-muted-bg);
-}
-
-.job-posting-card__memo-area h3 {
-  margin: 0 0 0.75rem;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.job-posting-card__memos {
-  margin-top: 1rem;
-}
-
-.job-posting-card__memo-list {
-  margin: 0;
-  padding-left: 1.25rem;
-}
-
-.job-posting-card__memo-list > li + li {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border);
-}
-
-.job-posting-card__memo-list > li > span {
-  white-space: pre-wrap;
-}
-
-.job-posting-card__memo-list > li > p {
-  margin: 0.4rem 0 0.65rem;
-  color: var(--text);
-  font-size: 0.8rem;
 }
 
 .job-posting-card form > div {
@@ -236,8 +178,7 @@
   background: var(--card-muted-bg);
 }
 
-.job-posting-card form > button,
-.job-posting-card__memo-list > li > button {
+.job-posting-card form > button {
   margin: 0.25rem 0.5rem 0.25rem 0;
 }
 

@@ -11,10 +11,12 @@ import com.joblens.jobposting.repository.JobPostingStatusHistoryRepository;
 import com.joblens.jobposting.validation.JobPostingSortValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import com.joblens.common.limit.UsageLimits;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -47,6 +49,10 @@ class JobPostingServiceTest {
 
   @Mock 
   private JobPostingStatusHistoryRepository jobPostingStatusHistoryRepository;
+
+  // 上限は値を持つだけのため、mockせず実際の値を渡す。
+  @Spy
+  private UsageLimits usageLimits = new UsageLimits(100, 50, 100, 100);
 
   @InjectMocks
   private JobPostingService service;

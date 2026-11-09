@@ -6,12 +6,10 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { AuthenticatedApp } from './testAuth';
-import { ApiError } from '../api/apiError';
 import {
   deleteJobPosting,
   fetchApplicationStatusSummary,
   fetchJobPostings,
-  updateApplicationStatus,
 } from '../api/jobPostingApi';
 import type {
   ApplicationStatusSummaryResponse,
@@ -105,11 +103,6 @@ beforeEach(() => {
   vi.spyOn(window, 'confirm').mockReturnValue(true);
   vi.mocked(fetchJobPostings).mockResolvedValue(page);
   vi.mocked(fetchApplicationStatusSummary).mockResolvedValue(initialSummary);
-  vi.mocked(updateApplicationStatus).mockResolvedValue({
-    ...jobPosting,
-    applicationStatus: 'APPLIED',
-    version: 4,
-  });
   vi.mocked(deleteJobPosting).mockResolvedValue();
 });
 
@@ -192,7 +185,7 @@ describe('応募状況と求人一覧の独立した取得', () => {
     await screen.findByRole('heading', { name: jobPosting.title });
     await screen.findByRole('heading', { name: '応募状況' });
 
-    await user.selectOptions(within(postingCard()).getByRole('combobox'), 'APPLIED');
+    await user.click(within(postingCard()).getByRole('button', { name: '削除' }));
 
     const alert = await within(summarySection()).findByRole('alert');
     expect(alert).toHaveTextContent('最新の集計を取得できません。');
@@ -203,30 +196,17 @@ describe('応募状況と求人一覧の独立した取得', () => {
     expect(fetchJobPostings).toHaveBeenCalledTimes(2);
   });
 
-  test.each([
-    ['状態変更', 'status'],
-    ['削除', 'delete'],
-    ['状態変更の競合復旧', 'conflict'],
-  ] as const)('%s後も応募状況を再取得する', async (_label, action) => {
+  test('削除後も応募状況を再取得する', async () => {
     const user = userEvent.setup();
     vi.mocked(fetchApplicationStatusSummary)
       .mockResolvedValueOnce(initialSummary)
       .mockResolvedValueOnce(refreshedSummary);
-    if (action === 'conflict') {
-      vi.mocked(updateApplicationStatus).mockRejectedValueOnce(new ApiError(
-        '競合が発生しました。', 412, 'JOB_POSTING_VERSION_CONFLICT',
-      ));
-    }
     renderHome();
     await screen.findByRole('heading', { name: jobPosting.title });
     await screen.findByRole('heading', { name: '応募状況' });
 
-    if (action === 'delete') {
-      vi.mocked(fetchJobPostings).mockResolvedValueOnce({ ...page, content: [], totalElements: 0, totalPages: 0 });
-      await user.click(within(postingCard()).getByRole('button', { name: '削除' }));
-    } else {
-      await user.selectOptions(within(postingCard()).getByRole('combobox'), 'APPLIED');
-    }
+    vi.mocked(fetchJobPostings).mockResolvedValueOnce({ ...page, content: [], totalElements: 0, totalPages: 0 });
+    await user.click(within(postingCard()).getByRole('button', { name: '削除' }));
 
     await waitFor(() => expectSavedCount(4));
     expect(fetchApplicationStatusSummary).toHaveBeenCalledTimes(2);
@@ -242,7 +222,7 @@ describe('応募状況と求人一覧の独立した取得', () => {
       .mockReturnValueOnce(refresh.promise);
     renderHome();
     await screen.findByRole('heading', { name: jobPosting.title });
-    await user.selectOptions(within(postingCard()).getByRole('combobox'), 'APPLIED');
+    await user.click(within(postingCard()).getByRole('button', { name: '削除' }));
     await waitFor(() => expect(fetchApplicationStatusSummary).toHaveBeenCalledTimes(2));
 
     await act(async () => {

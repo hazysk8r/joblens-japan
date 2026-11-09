@@ -41,6 +41,8 @@ joblens:
     # 1ユーザーの保存量の上限(求人は最大で約60KB、メモは最大で約750B)。
     max-postings-per-user: 100
     max-memos-per-posting: 50
+    # 応募ステータスの変更履歴。超えると古いものから削除する。
+    max-status-histories-per-posting: 100
     # 全体の保存量を抑えるための上限。達すると新規登録だけを止める。
     max-users: 100
 

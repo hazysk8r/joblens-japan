@@ -13,6 +13,7 @@ import jakarta.validation.constraints.Positive;
 public record UsageLimits(
         @Positive int maxPostingsPerUser,
         @Positive int maxMemosPerPosting,
-        @Positive int maxUsers
+        @Positive int maxUsers,
+        @Positive int maxStatusHistoriesPerPosting
 ) {
 }

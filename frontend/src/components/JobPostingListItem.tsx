@@ -1,33 +1,21 @@
 import type {
-	ApplicationStatus,
 	JobPosting,
-	JobPostingStatusHistory,
 	UpdateJobPostingRequest,
 } from '../types/jobPosting';
 
-import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import './JobPostingListItem.css';
-import { formatDateTime } from '../utils/date';
 import { APPLICATION_STATUS_LABELS, formatSalaryRange } from '../utils/jobPostingFormat';
 import { listReturnState } from '../utils/listReturn';
 import { isHttpUrl } from '../utils/httpUrl';
 
-import JobPostingMemoCreateForm from './JobPostingMemoCreateForm';
 import JobPostingEditForm from './JobPostingEditForm';
-import JobPostingMemoEditForm from './JobPostingMemoEditForm';
-
-
-import { fetchApplicationStatusHistory } from '../api/jobPostingApi';
-import { useJobPostingMemos } from '../hooks/useJobPostingMemos';
-import { ApiError } from '../api/apiError';
 
 interface JobPostingListItemProps {
 	jobPosting: JobPosting;
 	isEditing: boolean;
 	isSaving: boolean;
 	isDeleting: boolean;
-	isUpdatingStatus: boolean;
 	editSessionId?: number;
 	expectedVersion?: number;
 	editFieldErrors?: Record<string, string>;
@@ -42,11 +30,6 @@ interface JobPostingListItemProps {
 	) => Promise<void>;
 	onCancel: () => void;
 	onDelete: (jobPosting: JobPosting) => Promise<void>;
-	onApplicationStatusChange: (
-		id: number,
-		status: ApplicationStatus,
-		expectedVersion: number,
-	) => Promise<boolean>;
 }
 
 function JobPostingListItem({
@@ -54,7 +37,6 @@ function JobPostingListItem({
 	isEditing,
 	isSaving,
 	isDeleting,
-	isUpdatingStatus,
 	editSessionId,
 	expectedVersion,
 	editFieldErrors,
@@ -64,130 +46,8 @@ function JobPostingListItem({
 	onSave,
 	onCancel,
 	onDelete,
-	onApplicationStatusChange,
 }: JobPostingListItemProps) {
 	const location = useLocation();
-
-	const [statusHistory, setStatusHistory] = useState<JobPostingStatusHistory[]>([]);
-	const [statusHistoryError, setStatusHistoryError] = useState<string | null>(null);
-  const [isStatusHistoryVisible, setIsStatusHistoryVisible] = useState(false);
-  const [isLoadingStatusHistory, setIsLoadingStatusHistory] = useState(false);
-
-	// Memoの表示・非表示はView側で管理する
-	const [memoVisible, setMemoVisible] = useState(false);
-
-	const {
-		memos,
-		memosError,
-		memoMutationError,
-		memosLoading,
-		deletingMemoId,
-		editingMemoId,
-		savingMemoId,
-		memoUpdateError,
-		loadMemos,
-		handleMemoCreated,
-		startMemoEdit,
-		cancelMemoEdit,
-		saveMemoEdit,
-		deleteMemo,
-	} = useJobPostingMemos(jobPosting.id);
-
-	function handleToggleMemo() {
-		if (memoVisible) {
-			setMemoVisible(false);
-			return;
-		}
-
-		setMemoVisible(true);
-		void loadMemos();
-	}
-
-	/*
-	 * Memo作成成功時、
-	 * View側ではMemo領域を表示し、
-	 * Hook側ではCacheを無効化して再取得する。
-	 */
-	function handleCreated() {
-		setMemoVisible(true);
-		void handleMemoCreated();
-	}
-
-	/*
-	 * 削除確認はUIの責任なのでComponent側で行う。
-	 * 実際のDELETE処理はHookへ委譲する。
-	 */
-	async function handleMemoDeletion(
-		memoId: number,
-	) {
-		const confirmed =
-			window.confirm(
-				'メモを削除しますか？',
-			);
-
-		if (!confirmed) {
-			return;
-		}
-
-		await deleteMemo(memoId);
-	}
-
-	async function loadStatusHistory() {
-		setIsLoadingStatusHistory(true);
-		setStatusHistoryError(null);
-
-		try {
-			const history =
-				await fetchApplicationStatusHistory(jobPosting.id);
-
-			setStatusHistory(history);
-
-			return true;
-		} catch (error) {
-			if (error instanceof ApiError) {
-				setStatusHistoryError(error.message);
-			} else {
-				setStatusHistoryError(
-					"変更履歴の取得に失敗しました。",
-				);
-			}
-
-			return false;
-		} finally {
-			setIsLoadingStatusHistory(false);
-		}
-	}
-
-	async function handleShowStatusHistory() {
-		if (isStatusHistoryVisible) {
-			setIsStatusHistoryVisible(false);
-			return;
-		}
-
-		const loaded = await loadStatusHistory();
-
-		if (loaded) {
-			setIsStatusHistoryVisible(true);
-		}
-	}
-
-	async function handleApplicationStatusChange(
-		status: ApplicationStatus,
-	) {
-		const updated =
-			await onApplicationStatusChange(
-				jobPosting.id,
-				status,
-				jobPosting.version,
-			);
-
-		if (
-			updated &&
-			isStatusHistoryVisible
-		) {
-			await loadStatusHistory();
-		}
-	}
 
 	const salaryText = formatSalaryRange(jobPosting.salaryMin, jobPosting.salaryMax);
 
@@ -233,51 +93,9 @@ function JobPostingListItem({
 								</p>
 							</div>
 						</div>
-						<div className="job-posting-card__status">
-							<label>
-								応募ステータス:
-								<select
-									value={
-										jobPosting.applicationStatus
-									}
-									disabled={
-										isUpdatingStatus
-									}
-									onChange={(event) => {
-										void handleApplicationStatusChange(
-											event.target
-												.value as ApplicationStatus,
-										);
-									}}
-								>
-									<option value="SAVED">
-										保存済み
-									</option>
-
-									<option value="APPLIED">
-										応募済み
-									</option>
-
-									<option value="INTERVIEWING">
-										面接中
-									</option>
-
-									<option value="OFFERED">
-										内定
-									</option>
-
-									<option value="REJECTED">
-										不採用
-									</option>
-								</select>
-							</label>
-
-							{isUpdatingStatus && (
-								<span>
-									ステータス変更中…
-								</span>
-							)}
-						</div>
+						<p className="job-posting-card__status">
+							応募ステータス: {APPLICATION_STATUS_LABELS[jobPosting.applicationStatus]}
+						</p>
 					</div>
 
 					<div className="job-posting-card__body">
@@ -315,203 +133,6 @@ function JobPostingListItem({
 					)}
 				</div>
 			)}
-
-			<div className="job-posting-card__actions">
-				<button
-					type="button"
-					onClick={handleToggleMemo}
-					aria-expanded={memoVisible}
-					aria-controls={
-						`job-posting-memos-${jobPosting.id}`
-					}
-				>
-					{memoVisible
-						? 'メモを閉じる'
-						: 'メモを見る'}
-				</button>
-
-				<button
-					type="button"
-					onClick={() => {
-						void handleShowStatusHistory();
-					}}
-					disabled={isLoadingStatusHistory}
-					aria-expanded={isStatusHistoryVisible}
-					aria-controls={`job-posting-status-history-${jobPosting.id}`}
-				>
-					{isLoadingStatusHistory
-						? '読み込み中…'
-						: isStatusHistoryVisible
-							? '変更履歴を閉じる'
-							: '変更履歴を表示'}
-				</button>
-			</div>
-
-			<div className="job-posting-card__details">
-				{isStatusHistoryVisible && (
-					<div
-						id={`job-posting-status-history-${jobPosting.id}`}
-						className="job-posting-card__status-history"
-					>
-						{statusHistory.length > 0 ? (
-							<ul>
-								{statusHistory.map((history) => (
-									<li key={history.id}>
-										{APPLICATION_STATUS_LABELS[
-											history.fromStatus
-										]}
-										{' → '}
-										{APPLICATION_STATUS_LABELS[
-											history.toStatus
-										]}
-									</li>
-								))}
-							</ul>
-						) : (
-							<p>変更履歴はありません。</p>
-						)}
-					</div>
-				)}
-
-				{statusHistoryError && (
-					<p role="alert">
-						{statusHistoryError}
-					</p>
-				)}
-
-				{!isEditing && (
-					<div className="job-posting-card__memo-area">
-						<JobPostingMemoCreateForm
-							jobPostingId={
-								jobPosting.id
-							}
-							onCreated={handleCreated}
-						/>
-
-						<div
-							className="job-posting-card__memos"
-							id={
-								`job-posting-memos-${jobPosting.id}`
-							}
-							hidden={!memoVisible}
-						>
-							{memosLoading ? (
-								<p>
-									メモを読み込み中…
-								</p>
-							) : memosError !== null ? (
-								<p role="alert">
-									{memosError}
-								</p>
-							) : (
-								<>
-									{memoMutationError !== null && (
-										<p role="alert">
-											{memoMutationError}
-										</p>
-									)}
-
-									{memos.length > 0 ? (
-										<ul className="job-posting-card__memo-list">
-											{memos.map(
-												(memo) => (
-													<li key={memo.id}>
-														{editingMemoId ===
-															memo.id ? (
-															<>
-																<JobPostingMemoEditForm
-																	jobPostingMemo={
-																		memo
-																	}
-																	saving={
-																		savingMemoId ===
-																		memo.id
-																	}
-																	onSave={(
-																		request,
-																	) =>
-																		saveMemoEdit(
-																			memo.id,
-																			request,
-																		)
-																	}
-																	onCancel={
-																		cancelMemoEdit
-																	}
-																/>
-
-																{memoUpdateError !==
-																	null && (
-																		<p role="alert">
-																			{
-																				memoUpdateError
-																			}
-																		</p>
-																	)}
-															</>
-														) : (
-															<>
-																<span>
-																	{
-																		memo.content
-																	}
-																</span>
-
-																<p>
-																	更新日時:{' '}
-																	{formatDateTime(
-																		memo.updatedAt,
-																	)}
-																</p>
-
-																<button
-																	type="button"
-																	onClick={() =>
-																		startMemoEdit(
-																			memo.id,
-																		)
-																	}
-																	disabled={
-																		deletingMemoId ===
-																		memo.id
-																	}
-																>
-																	編集
-																</button>
-
-																<button
-																	type="button"
-																	onClick={() => {
-																		void handleMemoDeletion(
-																			memo.id,
-																		);
-																	}}
-																	disabled={
-																		deletingMemoId ===
-																		memo.id
-																	}
-																>
-																	{deletingMemoId ===
-																		memo.id
-																		? 'メモを削除中…'
-																		: 'メモを削除'}
-																</button>
-															</>
-														)}
-													</li>
-												))}
-										</ul>
-									) : (
-										<p>
-											登録されたメモはありません。
-										</p>
-									)}
-								</>
-							)}
-						</div>
-					</div>
-				)}
-			</div>
 
 			{!isEditing && (
 				<div className="job-posting-card__footer">

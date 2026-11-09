@@ -31,11 +31,13 @@ export async function createJobPostingMemo(
 
 export async function getJobPostingMemos(
   jobPostingId: number,
+  signal: AbortSignal,
 ): Promise<JobPostingMemo[]> {
-
-
   const response = await apiFetch(
     `/api/job-postings/${jobPostingId}/notes`,
+    {
+      signal,
+    },
   );
 
   if (!response.ok) {

@@ -362,9 +362,9 @@ describe('各API関数の401の通知', () => {
       run: () => fetchJobPostings('', '', 0, 'createdAt,desc', null, null, null, null),
     },
     { name: '応募ステータス集計の取得', run: () => fetchApplicationStatusSummary() },
-    { name: '応募ステータス履歴の取得', run: () => fetchApplicationStatusHistory(1) },
+    { name: '応募ステータス履歴の取得', run: () => fetchApplicationStatusHistory(1, new AbortController().signal) },
     { name: '求人票の分析', run: () => fetchJobPostingAnalysis(1, new AbortController().signal) },
-    { name: 'メモ一覧の取得', run: () => getJobPostingMemos(1) },
+    { name: 'メモ一覧の取得', run: () => getJobPostingMemos(1, new AbortController().signal) },
     { name: 'メモ登録', run: () => createJobPostingMemo(1, { content: 'memo' }) },
   ];
 

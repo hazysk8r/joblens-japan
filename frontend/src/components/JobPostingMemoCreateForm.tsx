@@ -3,22 +3,31 @@ import type { FormEvent } from "react";
 
 import { createJobPostingMemo } from "../api/jobPostingMemoApi";
 import { errorMessageOf } from "../api/apiError";
+import { readMemoDraft, writeMemoDraft } from "../utils/memoDraftStorage";
 
 interface CreateJobPostingMemoProps {
   onCreated: () => Promise<void> | void;
   jobPostingId: number;
+  draftKey: string;
 }
 
 function JobPostingMemoCreateForm({
   onCreated,
   jobPostingId,
+  draftKey,
 }: CreateJobPostingMemoProps) {
   const contentId = `memo-content-${jobPostingId}`;
-  const [content, setContent] = useState('');
+  const [content, setContent] = useState(() => readMemoDraft(draftKey));
 
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // 画面の入力と一時保存を、必ず一緒に更新する。
+  const updateContent = (nextContent: string) => {
+    setContent(nextContent);
+    writeMemoDraft(draftKey, nextContent);
+  };
 
   const handleSubmit = async (
     event: FormEvent<HTMLFormElement>,
@@ -34,7 +43,7 @@ function JobPostingMemoCreateForm({
         content,
       });
 
-      setContent(''); // メモ登録の成功後に入力欄を初期化する
+      updateContent(''); // メモ登録の成功後に入力欄を初期化する
 
       setMessage('メモを登録しました。')
       await onCreated();
@@ -66,7 +75,7 @@ function JobPostingMemoCreateForm({
 
   return (
     <section>
-      <h3>メモ登録</h3>
+      <h4>メモ登録</h4>
 
       <form onSubmit={handleSubmit}>
         <div>
@@ -76,7 +85,7 @@ function JobPostingMemoCreateForm({
             value={content}
             maxLength={250}
             onChange={(event) =>
-              setContent(event.target.value)
+              updateContent(event.target.value)
             }
           />
           <small>{content.length} / 250</small>

@@ -32,6 +32,12 @@ const posting = {
   version: 0,
 };
 
+// 詳細画面を開くときに、求人のほかに取得するもの。
+const EMPTY_ANALYSIS = {
+  fixedOvertime: { status: 'NOT_MENTIONED', hours: null, excessPayStated: null, evidence: [] },
+  skills: [],
+};
+
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -71,6 +77,9 @@ function stubLoggedInServer() {
       return conflict('MEMO_LIMIT_REACHED', MEMO_LIMIT_MESSAGE, pathname);
     }
     if (pathname === '/api/job-postings/1/notes') return jsonResponse(200, []);
+    if (pathname === '/api/job-postings/1/status-history') return jsonResponse(200, []);
+    if (pathname === '/api/job-postings/1/analysis') return jsonResponse(200, EMPTY_ANALYSIS);
+    if (pathname === '/api/job-postings/1') return jsonResponse(200, posting);
     return jsonResponse(404, {});
   }));
 }
@@ -184,6 +193,9 @@ describe('書き込みの回数制限', () => {
         });
       }
       if (pathname === '/api/job-postings/1/notes') return jsonResponse(200, []);
+      if (pathname === '/api/job-postings/1/status-history') return jsonResponse(200, []);
+      if (pathname === '/api/job-postings/1/analysis') return jsonResponse(200, EMPTY_ANALYSIS);
+      if (pathname === '/api/job-postings/1') return jsonResponse(200, posting);
       return jsonResponse(404, {});
     }));
   }
@@ -202,18 +214,19 @@ describe('書き込みの回数制限', () => {
     expect(screen.getByLabelText('求人タイトル')).toHaveValue('Java求人');
   });
 
-  test('応募状況の変更が拒否されると、メッセージを表示して元の状況のままにする', async () => {
+  test('応募状況の変更が拒否されると、メッセージを表示して選択を残す', async () => {
     document.cookie = 'XSRF-TOKEN=token-1; path=/';
     stubWriteLimitedServer();
     const user = userEvent.setup();
-    renderApp('/');
+    renderApp('/job-postings/1');
 
     await screen.findByRole('heading', { name: posting.title, level: 2 });
     const status = screen.getByRole('combobox', { name: /応募ステータス/ });
     await user.selectOptions(status, 'APPLIED');
+    await user.click(screen.getByRole('button', { name: '変更' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(RATE_LIMITED_MESSAGE);
-    expect(status).toHaveValue('SAVED');
+    expect(status).toHaveValue('APPLIED');
   });
 
   test('求人の削除が拒否されると、メッセージを表示して一覧を残し、次の削除で消す', async () => {
@@ -274,7 +287,7 @@ describe('保存件数の上限', () => {
   test('メモが上限に達していると、サーバーのメッセージを表示して入力を残す', async () => {
     stubLoggedInServer();
     const user = userEvent.setup();
-    renderApp('/');
+    renderApp('/job-postings/1');
 
     await screen.findByRole('heading', { name: posting.title, level: 2 });
     await user.type(screen.getByLabelText('メモ内容'), '面接前に確認する');
