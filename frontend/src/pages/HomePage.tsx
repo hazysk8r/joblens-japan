@@ -4,17 +4,14 @@ import { Link, useSearchParams, useNavigationType } from 'react-router';
 import '../JobPostingList.css';
 
 import {
-  deleteJobPosting,
   fetchApplicationStatusSummary,
   fetchJobPostings,
-  updateJobPosting,
 } from '../api/jobPostingApi';
 
-import { ApiError, isJobPostingVersionConflict, userMessageOf } from '../api/apiError';
+import { userMessageOf } from '../api/apiError';
 
 import {
   type JobPosting,
-  type UpdateJobPostingRequest,
   type ApplicationStatusSummaryResponse,
   type StatusFilter,
   type SalaryFilter,
@@ -31,200 +28,102 @@ import ApplicationStatusSummary
   from '../components/ApplicationStatusSummary';
 
 import { SALARY_OPTIONS } from '../constants/salaryOptions';
-
-// 求人情報一覧の初期取得に使用するデフォルトのソート条件
-const DEFAULT_SORTING: JobPostingSorting = 'createdAt,desc';
+import {
+  DEFAULT_SORTING,
+  hasAdvancedConditions,
+  listConditionsFrom,
+  parsePage,
+  searchParamsOf,
+} from '../utils/listSearchParams';
 
 // サーバーのValidDeadlineRangeと同じ文言にする。
 const DEADLINE_RANGE_ERROR_MESSAGE =
   '締切日（以降）を締切日（以前）より後の日付にすることはできません。';
 
-type EditingSession = {
-  sessionId: number;
-  jobPostingId: number;
-  expectedVersion: number;
-  jobPosting: JobPosting;
-};
-
-type EditFieldErrors = {
-  sessionId: number;
-  fieldErrors: Record<string, string>;
-};
-
-type EditRecovery = {
-  pending: boolean;
-  error: string | null;
-};
-
-type ListLoadResult =
-  | { status: 'updated'; content: JobPosting[] }
-  | { status: 'failed'; message: string }
-  | { status: 'superseded' };
-
 type JobPostingListQuery = Parameters<typeof fetchJobPostings>;
-
-// URLのstatusを有効なStatusFilterに変換する。
-function parseStatusFilter(
-  value: string | null,
-): StatusFilter {
-  switch (value) {
-    case 'SAVED':
-    case 'APPLIED':
-    case 'INTERVIEWING':
-    case 'OFFERED':
-    case 'REJECTED':
-      return value;
-
-    default:
-      return '';
-  }
-}
-
-// URLのpageを0以上の整数に変換する。
-// 不正な値の場合は1ページ目（0）を使用する。
-function parsePage(
-  value: string | null,
-): number {
-  if (value === null) {
-    return 0;
-  }
-
-  const page = Number(value);
-
-  if (
-    !Number.isInteger(page) ||
-    page < 0
-  ) {
-    return 0;
-  }
-
-  return page;
-}
 
 function HomePage() {
 
   const navigationType = useNavigationType();
   const [searchParams, setSearchParams] = useSearchParams();
-  const keywordFromUrl = searchParams.get('keyword') ?? '';
-  const statusFromUrl = parseStatusFilter(searchParams.get('status'));
+  // 適用中の検索条件。URLだけを基準にし、画面の状態には複製しない。
+  const urlConditions = listConditionsFrom(searchParams);
+  const keywordFromUrl = urlConditions.keyword;
+  const statusFromUrl = urlConditions.status;
   const pageFromUrl = parsePage(searchParams.get('page'));
+  // Effectの依存値やハンドラーで使うため、値として取り出す。
+  // 締切日はdeadlineFromFromUrlと読み違えないよう、Start/Endと呼ぶ。
+  const sortingFromUrl = urlConditions.sorting;
+  const salaryMinFromUrl = urlConditions.salaryMin;
+  const salaryMaxFromUrl = urlConditions.salaryMax;
+  const deadlineStartFromUrl = urlConditions.deadlineFrom;
+  const deadlineEndFromUrl = urlConditions.deadlineTo;
   const currentUrlSearch = searchParams.toString();
 
   // 最新の一覧取得リクエストだけがStateを更新できるようにする。
   const latestListRequestIdRef = useRef(0);
-  const latestListQueryRef = useRef<JobPostingListQuery>([
-    keywordFromUrl, statusFromUrl, pageFromUrl,
-    DEFAULT_SORTING, null, null, null, null,
+  // 表示を始めたときのURLの条件。初回の取得だけに使う。
+  const initialQueryRef = useRef<JobPostingListQuery>([
+    keywordFromUrl, statusFromUrl, pageFromUrl, sortingFromUrl,
+    salaryMinFromUrl, salaryMaxFromUrl, deadlineStartFromUrl, deadlineEndFromUrl,
   ]);
-  const nextEditingSessionIdRef = useRef(0);
-  // 非同期処理で最新の編集セッションを参照するために使用する。
-  const editingSessionRef = useRef<EditingSession | null>(null);
-  const nextRecoveryIdRef = useRef(0);
-  const recoveryRequestsRef = useRef(new Map<number, {
-
-    // Recovery要求の新旧を判定するID
-    recoveryId: number;
-    // Recovery完了と認める最小の一覧取得Request ID
-    minimumListRequestId: number;
-
-  }>());
 
   const latestSummaryRequestIdRef = useRef(0);
   // アンマウント後にサマリーの再取得やState更新を行わないようにする。
   const summaryMountedRef = useRef(false);
 
   const [keyword, setKeyword] = useState(keywordFromUrl);
-  const [appliedKeyword, setAppliedKeyword] = useState(keywordFromUrl);
   const [jobPostings, setJobPostings] = useState<JobPosting[]>([]);
   const [loading, setLoading] = useState(true);
   // false = 一覧APIのリクエストは進行中でない、true = 一覧APIのリクエストが進行中
   const [error, setError] = useState<string | null>(null);
-  // 更新失敗時も一覧と編集フォームを維持し、入力内容が失われないようにするため、
-  // 一覧取得エラーとは別にMutation用のエラー状態を管理する。
-  const [mutationError, setMutationError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(pageFromUrl);
   const [totalPages, setTotalPages] = useState(0);
   const [first, setFirst] = useState(true);
   const [last, setLast] = useState(true);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  // 編集フォームの表示など、UIの再描画に使用する。
-  const [editingSession, setEditingSession] = useState<EditingSession | null>(null);
-  const [editFieldErrors, setEditFieldErrors] = useState<EditFieldErrors | null>(null);
-  const [savingSessionId, setSavingSessionId] = useState<number | null>(null);
-  const [editRecoveries, setEditRecoveries] = useState<Record<number, EditRecovery>>({});
   const [statusSummary, setStatusSummary] = useState<ApplicationStatusSummaryResponse | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [status, setStatus] = useState<StatusFilter>(statusFromUrl);
-  const [appliedStatus, setAppliedStatus] = useState<StatusFilter>(statusFromUrl);
-  const [salaryMin, setSalaryMin] = useState<number | null>(null);
-  const [salaryMax, setSalaryMax] = useState<number | null>(null);
-  const [appliedSalaryMin, setAppliedSalaryMin] = useState<number | null>(null);
-  const [appliedSalaryMax, setAppliedSalaryMax] = useState<number | null>(null);
-  const [deadlineFrom, setDeadlineFrom] = useState<DeadlineFilter>(null);
-  const [deadlineTo, setDeadlineTo] = useState<DeadlineFilter>(null);
+  const [salaryMin, setSalaryMin] = useState<SalaryFilter>(urlConditions.salaryMin);
+  const [salaryMax, setSalaryMax] = useState<SalaryFilter>(urlConditions.salaryMax);
+  const [deadlineFrom, setDeadlineFrom] = useState<DeadlineFilter>(urlConditions.deadlineFrom);
+  const [deadlineTo, setDeadlineTo] = useState<DeadlineFilter>(urlConditions.deadlineTo);
   const [deadlineRangeError, setDeadlineRangeError] = useState<string | null>(null);
-  const [appliedDeadlineFrom, setAppliedDeadlineFrom] = useState<DeadlineFilter>(null);
-  const [appliedDeadlineTo, setAppliedDeadlineTo] = useState<DeadlineFilter>(null);
-  const [sorting, setSorting] = useState<JobPostingSorting>(DEFAULT_SORTING);
   // 前回のURLクエリを保持し、POPによるURL変更時にフォーム状態を同期するために使用する。
   const [previousUrlSearch, setPreviousUrlSearch] = useState(currentUrlSearch);
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  // 詳細条件が適用されていれば開いて見せる。閉じていると、絞り込まれている理由が見えないため。
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(() => hasAdvancedConditions(urlConditions));
 
   // 戻る・進む操作でURLが変わった場合、検索フォームをURLの状態に同期する。
   if (currentUrlSearch !== previousUrlSearch) {
     setPreviousUrlSearch(currentUrlSearch);
 
     if (navigationType === 'POP') {
+      // 検索していない入力はURLの条件で上書きする。表示と取得の条件を一致させるため。
       setKeyword(keywordFromUrl);
-      setAppliedKeyword(keywordFromUrl);
-
       setStatus(statusFromUrl);
-      setAppliedStatus(statusFromUrl);
-
+      setSalaryMin(urlConditions.salaryMin);
+      setSalaryMax(urlConditions.salaryMax);
+      setDeadlineFrom(urlConditions.deadlineFrom);
+      setDeadlineTo(urlConditions.deadlineTo);
+      setDeadlineRangeError(null);
       setCurrentPage(pageFromUrl);
+
+      // 詳細条件がない履歴へ戻ったときは、利用者が開いた状態をそのままにする。
+      if (hasAdvancedConditions(urlConditions)) {
+        setShowAdvancedFilters(true);
+      }
     }
   }
 
-  // 競合検知より後に開始し、実際に反映した一覧だけが再編集制限を解除できる。
-  const applyListPage = useCallback((
-    page: PageResponse<JobPosting>,
-    requestId: number,
-  ) => {
-    if (requestId !== latestListRequestIdRef.current) {
-      return false;
-    }
-
+  // 一覧の応答を画面に反映する。呼び出す側で、最新の要求の応答かを確かめてから呼ぶ。
+  const applyListPage = useCallback((page: PageResponse<JobPosting>) => {
     setJobPostings(page.content);
     setCurrentPage(page.page);
     setTotalPages(page.totalPages);
     setFirst(page.first);
     setLast(page.last);
-    // 実際に表示されたページ番号を最新の一覧取得条件に反映する。
-    latestListQueryRef.current[2] = page.page;
-
-    const recoveredIds: number[] = [];
-    for (const [id, recovery] of recoveryRequestsRef.current) {
-      if (
-        requestId >= recovery.minimumListRequestId &&
-        page.content.some((posting) => posting.id === id)
-      ) {
-        recoveryRequestsRef.current.delete(id);
-        recoveredIds.push(id);
-      }
-    }
-
-    if (recoveredIds.length > 0) {
-      setEditRecoveries((previous) => {
-        const next = { ...previous };
-        for (const id of recoveredIds) {
-          delete next[id];
-        }
-        return next;
-      });
-    }
-
-    return true;
   }, []);
 
   /**
@@ -240,14 +139,9 @@ function HomePage() {
     salaryMax: SalaryFilter,
     deadlineFrom: DeadlineFilter,
     deadlineTo: DeadlineFilter,
-    background = false,
-  ): Promise<ListLoadResult> => {
-    const requestId = 
+  ): Promise<void> => {
+    const requestId =
       ++latestListRequestIdRef.current;
-    latestListQueryRef.current = [
-      searchKeyword, searchFilter, pageNumber, sort,
-      salaryMin, salaryMax, deadlineFrom, deadlineTo,
-    ];
 
     try {
       let page = await fetchJobPostings(
@@ -265,7 +159,7 @@ function HomePage() {
       if (
         requestId !== latestListRequestIdRef.current
       ) {
-        return { status: 'superseded' };
+        return;
       }
 
       // 現在のページが範囲外になった場合、最後の有効ページを再取得する。
@@ -275,7 +169,7 @@ function HomePage() {
       ) {
         // 最後の有効ページを再取得
         const lastValidPage = page.totalPages - 1;
-        
+
         page = await fetchJobPostings(
           searchKeyword,
           searchFilter,
@@ -290,31 +184,22 @@ function HomePage() {
         if (
           requestId !== latestListRequestIdRef.current
         ) {
-          return { status: 'superseded' };
+          return;
         }
       }
       /*
       * 求人一覧だけでなく、バックエンドが返したページ情報も
       * Reactの状態に保存する。
       */
-      applyListPage(page, requestId);
-      return { status: 'updated', content: page.content };
-      
+      applyListPage(page);
     } catch (caughtError) {
       if (
         requestId !== latestListRequestIdRef.current
       ) {
-        return { status: 'superseded' };
+        return;
       }
 
-      const message =
-        userMessageOf(caughtError, '求人の読み込み中に不明なエラーが発生しました。');
-
-      // 競合復旧の失敗では既存一覧と別セッションの入力を維持する。
-      if (!background) {
-        setError(message);
-      }
-      return { status: 'failed', message };
+      setError(userMessageOf(caughtError, '求人の読み込み中に不明なエラーが発生しました。'));
     } finally {
       if (
         requestId === latestListRequestIdRef.current
@@ -324,7 +209,7 @@ function HomePage() {
     }
   }, [applyListPage]);
 
-  
+
   const didMountHistoryEffect = useRef(false);
 
   useEffect(() => {
@@ -342,10 +227,6 @@ function HomePage() {
     // Effectが無効になった後に返ってきた古いレスポンスをStateへ反映しないためのフラグ
     let ignore = false;
     const requestId = ++latestListRequestIdRef.current;
-    latestListQueryRef.current = [
-      keywordFromUrl, statusFromUrl, pageFromUrl,
-      DEFAULT_SORTING, null, null, null, null,
-    ];
 
     const loadHistoryData = async () => {
       try {
@@ -353,11 +234,11 @@ function HomePage() {
           keywordFromUrl,
           statusFromUrl,
           pageFromUrl,
-          DEFAULT_SORTING,
-          null,
-          null,
-          null,
-          null,
+          sortingFromUrl,
+          salaryMinFromUrl,
+          salaryMaxFromUrl,
+          deadlineStartFromUrl,
+          deadlineEndFromUrl,
         );
 
         // 現在のページが範囲外の場合は、最後の有効ページを取得する。
@@ -372,11 +253,11 @@ function HomePage() {
             keywordFromUrl,
             statusFromUrl,
             lastValidPage,
-            DEFAULT_SORTING,
-            null,
-            null,
-            null,
-            null,
+            sortingFromUrl,
+            salaryMinFromUrl,
+            salaryMaxFromUrl,
+            deadlineStartFromUrl,
+            deadlineEndFromUrl,
           );
         }
 
@@ -384,7 +265,7 @@ function HomePage() {
           return;
         }
 
-        applyListPage(page, requestId);
+        applyListPage(page);
         setError(null);
       } catch (caughtError) {
         if (ignore || requestId !== latestListRequestIdRef.current) {
@@ -413,6 +294,11 @@ function HomePage() {
     keywordFromUrl,
     statusFromUrl,
     pageFromUrl,
+    sortingFromUrl,
+    salaryMinFromUrl,
+    salaryMaxFromUrl,
+    deadlineStartFromUrl,
+    deadlineEndFromUrl,
     applyListPage,
   ]);
 
@@ -454,7 +340,7 @@ function HomePage() {
 
   // 初回表示時はURLの検索条件で取得する。範囲外のページの補正と古い応答の破棄は共通処理に任せる。
   useEffect(() => {
-    void loadJobPostings(...latestListQueryRef.current);
+    void loadJobPostings(...initialQueryRef.current);
   }, [loadJobPostings]);
 
   useEffect(() => {
@@ -489,31 +375,16 @@ function HomePage() {
     const nextDeadlineFrom = deadlineFrom;
     const nextDeadlineTo = deadlineTo;
 
-    const nextSearchParams = new URLSearchParams();
-
-    if (nextKeyword !== '') {
-      nextSearchParams.set(
-        'keyword',
-        nextKeyword,
-      );
-    }
-
-    if (nextStatus !== '') {
-      nextSearchParams.set(
-        'status',
-        nextStatus,
-      );
-    }
-
-    // 新しい検索のため、page=0はURLから省略する。
-    setSearchParams(nextSearchParams);
-
-    setAppliedKeyword(nextKeyword);
-    setAppliedStatus(nextStatus);
-    setAppliedSalaryMin(nextSalaryMin);
-    setAppliedSalaryMax(nextSalaryMax);
-    setAppliedDeadlineFrom(nextDeadlineFrom);
-    setAppliedDeadlineTo(nextDeadlineTo);
+    // 並び順は選んだときに適用済みのため、URLの値を引き継ぐ。新しい検索のため、pageは含めない。
+    setSearchParams(searchParamsOf({
+      keyword: nextKeyword,
+      status: nextStatus,
+      salaryMin: nextSalaryMin,
+      salaryMax: nextSalaryMax,
+      deadlineFrom: nextDeadlineFrom,
+      deadlineTo: nextDeadlineTo,
+      sorting: sortingFromUrl,
+    }));
 
     /*
     * 新しい検索を始めるときは、
@@ -522,7 +393,7 @@ function HomePage() {
     setLoading(true);
     setError(null);
 
-    void loadJobPostings(nextKeyword, nextStatus, 0, sorting, nextSalaryMin, nextSalaryMax, nextDeadlineFrom, nextDeadlineTo);
+    void loadJobPostings(nextKeyword, nextStatus, 0, sortingFromUrl, nextSalaryMin, nextSalaryMax, nextDeadlineFrom, nextDeadlineTo);
   };
 
 
@@ -552,14 +423,14 @@ function HomePage() {
     setError(null);
 
     void loadJobPostings(
-      appliedKeyword,
-      appliedStatus,
+      keywordFromUrl,
+      statusFromUrl,
       currentPage - 1,
-      sorting,
-      appliedSalaryMin,
-      appliedSalaryMax,
-      appliedDeadlineFrom,
-      appliedDeadlineTo,
+      sortingFromUrl,
+      salaryMinFromUrl,
+      salaryMaxFromUrl,
+      deadlineStartFromUrl,
+      deadlineEndFromUrl,
     );
   };
 
@@ -583,184 +454,17 @@ function HomePage() {
     setError(null);
 
     void loadJobPostings(
-      appliedKeyword,
-      appliedStatus,
+      keywordFromUrl,
+      statusFromUrl,
       currentPage + 1,
-      sorting,
-      appliedSalaryMin,
-      appliedSalaryMax,
-      appliedDeadlineFrom,
-      appliedDeadlineTo,
+      sortingFromUrl,
+      salaryMinFromUrl,
+      salaryMaxFromUrl,
+      deadlineStartFromUrl,
+      deadlineEndFromUrl,
     );
   };
 
-
-  const handleDelete = async (
-    jobPosting: JobPosting,
-  ) => {
-    const confirmed = window.confirm(
-      `「${jobPosting.title}」を削除しますか？`,
-    );
-
-    /*
-     * ユーザーがキャンセルを押した場合は、
-     * DELETE APIを呼び出さない。
-     */
-    if (!confirmed) {
-      return;
-    }
-
-    setDeletingId(jobPosting.id);
-    setMutationError(null);
-
-    try {
-      await deleteJobPosting(jobPosting.id);
-
-      // 最新の検索条件で再取得し、削除後のページ補正は共通処理に任せる。
-      await loadJobPostings(...latestListQueryRef.current);
-      await loadApplicationStatusSummary();
-    } catch (caughtError) {
-      const message =
-        userMessageOf(caughtError, '削除中に不明なエラーが発生しました。');
-      // 求人は残っているため、一覧を置き換えるerrorではなく、一覧の上に表示する。
-      setMutationError(message);
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  const handleStartEdit = (
-    jobPosting: JobPosting,
-  ) => {
-    if (recoveryRequestsRef.current.has(jobPosting.id)) {
-      return;
-    }
-
-    const session: EditingSession = {
-      sessionId: ++nextEditingSessionIdRef.current,
-      jobPostingId: jobPosting.id,
-      expectedVersion: jobPosting.version,
-      jobPosting,
-    };
-    editingSessionRef.current = session;
-    setEditingSession(session);
-    setEditFieldErrors(null);
-    setError(null);
-    setMutationError(null);
-  };
-
-  const handleCancelEdit = () => {
-    editingSessionRef.current = null;
-    setEditingSession(null);
-    setEditFieldErrors(null);
-    setMutationError(null);
-  };
-
-  // 古い非同期応答で新しい編集セッションを終了しないよう、
-  // Session IDが一致する場合だけ現在の編集セッションを終了する。
-  const finishEditingSession = (sessionId: number) => {
-    if (editingSessionRef.current?.sessionId !== sessionId) {
-      return false;
-    }
-    editingSessionRef.current = null;
-    setEditingSession(null);
-    // 現在のセッションを終了した場合だけ、そのフィールドエラーを消去する。
-    setEditFieldErrors(null);
-    return true;
-  };
-
-  const refreshEditRecovery = async (jobPostingId: number) => {
-    const recoveryId = ++nextRecoveryIdRef.current;
-    recoveryRequestsRef.current.set(jobPostingId, {
-      recoveryId,
-      minimumListRequestId: latestListRequestIdRef.current + 1,
-    });
-    setEditRecoveries((previous) => ({
-      ...previous,
-      [jobPostingId]: { pending: true, error: null },
-    }));
-
-    // 保存開始時の条件ではなく、現在の一覧条件を使用する。
-    const result = await loadJobPostings(...latestListQueryRef.current, true);
-
-    if (recoveryRequestsRef.current.get(jobPostingId)?.recoveryId !== recoveryId) {
-      return;
-    }
-
-    // 最新データが一覧に反映された場合、applyListPageが制限を解除する。
-    const message = result.status === 'updated'
-      ? '現在の一覧で最新の求人を確認できませんでした。検索条件を確認して再取得してください。'
-      : result.status === 'superseded'
-        ? '別の検索が実行されました。最新の求人を再読み込みしてから編集してください。'
-        : '最新の求人を読み込めませんでした。再読み込みしてから編集してください。';
-
-    setEditRecoveries((previous) => ({
-      ...previous,
-      [jobPostingId]: { pending: false, error: message },
-    }));
-  };
-
-  const handleSaveEdit = async (
-    session: EditingSession,
-    request: UpdateJobPostingRequest,
-  ): Promise<void> => {
-    if (editingSessionRef.current?.sessionId !== session.sessionId) {
-      return;
-    }
-
-    setSavingSessionId(session.sessionId);
-    setMutationError(null);
-    setEditFieldErrors(null);
-
-    try {
-      await updateJobPosting(session.jobPostingId, request, session.expectedVersion);
-
-      /*
-       * PUTリクエスト成功後、編集モードを終了する。
-       */
-      finishEditingSession(session.sessionId);
-
-      /*
-       * 現在の検索条件とページを維持したまま、
-       * サーバーから最新の一覧を再取得する。
-       */
-      const result = await loadJobPostings(...latestListQueryRef.current, true);
-      if (
-        result.status === 'failed' &&
-        editingSessionRef.current === null &&
-        nextEditingSessionIdRef.current === session.sessionId
-      ) {
-        setMutationError(result.message);
-      }
-    } catch (caughtError) {
-      if (
-        isJobPostingVersionConflict(caughtError)
-      ) {
-        // 再取得が失敗しても、競合したセッションとDraftは再利用しない。
-        if (finishEditingSession(session.sessionId)) {
-          setMutationError('別の画面で求人が編集されました。');
-        }
-
-        await refreshEditRecovery(session.jobPostingId);
-
-        return;
-      }
-
-      const message = 
-        userMessageOf(caughtError, '編集中に不明なエラーが発生しました。');
-      if (editingSessionRef.current?.sessionId === session.sessionId) {
-        setMutationError(message);
-        setEditFieldErrors(caughtError instanceof ApiError
-          ? { sessionId: session.sessionId, fieldErrors: caughtError.fieldErrors }
-          : null);
-      }
-      
-    } finally {
-      setSavingSessionId((currentSessionId) =>
-        currentSessionId === session.sessionId ? null : currentSessionId,
-      );
-    }
-  };
 
   const handleGoBackToHomepage = async () => {
     // Query Parameterを空にする
@@ -768,31 +472,17 @@ function HomePage() {
     // Form State
     setKeyword('');
     setStatus("");
-    setAppliedKeyword('');
-    setAppliedStatus("");
     setSalaryMin(null);
     setSalaryMax(null);
-    setAppliedSalaryMin(null);
-    setAppliedSalaryMax(null);
     setDeadlineFrom(null);
     setDeadlineTo(null);
-    setAppliedDeadlineFrom(null);
-    setAppliedDeadlineTo(null);
     setShowAdvancedFilters(false);
-    setSorting(DEFAULT_SORTING);
     setDeadlineRangeError(null);
-    setMutationError(null);
     // Server Data
     setLoading(true);
     setError(null);
     await loadJobPostings('', '', 0, DEFAULT_SORTING, null, null, null, null);
   };
-
-  // 再取得で一覧から外れた場合も、現在編集中のカードとDraftを維持する。
-  const visibleJobPostings = editingSession &&
-    !jobPostings.some((posting) => posting.id === editingSession.jobPostingId)
-    ? [...jobPostings, editingSession.jobPosting]
-    : jobPostings;
 
   return (
     <main>
@@ -986,16 +676,20 @@ function HomePage() {
 
             <label htmlFor="sorting">並び替え</label>
             <select
-              // 新しい並び順を先に保持し(nextSorting)、UIと以降のレンダリングのために状態へ保存する(setSorting)
+              // 並び順はすぐに適用するため、入力欄の状態を持たずURLの値を表示する。
               id="sorting"
-              value={sorting}
+              value={sortingFromUrl}
               onChange={(event) => {
                 const nextSorting =
                   event.target.value as JobPostingSorting;
-                setSorting(nextSorting);
 
-                // 並び順はURLにないため、新しい履歴は作らず、1ページ目に戻ったことだけを反映する。
+                // 並び順は表示の切り替えのため、新しい履歴は作らない。既定の並び順はURLから省き、1ページ目に戻す。
                 const nextSearchParams = new URLSearchParams(searchParams);
+                if (nextSorting === DEFAULT_SORTING) {
+                  nextSearchParams.delete('sort');
+                } else {
+                  nextSearchParams.set('sort', nextSorting);
+                }
                 nextSearchParams.delete('page');
                 setSearchParams(nextSearchParams, { replace: true });
 
@@ -1003,14 +697,14 @@ function HomePage() {
                 setError(null);
                 // 今すぐAPIリクエストに使う値
                 void loadJobPostings(
-                  appliedKeyword,
-                  appliedStatus,
+                  keywordFromUrl,
+                  statusFromUrl,
                   0,
                   nextSorting,
-                  appliedSalaryMin,
-                  appliedSalaryMax,
-                  appliedDeadlineFrom,
-                  appliedDeadlineTo,
+                  salaryMinFromUrl,
+                  salaryMaxFromUrl,
+                  deadlineStartFromUrl,
+                  deadlineEndFromUrl,
                 );
               }}
             >
@@ -1036,55 +730,14 @@ function HomePage() {
         <p role="alert">
           {error}
         </p>
-      ) : visibleJobPostings.length === 0 ? (
+      ) : jobPostings.length === 0 ? (
         <p>検索結果はありません。</p>
       ) : (
-        <>
-          {mutationError && (
-            <p role="alert">
-              {mutationError}
-            </p>
-          )}
-
-          <ul className="job-posting-list" role="list">
-            {visibleJobPostings.map((jobPosting) => (
-              <JobPostingListItem
-                key={jobPosting.id}
-                jobPosting={jobPosting}
-                isEditing={
-                  editingSession?.jobPostingId === jobPosting.id
-                }
-                isSaving={
-                  editingSession?.jobPostingId === jobPosting.id &&
-                  savingSessionId === editingSession.sessionId
-                }
-                editSessionId={editingSession?.jobPostingId === jobPosting.id
-                  ? editingSession.sessionId : undefined}
-                expectedVersion={editingSession?.jobPostingId === jobPosting.id
-                  ? editingSession.expectedVersion : undefined}
-                editFieldErrors={editingSession?.jobPostingId === jobPosting.id &&
-                  editFieldErrors?.sessionId === editingSession.sessionId
-                  ? editFieldErrors.fieldErrors : undefined}
-                editRecovery={editRecoveries[jobPosting.id]}
-                onRetryEditRecovery={() => {
-                  void refreshEditRecovery(jobPosting.id);
-                }}
-                isDeleting={
-                  deletingId === jobPosting.id
-                }
-                onStartEdit={handleStartEdit}
-                onSave={(id, request) => {
-                  if (editingSession?.jobPostingId !== id) {
-                    return Promise.resolve();
-                  }
-                  return handleSaveEdit(editingSession, request);
-                }}
-                onCancel={handleCancelEdit}
-                onDelete={handleDelete}
-              />
-            ))}
-          </ul>
-        </>
+        <ul className="job-posting-list" role="list">
+          {jobPostings.map((jobPosting) => (
+            <JobPostingListItem key={jobPosting.id} jobPosting={jobPosting} />
+          ))}
+        </ul>
       )}
 
       {!error && totalPages > 0 && (

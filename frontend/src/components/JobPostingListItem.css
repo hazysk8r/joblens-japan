@@ -1,9 +1,6 @@
 .job-posting-card {
   --card-muted-bg: #f7f8fa;
   --card-action: #334e68;
-  --card-danger: #b42318;
-  --card-danger-border: #efb4ae;
-  --card-danger-bg: #fff1f0;
 
   min-width: 0;
   padding: 1.5rem;
@@ -89,8 +86,9 @@
   border-top: 1px solid var(--border);
 }
 
-.job-posting-card__original-text {
-  white-space: pre-wrap;
+.job-posting-card__excerpt {
+  margin: 0;
+  color: var(--text);
   line-height: 1.75;
 }
 
@@ -104,106 +102,9 @@
   text-underline-offset: 3px;
 }
 
-.job-posting-card__footer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 1.25rem;
-}
-
-.job-posting-card__footer {
-  justify-content: flex-end;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border);
-}
-
-.job-posting-card form > div {
-  margin-bottom: 0.75rem;
-}
-
-.job-posting-card form label {
-  display: block;
-  margin-bottom: 0.4rem;
-  font-size: 0.85rem;
-}
-
-.job-posting-card input,
-.job-posting-card select,
-.job-posting-card textarea {
-  box-sizing: border-box;
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  padding: 0.55rem 0.65rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text-h);
-  font: inherit;
-}
-
-.job-posting-card textarea {
-  display: block;
-  min-height: 5rem;
-  resize: vertical;
-}
-
-/* 編集フォームのフィールドエラーだけに適用する。 */
-.job-posting-card .job-posting-edit-form .job-posting-edit-form__error {
-  margin: 0.4rem 0 0;
-  color: var(--card-danger);
-  font-size: 0.85rem;
-}
-
-.job-posting-card .job-posting-edit-form [aria-invalid='true'] {
-  border-color: var(--card-danger);
-}
-
-.job-posting-card button {
-  max-width: 100%;
-  min-height: 2.5rem;
-  padding: 0.5rem 0.85rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--card-action);
-  font: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.job-posting-card button:hover:not(:disabled) {
-  border-color: var(--card-action);
-  background: var(--card-muted-bg);
-}
-
-.job-posting-card form > button {
-  margin: 0.25rem 0.5rem 0.25rem 0;
-}
-
-.job-posting-card .job-posting-card__delete {
-  border-color: var(--card-danger-border);
-  color: var(--card-danger);
-}
-
-.job-posting-card .job-posting-card__delete:hover:not(:disabled) {
-  border-color: var(--card-danger);
-  background: var(--card-danger-bg);
-}
-
-.job-posting-card :is(button, input, select, textarea, a):focus-visible {
+.job-posting-card a:focus-visible {
   outline: 2px solid var(--card-action);
   outline-offset: 3px;
-}
-
-.job-posting-card :is(button, input, select, textarea):disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.job-posting-card [role='alert'] {
-  color: var(--card-danger);
 }
 
 @media (max-width: 600px) {
@@ -225,9 +126,6 @@
   .job-posting-card {
     --card-muted-bg: #1f2028;
     --card-action: #b1cbe4;
-    --card-danger: #fda29b;
-    --card-danger-border: #85433e;
-    --card-danger-bg: #3c2427;
   }
 }
 

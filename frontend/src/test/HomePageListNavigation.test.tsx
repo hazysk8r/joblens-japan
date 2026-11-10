@@ -8,7 +8,6 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { AuthenticatedApp } from './testAuth';
 import { ApiError } from '../api/apiError';
 import {
-  deleteJobPosting,
   fetchApplicationStatusSummary,
   fetchJobPostings,
 } from '../api/jobPostingApi';
@@ -99,7 +98,6 @@ async function selectCompanyNameSorting(user: ReturnType<typeof userEvent.setup>
 
 beforeEach(() => {
   vi.resetAllMocks();
-  vi.spyOn(window, 'confirm').mockReturnValue(true);
   vi.mocked(fetchApplicationStatusSummary).mockResolvedValue({
     saved: 1,
     applied: 0,
@@ -173,18 +171,6 @@ describe('JobLens Japanを押したときの初期化', () => {
     expect(screen.queryByText(RANGE_ERROR)).not.toBeInTheDocument();
   });
 
-  test('削除の失敗などのエラーも残らない', async () => {
-    vi.mocked(deleteJobPosting).mockRejectedValueOnce(new ApiError('削除に失敗しました', 500));
-    const user = renderHome();
-    await findPosting(titleOfPage(0));
-    await user.click(screen.getByRole('button', { name: '削除' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('削除に失敗しました');
-
-    await clickTitle(user);
-
-    expect(await findPosting(titleOfPage(0))).toBeInTheDocument();
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-  });
 });
 
 describe('初回表示のURLのページが範囲外のとき', () => {
@@ -207,15 +193,6 @@ describe('初回表示のURLのページが範囲外のとき', () => {
     renderHome(['/?page=99']);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('補正の取得に失敗しました');
-  });
-
-  test('補正後の削除では、補正後のページを再取得する', async () => {
-    const user = renderHome(['/?page=99']);
-    await findPosting(titleOfPage(1));
-
-    await user.click(screen.getByRole('button', { name: '削除' }));
-
-    await waitFor(() => expect(requestedPages()).toEqual([99, 1, 1]));
   });
 
   test('応答の前に別の取得が始まったら、古い応答では補正しない', async () => {
@@ -254,7 +231,7 @@ describe('初回表示のURLのページが範囲外のとき', () => {
 });
 
 describe('並び替えを変更したとき', () => {
-  test('URLのpageだけを消して、他の検索条件は残す', async () => {
+  test('URLのpageを消してsortを入れ、他の検索条件は残す', async () => {
     vi.mocked(fetchJobPostings).mockImplementation(async (_keyword, _status, page) =>
       pageResponse(page, 5),
     );
@@ -264,7 +241,7 @@ describe('並び替えを変更したとき', () => {
     await selectCompanyNameSorting(user);
 
     await waitFor(() =>
-      expect(screen.getByTestId('location').textContent).toBe('/?keyword=Java&status=APPLIED'),
+      expect(screen.getByTestId('location').textContent).toBe('/?keyword=Java&status=APPLIED&sort=companyName%2Casc'),
     );
     expect(fetchJobPostings).toHaveBeenLastCalledWith(
       'Java', 'APPLIED', 0, 'companyName,asc', null, null, null, null,
@@ -280,7 +257,7 @@ describe('並び替えを変更したとき', () => {
 
     await selectCompanyNameSorting(user);
     await waitFor(() =>
-      expect(screen.getByTestId('location').textContent).toBe('/?keyword=Java'),
+      expect(screen.getByTestId('location').textContent).toBe('/?keyword=Java&sort=companyName%2Casc'),
     );
     await user.click(screen.getByRole('button', { name: 'テスト用の戻る' }));
 
@@ -293,13 +270,13 @@ describe('並び替えを変更したとき', () => {
     );
   });
 
-  test('URLにpageがなければ、URLも履歴も変わらない', async () => {
+  test('URLにpageがなくても、履歴は増やさない', async () => {
     const user = renderHome(['/?keyword=Earlier', '/?keyword=Java']);
     await findPosting(titleOfPage(0));
 
     await selectCompanyNameSorting(user);
     await findPosting(titleOfPage(0));
-    expect(screen.getByTestId('location').textContent).toBe('/?keyword=Java');
+    expect(screen.getByTestId('location').textContent).toBe('/?keyword=Java&sort=companyName%2Casc');
 
     await user.click(screen.getByRole('button', { name: 'テスト用の戻る' }));
 

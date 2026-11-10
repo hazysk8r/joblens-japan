@@ -229,18 +229,19 @@ describe('書き込みの回数制限', () => {
     expect(status).toHaveValue('APPLIED');
   });
 
-  test('求人の削除が拒否されると、メッセージを表示して一覧を残し、次の削除で消す', async () => {
+  test('求人の削除が拒否されると、メッセージを表示して詳細に留まり、次の削除の間は前の失敗を表示しない', async () => {
     document.cookie = 'XSRF-TOKEN=token-1; path=/';
     stubWriteLimitedServer();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     const user = userEvent.setup();
-    renderApp('/');
+    renderApp('/job-postings/1');
 
     await screen.findByRole('heading', { name: posting.title, level: 2 });
     await user.click(screen.getByRole('button', { name: '削除' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(RATE_LIMITED_MESSAGE);
     expect(screen.getByRole('heading', { name: posting.title, level: 2 })).toBeInTheDocument();
+    expect(screen.getByTestId('location').textContent).toBe('/job-postings/1');
 
     // 再試行中は前回の失敗を表示しない。
     let finishDelete!: (response: Response) => void;

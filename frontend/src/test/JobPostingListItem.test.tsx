@@ -43,16 +43,7 @@ describe('求人原文のリンク', () => {
     };
 
     render(
-      <JobPostingListItem
-        jobPosting={jobPosting}
-        isEditing={false}
-        isSaving={false}
-        isDeleting={false}
-        onStartEdit={vi.fn()}
-        onSave={vi.fn()}
-        onCancel={vi.fn()}
-        onDelete={vi.fn()}
-      />
+      <JobPostingListItem jobPosting={jobPosting} />
     );
 
     await screen.findByRole('heading', { level: 2, name: 'エンジニア求人' });
@@ -104,16 +95,7 @@ describe('詳細画面へのリンク', () => {
     };
 
     render(
-      <JobPostingListItem
-        jobPosting={jobPosting}
-        isEditing={false}
-        isSaving={false}
-        isDeleting={false}
-        onStartEdit={vi.fn()}
-        onSave={vi.fn()}
-        onCancel={vi.fn()}
-        onDelete={vi.fn()}
-      />,
+      <JobPostingListItem jobPosting={jobPosting} />,
     );
 
     expect(screen.getByRole('link', { name: 'バックエンドエンジニア' }))
@@ -141,16 +123,7 @@ describe('応募ステータスとメモ', () => {
   // 変更やメモの操作は詳細画面で行う。
   test('応募ステータスは文字だけで表示し、メモと変更履歴の操作も通信もしない', () => {
     render(
-      <JobPostingListItem
-        jobPosting={jobPosting}
-        isEditing={false}
-        isSaving={false}
-        isDeleting={false}
-        onStartEdit={vi.fn()}
-        onSave={vi.fn()}
-        onCancel={vi.fn()}
-        onDelete={vi.fn()}
-      />,
+      <JobPostingListItem jobPosting={jobPosting} />,
     );
 
     expect(screen.getByText('応募ステータス: 面接中')).toBeInTheDocument();
@@ -162,3 +135,51 @@ describe('応募ステータスとメモ', () => {
     expect(fetchApplicationStatusHistory).not.toHaveBeenCalled();
   });
 });
+
+describe('一覧の要約カード', () => {
+  const longText = `【業務内容】
+${'バックエンド開発'.repeat(30)}
+【応募資格】
+Javaの実務経験`;
+  const posting: JobPosting = {
+    id: 7,
+    companyName: '○○株式会社',
+    title: '要約の確認',
+    sourceUrl: 'https://example.com/jobs/7',
+    originalText: longText,
+    createdAt: '2026-11-08T00:00:00Z',
+    applicationStatus: 'APPLIED',
+    salaryMin: 300000,
+    salaryMax: null,
+    applicationDeadline: '2026-12-01',
+    version: 0,
+  };
+
+  // 画面で隠すだけだと、読み上げでは原文全体が読まれてしまう。
+  test('原文は先頭だけを要約して表示し、全体は画面に置かない', () => {
+    render(<JobPostingListItem jobPosting={posting} />);
+
+    const excerpt = screen.getByText(/^【業務内容】 バックエンド開発/);
+    expect(excerpt.textContent).toHaveLength(101);
+    expect(excerpt.textContent?.endsWith('…')).toBe(true);
+    expect(document.body.textContent).not.toContain('Javaの実務経験');
+  });
+
+  test('編集と削除の操作は置かず、詳細へのリンクと原文のリンクは残す', () => {
+    render(<JobPostingListItem jobPosting={posting} />);
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '要約の確認' })).toHaveAttribute('href', '/job-postings/7');
+    expect(screen.getByRole('link', { name: '原文を見る' })).toHaveAttribute('href', 'https://example.com/jobs/7');
+  });
+
+  test('会社名、給与、締切日、応募ステータスを表示する', () => {
+    render(<JobPostingListItem jobPosting={posting} />);
+
+    expect(screen.getByText('○○株式会社')).toBeInTheDocument();
+    expect(screen.getByText('300,000円以上')).toBeInTheDocument();
+    expect(screen.getByText(/2026-12-01/)).toBeInTheDocument();
+    expect(screen.getByText('応募ステータス: 応募済み')).toBeInTheDocument();
+  });
+});
+

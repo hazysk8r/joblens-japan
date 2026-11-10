@@ -8,7 +8,6 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { AuthenticatedApp } from './testAuth';
 import { ApiError } from '../api/apiError';
 import {
-  deleteJobPosting,
   fetchApplicationStatusSummary,
   fetchJobPostings,
 } from '../api/jobPostingApi';
@@ -91,20 +90,10 @@ function expectSavedCount(count: number) {
   expect(row).toHaveTextContent(`保存済み: ${count}`);
 }
 
-function postingCard() {
-  const card = screen.getByRole('heading', { name: jobPosting.title, level: 2 }).closest('li');
-  if (!card) {
-    throw new Error('求人カードが見つかりません。');
-  }
-  return card;
-}
-
 beforeEach(() => {
   vi.resetAllMocks();
-  vi.spyOn(window, 'confirm').mockReturnValue(true);
   vi.mocked(fetchJobPostings).mockResolvedValue(page);
   vi.mocked(fetchApplicationStatusSummary).mockResolvedValue(initialSummary);
-  vi.mocked(deleteJobPosting).mockResolvedValue();
 });
 
 afterEach(() => {
@@ -175,73 +164,6 @@ describe('応募状況と求人一覧の独立した取得', () => {
     await act(async () => summary.resolve(initialSummary));
     await screen.findByRole('heading', { name: '応募状況' });
     expectSavedCount(5);
-  });
-
-  test('応募状況の更新に失敗したら以前の集計と求人一覧を残して再試行を案内する', async () => {
-    const user = userEvent.setup();
-    vi.mocked(fetchApplicationStatusSummary)
-      .mockResolvedValueOnce(initialSummary)
-      .mockRejectedValueOnce(new ApiError('最新の集計を取得できません。', 500));
-    renderHome();
-    await screen.findByRole('heading', { name: jobPosting.title });
-    await screen.findByRole('heading', { name: '応募状況' });
-
-    await user.click(within(postingCard()).getByRole('button', { name: '削除' }));
-
-    const alert = await within(summarySection()).findByRole('alert');
-    expect(alert).toHaveTextContent('最新の集計を取得できません。');
-    expect(summarySection()).toHaveTextContent('以前に取得した集計です。');
-    expectSavedCount(5);
-    expect(screen.getByRole('heading', { name: jobPosting.title })).toBeInTheDocument();
-    expect(within(summarySection()).getByRole('button', { name: '応募状況を再試行' })).toBeEnabled();
-    expect(fetchJobPostings).toHaveBeenCalledTimes(2);
-  });
-
-  test('削除後も応募状況を再取得する', async () => {
-    const user = userEvent.setup();
-    vi.mocked(fetchApplicationStatusSummary)
-      .mockResolvedValueOnce(initialSummary)
-      .mockResolvedValueOnce(refreshedSummary);
-    renderHome();
-    await screen.findByRole('heading', { name: jobPosting.title });
-    await screen.findByRole('heading', { name: '応募状況' });
-
-    vi.mocked(fetchJobPostings).mockResolvedValueOnce({ ...page, content: [], totalElements: 0, totalPages: 0 });
-    await user.click(within(postingCard()).getByRole('button', { name: '削除' }));
-
-    await waitFor(() => expectSavedCount(4));
-    expect(fetchApplicationStatusSummary).toHaveBeenCalledTimes(2);
-    expect(fetchJobPostings).toHaveBeenCalledTimes(2);
-  });
-
-  test.each(['成功', '失敗'] as const)('古い集計の%sで新しい集計の読み込みを終了しない', async (outcome) => {
-    const initial = deferred<ApplicationStatusSummaryResponse>();
-    const refresh = deferred<ApplicationStatusSummaryResponse>();
-    const user = userEvent.setup();
-    vi.mocked(fetchApplicationStatusSummary)
-      .mockReturnValueOnce(initial.promise)
-      .mockReturnValueOnce(refresh.promise);
-    renderHome();
-    await screen.findByRole('heading', { name: jobPosting.title });
-    await user.click(within(postingCard()).getByRole('button', { name: '削除' }));
-    await waitFor(() => expect(fetchApplicationStatusSummary).toHaveBeenCalledTimes(2));
-
-    await act(async () => {
-      if (outcome === '成功') {
-        initial.resolve(initialSummary);
-      } else {
-        initial.reject(new ApiError('古い集計のエラー', 500));
-      }
-    });
-
-    const region = screen.getByRole('region', { name: '応募状況' });
-    expect(within(region).getByRole('status')).toBeInTheDocument();
-    expect(within(region).queryByRole('alert')).not.toBeInTheDocument();
-    expect(within(region).queryByText('保存済み:')).not.toBeInTheDocument();
-    await act(async () => refresh.resolve(refreshedSummary));
-
-    await waitFor(() => expectSavedCount(4));
-    expect(within(region).queryByRole('status')).not.toBeInTheDocument();
   });
 
   test.each(['成功', '失敗'] as const)('StrictModeの古い初回集計の%sが最新の表示を上書きしない', async (outcome) => {

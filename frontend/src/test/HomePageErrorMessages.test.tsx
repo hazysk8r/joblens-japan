@@ -8,10 +8,8 @@ import { AuthenticatedApp } from './testAuth';
 import { CsrfTokenUnavailableError } from '../api/apiClient';
 import { ApiError, userMessageOf } from '../api/apiError';
 import {
-  deleteJobPosting,
   fetchApplicationStatusSummary,
   fetchJobPostings,
-  updateJobPosting,
 } from '../api/jobPostingApi';
 import type { JobPosting, PageResponse } from '../types/jobPosting';
 
@@ -55,7 +53,6 @@ function renderHome(initialEntries: string[] = ['/']) {
 
 beforeEach(() => {
   vi.resetAllMocks();
-  vi.spyOn(window, 'confirm').mockReturnValue(true);
   vi.mocked(fetchJobPostings).mockResolvedValue(page);
   vi.mocked(fetchApplicationStatusSummary).mockResolvedValue({
     saved: 1, applied: 0, interviewing: 0, offered: 0, rejected: 0,
@@ -123,34 +120,4 @@ describe('一覧画面のエラー表示', () => {
     expect(region).not.toHaveTextContent('Failed to fetch');
   });
 
-  test('削除の通信エラーは既定のメッセージにする', async () => {
-    vi.mocked(deleteJobPosting).mockRejectedValue(NETWORK_ERROR);
-    const user = renderHome();
-    await screen.findByRole('heading', { name: posting.title, level: 2 });
-
-    await user.click(screen.getByRole('button', { name: '削除' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(/^削除中に不明なエラーが発生しました。$/);
-  });
-
-  test('削除でCSRFトークンを取得できなかったときは、その案内を表示する', async () => {
-    vi.mocked(deleteJobPosting).mockRejectedValue(new CsrfTokenUnavailableError());
-    const user = renderHome();
-    await screen.findByRole('heading', { name: posting.title, level: 2 });
-
-    await user.click(screen.getByRole('button', { name: '削除' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('サーバーに接続できませんでした。');
-  });
-
-  test('編集の保存の通信エラーは既定のメッセージにする', async () => {
-    vi.mocked(updateJobPosting).mockRejectedValue(NETWORK_ERROR);
-    const user = renderHome();
-    await screen.findByRole('heading', { name: posting.title, level: 2 });
-    await user.click(screen.getByRole('button', { name: '編集' }));
-
-    await user.click(screen.getByRole('button', { name: '保存' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(/^編集中に不明なエラーが発生しました。$/);
-  });
 });

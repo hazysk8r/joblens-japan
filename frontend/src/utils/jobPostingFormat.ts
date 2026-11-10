@@ -35,3 +35,16 @@ export function formatSalaryRange(
   }
   return '給与未登録';
 }
+
+/**
+ * 原文の先頭を要約として返す。改行や続く空白は1つの空白にまとめる。
+ * 文字数はコードポイントで数える。UTF-16の単位で切ると、サロゲートペアの片方だけが残って文字化けするため。
+ */
+export function excerptOf(text: string, maxLength: number): string {
+  const characters = Array.from(text.replace(/\s+/g, ' ').trim());
+  if (characters.length <= maxLength) {
+    return characters.join('');
+  }
+  return `${characters.slice(0, maxLength).join('')}…`;
+}
+
