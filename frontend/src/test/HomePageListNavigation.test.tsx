@@ -6,6 +6,7 @@ import { MemoryRouter, useLocation, useNavigate } from 'react-router';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { AuthenticatedApp } from './testAuth';
+import { ApiError } from '../api/apiError';
 import {
   deleteJobPosting,
   fetchApplicationStatusSummary,
@@ -118,7 +119,7 @@ afterEach(() => {
 
 describe('JobLens Japanを押したときの初期化', () => {
   test('一覧の取得エラーの後に押して取得に成功すると、エラーを消して一覧を表示する', async () => {
-    vi.mocked(fetchJobPostings).mockRejectedValueOnce(new Error('一覧の取得に失敗しました'));
+    vi.mocked(fetchJobPostings).mockRejectedValueOnce(new ApiError('一覧の取得に失敗しました', 500));
     const user = renderHome();
     expect(await screen.findByRole('alert')).toHaveTextContent('一覧の取得に失敗しました');
 
@@ -130,8 +131,8 @@ describe('JobLens Japanを押したときの初期化', () => {
 
   test('もう一度失敗したら、新しいエラーを表示する', async () => {
     vi.mocked(fetchJobPostings)
-      .mockRejectedValueOnce(new Error('最初のエラー'))
-      .mockRejectedValueOnce(new Error('二度目のエラー'));
+      .mockRejectedValueOnce(new ApiError('最初のエラー', 500))
+      .mockRejectedValueOnce(new ApiError('二度目のエラー', 500));
     const user = renderHome();
     await screen.findByText('最初のエラー');
 
@@ -173,7 +174,7 @@ describe('JobLens Japanを押したときの初期化', () => {
   });
 
   test('削除の失敗などのエラーも残らない', async () => {
-    vi.mocked(deleteJobPosting).mockRejectedValueOnce(new Error('削除に失敗しました'));
+    vi.mocked(deleteJobPosting).mockRejectedValueOnce(new ApiError('削除に失敗しました', 500));
     const user = renderHome();
     await findPosting(titleOfPage(0));
     await user.click(screen.getByRole('button', { name: '削除' }));
@@ -202,7 +203,7 @@ describe('初回表示のURLのページが範囲外のとき', () => {
   test('最後の有効なページの取得に失敗したら、エラーを表示する', async () => {
     vi.mocked(fetchJobPostings)
       .mockResolvedValueOnce(pageResponse(99, 2))
-      .mockRejectedValueOnce(new Error('補正の取得に失敗しました'));
+      .mockRejectedValueOnce(new ApiError('補正の取得に失敗しました', 500));
     renderHome(['/?page=99']);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('補正の取得に失敗しました');

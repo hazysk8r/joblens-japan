@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { ApiError, isJobPostingVersionConflict } from '../api/apiError';
+import { isJobPostingVersionConflict, userMessageOf } from '../api/apiError';
 import { fetchJobPosting, updateApplicationStatus } from '../api/jobPostingApi';
 import type { ApplicationStatus, JobPosting } from '../types/jobPosting';
 
 const NOT_APPLIED_MESSAGE = '別の画面で求人が編集されたため、変更は反映されませんでした。';
+const RECOVERING_MESSAGE = `${NOT_APPLIED_MESSAGE}最新の内容を読み込んでいます。`;
 const CONFLICT_MESSAGE = `${NOT_APPLIED_MESSAGE}最新の内容を表示しています。`;
+// 成功の案内を表示しておく時間。メモの登録の案内と同じ。
+const NOTICE_DURATION_MS = 3000;
 const RECOVERY_FAILED_MESSAGE =
   `${NOT_APPLIED_MESSAGE}最新の求人を読み込めませんでした。ページを再読み込みしてください。`;
 
@@ -25,20 +28,32 @@ export function useJobPostingStatusChange({
 }) {
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 画面の表示だけでは変更できたか分かりにくいため、読み上げの対象にもなる案内を出す。
+  const [notice, setNotice] = useState<string | null>(null);
   const recoveryControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => () => {
     recoveryControllerRef.current?.abort();
   }, []);
 
+  useEffect(() => {
+    if (notice === null) {
+      return;
+    }
+    const timerId = setTimeout(() => setNotice(null), NOTICE_DURATION_MS);
+    return () => clearTimeout(timerId);
+  }, [notice]);
+
   async function recoverFromConflict() {
-    setError(CONFLICT_MESSAGE);
+    // 最新の内容を受け取る前に「表示しています」と伝えない。
+    setError(RECOVERING_MESSAGE);
 
     const controller = new AbortController();
     recoveryControllerRef.current = controller;
 
     try {
       onChanged(await fetchJobPosting(jobPosting.id, controller.signal));
+      setError(CONFLICT_MESSAGE);
     } catch {
       setError(RECOVERY_FAILED_MESSAGE);
     }
@@ -47,6 +62,7 @@ export function useJobPostingStatusChange({
   async function changeStatus(status: ApplicationStatus) {
     setUpdating(true);
     setError(null);
+    setNotice(null);
 
     try {
       const updated = await updateApplicationStatus(
@@ -55,16 +71,17 @@ export function useJobPostingStatusChange({
         jobPosting.version,
       );
       onChanged(updated);
+      setNotice('応募ステータスを変更しました。');
     } catch (caught) {
       if (isJobPostingVersionConflict(caught)) {
         await recoverFromConflict();
         return;
       }
-      setError(caught instanceof ApiError ? caught.message : '応募ステータスの変更に失敗しました。');
+      setError(userMessageOf(caught, '応募ステータスの変更に失敗しました。'));
     } finally {
       setUpdating(false);
     }
   }
 
-  return { updating, error, changeStatus };
+  return { updating, error, notice, changeStatus };
 }

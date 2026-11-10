@@ -159,7 +159,7 @@ describe('編集フォームのフィールドエラー', () => {
 
   test.each([
     { name: 'フィールドを持たないAPIエラー', error: new ApiError('サーバーエラー', 503), message: 'サーバーエラー' },
-    { name: '通信エラー', error: new TypeError('Failed to fetch'), message: 'Failed to fetch' },
+    { name: '通信エラー', error: new TypeError('Failed to fetch'), message: /^編集中に不明なエラーが発生しました。$/ },
   ])('$nameでは入力内容と一般エラーを保持する', async ({ error, message }) => {
     const user = userEvent.setup();
     vi.mocked(updateJobPosting).mockRejectedValueOnce(error);
@@ -195,7 +195,7 @@ describe('編集フォームのフィールドエラー', () => {
     expect(within(card).getByLabelText('求人タイトル')).toHaveAccessibleDescription('旧タイトルエラー');
     expect(within(card).getByLabelText('最低月給')).toHaveAccessibleDescription('旧最低給与エラー');
     await submit(user, card);
-    expect(within(card).getByRole('button', { name: '保存中…' })).toBeDisabled();
+    expect(within(card).getByRole('button', { name: '保存中…' })).toHaveAttribute('aria-disabled', 'true');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.queryByText('旧タイトルエラー')).not.toBeInTheDocument();
     for (const [, label] of fields) {
@@ -318,8 +318,8 @@ describe('編集フォームのフィールドエラー', () => {
     await submit(user, cardA);
     await act(async () => oldSave.reject(validationError({ title: '古い応答のエラー' })));
 
-    expect(within(cardA).getByRole('button', { name: '保存中…' })).toBeDisabled();
-    expect(within(cardA).getByLabelText('求人タイトル')).toBeDisabled();
+    expect(within(cardA).getByRole('button', { name: '保存中…' })).toHaveAttribute('aria-disabled', 'true');
+    expect(within(cardA).getByLabelText('求人タイトル')).toHaveAttribute('readonly');
     expect(screen.queryByText('古い応答のエラー')).not.toBeInTheDocument();
     expect(screen.queryByText('再保存前のエラー')).not.toBeInTheDocument();
     await act(async () => currentSave.resolve({ ...postingA, version: 4 }));

@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { AuthenticatedApp } from './testAuth';
 import { useJobPostingDetail } from '../hooks/useJobPostingDetail';
+import { CsrfTokenUnavailableError } from '../api/apiClient';
 import { ApiError } from '../api/apiError';
 import {
   fetchApplicationStatusHistory,
@@ -1009,5 +1010,161 @@ describe('メモの編集', () => {
     await act(async () => saving.resolve(memo(1, 'メモA')));
 
     expect(within(memoRegion()).getByRole('textbox', { name: 'メモを編集' })).toHaveValue('メモBの追記');
+  });
+});
+
+describe('メモの登録中の入力', () => {
+  // 登録中に書き足した内容は、成功時に入力欄を空にするときに一緒に消えてしまう。
+  test('応答を待つ間は入力欄を変更できず、無効にはしない', async () => {
+    const pending = deferred<JobPostingMemo>();
+    vi.mocked(createJobPostingMemo).mockReturnValue(pending.promise);
+    const user = await renderDetail();
+    const textarea = within(memoRegion()).getByLabelText('メモ内容');
+    await user.type(textarea, '面談準備');
+
+    await user.click(within(memoRegion()).getByRole('button', { name: '登録' }));
+    await user.type(textarea, 'の追記');
+
+    expect(textarea).toHaveAttribute('readonly');
+    expect(textarea).toBeEnabled();
+    expect(textarea).toHaveValue('面談準備');
+
+    await act(async () => pending.resolve(memo(1, '面談準備')));
+    expect(textarea).not.toHaveAttribute('readonly');
+  });
+});
+
+describe('競合の案内の時点', () => {
+  test('最新の求人を受け取るまでは読み込み中と伝え、受け取ってから表示中と伝える', async () => {
+    const latest = deferred<JobPosting>();
+    vi.mocked(updateApplicationStatus).mockRejectedValueOnce(CONFLICT);
+    const user = await renderDetail();
+    vi.mocked(fetchJobPosting).mockReturnValue(latest.promise);
+
+    await changeStatus(user, 'APPLIED');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /^別の画面で求人が編集されたため、変更は反映されませんでした。最新の内容を読み込んでいます。$/,
+    );
+
+    await act(async () => latest.resolve({ ...jobPosting, applicationStatus: 'OFFERED', version: 9 }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      /^別の画面で求人が編集されたため、変更は反映されませんでした。最新の内容を表示しています。$/,
+    );
+  });
+});
+
+describe('応募ステータスの変更の結果の案内', () => {
+  const statusRegion = () => {
+    const region = statusSelect().closest('dd')?.querySelector('[role="status"]');
+    if (!region) {
+      throw new Error('応募ステータスの案内の領域が見つかりません。');
+    }
+    return region;
+  };
+
+  test('読み上げの領域は、変更の前から表示しておく', async () => {
+    await renderDetail();
+
+    expect(statusRegion()).toBeEmptyDOMElement();
+  });
+
+  test('変更中、成功の順に案内し、成功の案内はしばらくして消す', async () => {
+    const pending = deferred<JobPosting>();
+    vi.mocked(updateApplicationStatus).mockReturnValue(pending.promise);
+    const user = await renderDetail();
+
+    await changeStatus(user, 'APPLIED');
+    expect(statusRegion()).toHaveTextContent(/^ステータス変更中…$/);
+
+    await act(async () => pending.resolve({ ...jobPosting, applicationStatus: 'APPLIED', version: 4 }));
+    expect(statusRegion()).toHaveTextContent(/^応募ステータスを変更しました。$/);
+
+    await waitFor(() => expect(statusRegion()).toBeEmptyDOMElement(), { timeout: 4000 });
+  });
+
+  test('失敗したら成功の案内は出さない', async () => {
+    vi.mocked(updateApplicationStatus).mockRejectedValue(new ApiError('変更できません。', 429));
+    const user = await renderDetail();
+
+    await changeStatus(user, 'APPLIED');
+    await screen.findByRole('alert');
+
+    expect(statusRegion()).toBeEmptyDOMElement();
+  });
+
+  test('競合したら成功の案内は出さない', async () => {
+    vi.mocked(updateApplicationStatus).mockRejectedValueOnce(CONFLICT);
+    const user = await renderDetail();
+    vi.mocked(fetchJobPosting).mockResolvedValue({ ...jobPosting, applicationStatus: 'OFFERED', version: 9 });
+
+    await changeStatus(user, 'APPLIED');
+    await waitFor(() => expect(statusSelect()).toHaveValue('OFFERED'));
+
+    expect(statusRegion()).toBeEmptyDOMElement();
+  });
+
+  // 成功の案内が残っている間に次の変更が失敗しても、成功の案内を一緒に表示しない。
+  test('成功の直後の変更が失敗したら、前の成功の案内を残さない', async () => {
+    vi.mocked(updateApplicationStatus)
+      .mockResolvedValueOnce({ ...jobPosting, applicationStatus: 'APPLIED', version: 4 })
+      .mockRejectedValueOnce(new ApiError('変更できません。', 429));
+    const user = await renderDetail();
+    await changeStatus(user, 'APPLIED');
+    await waitFor(() => expect(statusRegion()).toHaveTextContent('応募ステータスを変更しました。'));
+
+    await changeStatus(user, 'OFFERED');
+    await screen.findByRole('alert');
+
+    expect(statusRegion()).toBeEmptyDOMElement();
+  });
+
+  test('次の変更を始めると、前の成功の案内を消す', async () => {
+    const second = deferred<JobPosting>();
+    vi.mocked(updateApplicationStatus)
+      .mockResolvedValueOnce({ ...jobPosting, applicationStatus: 'APPLIED', version: 4 })
+      .mockReturnValueOnce(second.promise);
+    const user = await renderDetail();
+    await changeStatus(user, 'APPLIED');
+    await waitFor(() => expect(statusRegion()).toHaveTextContent('応募ステータスを変更しました。'));
+
+    await changeStatus(user, 'OFFERED');
+
+    expect(statusRegion()).toHaveTextContent(/^ステータス変更中…$/);
+  });
+});
+
+describe('CSRFトークンを取得できなかったときの案内', () => {
+  const CSRF_MESSAGE = 'サーバーに接続できませんでした。しばらくしてから再度お試しください。';
+
+  test('応募ステータスの変更で表示する', async () => {
+    vi.mocked(updateApplicationStatus).mockRejectedValue(new CsrfTokenUnavailableError());
+    const user = await renderDetail();
+
+    await changeStatus(user, 'APPLIED');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(CSRF_MESSAGE);
+  });
+
+  test('メモの登録で表示する', async () => {
+    vi.mocked(createJobPostingMemo).mockRejectedValue(new CsrfTokenUnavailableError());
+    const user = await renderDetail();
+    await user.type(within(memoRegion()).getByLabelText('メモ内容'), '面談準備');
+
+    await user.click(within(memoRegion()).getByRole('button', { name: '登録' }));
+
+    expect(await within(memoRegion()).findByRole('alert')).toHaveTextContent(CSRF_MESSAGE);
+  });
+
+  test('メモの削除で表示する', async () => {
+    vi.mocked(getJobPostingMemos).mockResolvedValue([memo(1, '面談準備')]);
+    vi.mocked(deleteJobPostingMemo).mockRejectedValue(new CsrfTokenUnavailableError());
+    const user = await renderDetail();
+    await within(memoRegion()).findByText('面談準備');
+
+    await user.click(within(memoItem('面談準備')).getByRole('button', { name: 'メモを削除' }));
+
+    expect(await within(memoRegion()).findByRole('alert')).toHaveTextContent(CSRF_MESSAGE);
   });
 });

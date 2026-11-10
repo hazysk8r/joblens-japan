@@ -10,6 +10,8 @@ interface ApplicationStatusControlProps {
   id: string;
   jobPosting: JobPosting;
   updating: boolean;
+  // 変更できたことの案内。変更中の表示と同じ読み上げの領域に出す。
+  notice: string | null;
   onSubmit: (status: ApplicationStatus) => void;
 }
 
@@ -23,6 +25,7 @@ function ApplicationStatusControl({
   id,
   jobPosting,
   updating,
+  notice,
   onSubmit,
 }: ApplicationStatusControlProps) {
   const [draft, setDraft] = useState<{
@@ -36,42 +39,47 @@ function ApplicationStatusControl({
   const blocked = updating || selected === jobPosting.applicationStatus;
 
   return (
-    <div className="detail-posting__status-control">
-      <select
-        id={id}
-        className="detail-posting__status-select"
-        value={selected}
-        disabled={updating}
-        onChange={(event) => {
-          setDraft({
-            baseVersion: jobPosting.version,
-            status: event.target.value as ApplicationStatus,
-          });
-        }}
-      >
-        {APPLICATION_STATUSES.map((status) => (
-          <option key={status} value={status}>
-            {APPLICATION_STATUS_LABELS[status]}
-          </option>
-        ))}
-      </select>
+    <>
+      <div className="detail-posting__status-control">
+        <select
+          id={id}
+          className="detail-posting__status-select"
+          value={selected}
+          disabled={updating}
+          onChange={(event) => {
+            setDraft({
+              baseVersion: jobPosting.version,
+              status: event.target.value as ApplicationStatus,
+            });
+          }}
+        >
+          {APPLICATION_STATUSES.map((status) => (
+            <option key={status} value={status}>
+              {APPLICATION_STATUS_LABELS[status]}
+            </option>
+          ))}
+        </select>
 
-      {/* disabledにすると、押した直後にキーボードのフォーカスがページの先頭へ外れるため使わない。 */}
-      <button
-        type="button"
-        className="detail-posting__status-button"
-        aria-disabled={blocked}
-        onClick={() => {
-          if (!blocked) {
-            onSubmit(selected);
-          }
-        }}
-      >
-        変更
-      </button>
+        {/* disabledにすると、押した直後にキーボードのフォーカスがページの先頭へ外れるため使わない。 */}
+        <button
+          type="button"
+          className="detail-posting__status-button"
+          aria-disabled={blocked}
+          onClick={() => {
+            if (!blocked) {
+              onSubmit(selected);
+            }
+          }}
+        >
+          変更
+        </button>
+      </div>
 
-      {updating && <span className="detail-posting__status-updating">ステータス変更中…</span>}
-    </div>
+      {/* 内容が変わったときに読み上げられるよう、領域は空でも表示しておく。 */}
+      <p role="status" className="detail-posting__status-notice">
+        {updating ? 'ステータス変更中…' : notice}
+      </p>
+    </>
   );
 }
 

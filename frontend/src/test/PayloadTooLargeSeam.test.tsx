@@ -28,7 +28,7 @@ function stubCreateResponse(response: () => Response) {
 async function submitPosting() {
   const onCreated = vi.fn();
   const user = userEvent.setup();
-  render(<JobPostingCreateForm onCreated={onCreated} />);
+  render(<JobPostingCreateForm draftKey="test-posting-draft" onCreated={onCreated} />);
   await user.type(screen.getByLabelText('求人タイトル'), 'エンジニア');
   await user.type(screen.getByLabelText('求人原文'), '非常に長い求人原文');
   await user.click(screen.getByRole('button', { name: '登録' }));

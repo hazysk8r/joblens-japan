@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { AuthenticatedApp } from './testAuth';
+import { ApiError } from '../api/apiError';
 import {
   deleteJobPosting,
   fetchApplicationStatusSummary,
@@ -113,7 +114,7 @@ afterEach(() => {
 
 describe('応募状況と求人一覧の独立した取得', () => {
   test('応募状況の初回取得に失敗しても求人一覧を残し集計領域だけにエラーを表示する', async () => {
-    vi.mocked(fetchApplicationStatusSummary).mockRejectedValueOnce(new Error('集計を取得できません。'));
+    vi.mocked(fetchApplicationStatusSummary).mockRejectedValueOnce(new ApiError('集計を取得できません。', 500));
     renderHome();
 
     await screen.findByRole('heading', { name: jobPosting.title });
@@ -129,7 +130,7 @@ describe('応募状況と求人一覧の独立した取得', () => {
     const retry = deferred<ApplicationStatusSummaryResponse>();
     const user = userEvent.setup();
     vi.mocked(fetchApplicationStatusSummary)
-      .mockRejectedValueOnce(new Error('集計を取得できません。'))
+      .mockRejectedValueOnce(new ApiError('集計を取得できません。', 500))
       .mockReturnValueOnce(retry.promise);
     renderHome();
     await screen.findByRole('heading', { name: jobPosting.title });
@@ -153,7 +154,7 @@ describe('応募状況と求人一覧の独立した取得', () => {
   });
 
   test('求人一覧だけが失敗した場合も応募状況を表示する', async () => {
-    vi.mocked(fetchJobPostings).mockRejectedValueOnce(new Error('一覧を取得できません。'));
+    vi.mocked(fetchJobPostings).mockRejectedValueOnce(new ApiError('一覧を取得できません。', 500));
     renderHome();
 
     await screen.findByRole('alert');
@@ -180,7 +181,7 @@ describe('応募状況と求人一覧の独立した取得', () => {
     const user = userEvent.setup();
     vi.mocked(fetchApplicationStatusSummary)
       .mockResolvedValueOnce(initialSummary)
-      .mockRejectedValueOnce(new Error('最新の集計を取得できません。'));
+      .mockRejectedValueOnce(new ApiError('最新の集計を取得できません。', 500));
     renderHome();
     await screen.findByRole('heading', { name: jobPosting.title });
     await screen.findByRole('heading', { name: '応募状況' });
@@ -229,7 +230,7 @@ describe('応募状況と求人一覧の独立した取得', () => {
       if (outcome === '成功') {
         initial.resolve(initialSummary);
       } else {
-        initial.reject(new Error('古い集計のエラー'));
+        initial.reject(new ApiError('古い集計のエラー', 500));
       }
     });
 
@@ -259,7 +260,7 @@ describe('応募状況と求人一覧の独立した取得', () => {
       if (outcome === '成功') {
         older.resolve(initialSummary);
       } else {
-        older.reject(new Error('古い集計のエラー'));
+        older.reject(new ApiError('古い集計のエラー', 500));
       }
     });
 

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router';
 
 import { useAuth } from './useAuth';
-import { clearAllMemoDrafts } from '../utils/memoDraftStorage';
+import { clearAllDrafts } from '../utils/draftStorage';
 
 // このタブで最後にログインしていたユーザーのID。
 // 再読み込みやタブの復元でも残り、他のタブとは共有しないsessionStorageに保存する。
@@ -52,7 +52,7 @@ function UserSwitchReset({ children }: { children: ReactNode }) {
     setLastUserId(userId);
     saveLastUserId(userId);
     if (lastUserId !== null) {
-      clearAllMemoDrafts();
+      clearAllDrafts();
       setResetting(true);
     }
   }

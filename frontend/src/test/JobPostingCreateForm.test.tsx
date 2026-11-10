@@ -91,7 +91,7 @@ describe('JobPostingCreateFormの項目エラー', () => {
     vi.mocked(createJobPosting).mockRejectedValueOnce(
       new ApiError('入力値の検証に失敗しました。', 400, 'VALIDATION_ERROR', fieldErrors),
     );
-    render(<JobPostingCreateForm onCreated={vi.fn()} />);
+    render(<JobPostingCreateForm draftKey="test-posting-draft" onCreated={vi.fn()} />);
 
     for (const [, label] of fields) {
       expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-invalid');
@@ -119,7 +119,7 @@ describe('JobPostingCreateFormの項目エラー', () => {
     vi.mocked(createJobPosting).mockRejectedValueOnce(
       new ApiError('登録リクエストを確認してください。', 400, 'VALIDATION_ERROR', fieldErrors),
     );
-    render(<JobPostingCreateForm onCreated={vi.fn()} />);
+    render(<JobPostingCreateForm draftKey="test-posting-draft" onCreated={vi.fn()} />);
     await fillRequiredFields(user);
     await user.click(screen.getByRole('button', { name: '登録' }));
 
@@ -134,12 +134,12 @@ describe('JobPostingCreateFormの項目エラー', () => {
 
   test.each([
     { name: '項目のないAPIエラー', error: new ApiError('サーバーが応答しません。', 503), message: 'サーバーが応答しません。' },
-    { name: 'ネットワークエラー', error: new TypeError('Failed to fetch'), message: 'Failed to fetch' },
+    { name: 'ネットワークエラー', error: new TypeError('Failed to fetch'), message: /^不明なエラーが発生しました。$/ },
     { name: 'Errorではない失敗', error: null, message: '不明なエラーが発生しました。' },
   ])('$nameを全体のエラーとして表示する', async ({ error, message }) => {
     const user = userEvent.setup();
     vi.mocked(createJobPosting).mockRejectedValueOnce(error);
-    render(<JobPostingCreateForm onCreated={vi.fn()} />);
+    render(<JobPostingCreateForm draftKey="test-posting-draft" onCreated={vi.fn()} />);
     await fillRequiredFields(user);
     await user.click(screen.getByRole('button', { name: '登録' }));
 
@@ -160,7 +160,7 @@ describe('JobPostingCreateFormの項目エラー', () => {
         salaryMin: '以前の最低月給のエラー',
       }))
       .mockReturnValueOnce(retry.promise);
-    render(<JobPostingCreateForm onCreated={onCreated} />);
+    render(<JobPostingCreateForm draftKey="test-posting-draft" onCreated={onCreated} />);
     await fillAllFields(user);
     await user.click(screen.getByRole('button', { name: '登録' }));
     await screen.findByText('以前のタイトルのエラー');
@@ -212,7 +212,7 @@ describe('JobPostingCreateFormの項目エラー', () => {
         title: 'タイトルの確認が必要',
       }))
       .mockResolvedValueOnce(createdPosting);
-    render(<JobPostingCreateForm onCreated={onCreated} />);
+    render(<JobPostingCreateForm draftKey="test-posting-draft" onCreated={onCreated} />);
     await fillAllFields(user);
     await user.click(screen.getByRole('button', { name: '登録' }));
     await screen.findByText('タイトルの確認が必要');

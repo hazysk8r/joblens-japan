@@ -96,6 +96,26 @@
 
 @media (prefers-color-scheme: dark) {
   .job-posting-create-form {
+    /* 明るい色のままだと暗い背景でボタンの文字が読めないため、詳細画面と同じ色にする。 */
+    --create-action: #b1cbe4;
     --create-error: #fda29b;
   }
+}
+
+/* 前回の入力を復元したことの案内と、消去のボタン。 */
+.job-posting-create-form__restored {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.job-posting-create-form__restored p {
+  margin: 0;
 }

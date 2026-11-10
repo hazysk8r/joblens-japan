@@ -10,7 +10,7 @@ import {
   updateJobPosting,
 } from '../api/jobPostingApi';
 
-import { ApiError, isJobPostingVersionConflict } from '../api/apiError';
+import { ApiError, isJobPostingVersionConflict, userMessageOf } from '../api/apiError';
 
 import {
   type JobPosting,
@@ -308,9 +308,7 @@ function HomePage() {
       }
 
       const message =
-        caughtError instanceof Error
-          ? caughtError.message
-          : '求人の読み込み中に不明なエラーが発生しました。';
+        userMessageOf(caughtError, '求人の読み込み中に不明なエラーが発生しました。');
 
       // 競合復旧の失敗では既存一覧と別セッションの入力を維持する。
       if (!background) {
@@ -394,9 +392,7 @@ function HomePage() {
         }
 
         const message =
-          caughtError instanceof Error
-            ? caughtError.message
-            : '求人の読み込み中に不明なエラーが発生しました。';
+          userMessageOf(caughtError, '求人の読み込み中に不明なエラーが発生しました。');
 
         setError(message);
       } finally {
@@ -436,9 +432,7 @@ function HomePage() {
       }
 
       const message =
-        caughtError instanceof Error
-          ? caughtError.message
-          : '応募状況の取得に失敗しました。';
+        userMessageOf(caughtError, '応募状況の取得に失敗しました。');
       setSummaryError(message);
     } finally {
       if (summaryMountedRef.current && requestId === latestSummaryRequestIdRef.current) {
@@ -627,9 +621,7 @@ function HomePage() {
       await loadApplicationStatusSummary();
     } catch (caughtError) {
       const message =
-        caughtError instanceof Error
-          ? caughtError.message
-          : '削除中に不明なエラーが発生しました。';
+        userMessageOf(caughtError, '削除中に不明なエラーが発生しました。');
       // 求人は残っているため、一覧を置き換えるerrorではなく、一覧の上に表示する。
       setMutationError(message);
     } finally {
@@ -755,9 +747,7 @@ function HomePage() {
       }
 
       const message = 
-        caughtError instanceof Error
-          ? caughtError.message
-          : '編集中に不明なエラーが発生しました。';
+        userMessageOf(caughtError, '編集中に不明なエラーが発生しました。');
       if (editingSessionRef.current?.sessionId === session.sessionId) {
         setMutationError(message);
         setEditFieldErrors(caughtError instanceof ApiError

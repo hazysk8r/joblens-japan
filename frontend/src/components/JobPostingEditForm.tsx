@@ -1,19 +1,29 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 
 import type {
   JobPosting,
-  SalaryFilter,
   UpdateJobPostingRequest,
 } from '../types/jobPosting';
 
 import { SALARY_OPTIONS } from '../constants/salaryOptions';
+import {
+  postingValuesOf,
+  samePostingValues,
+  type PostingDraft,
+} from '../utils/postingDraftStorage';
 
 interface JobPostingEditFormProps {
   jobPosting: JobPosting;
   saving: boolean;
   expectedVersion?: number;
   fieldErrors?: Record<string, string>;
+  // 一時保存から再開するときの入力値。なければ求人の今の内容から始める。
+  initialValues?: PostingDraft;
+  // 入力が変わるたびに呼ぶ。一時保存に使う。
+  onChange?: (values: PostingDraft) => void;
+  // 表示したときに最初の入力欄へフォーカスする。
+  autoFocusFirstField?: boolean;
 
   onSave: (
     id: number,
@@ -21,17 +31,8 @@ interface JobPostingEditFormProps {
     expectedVersion: number,
   ) => Promise<void>;
 
-  onCancel: () => void;
-}
-
-interface EditFormState {
-  companyName: string;
-  title: string;
-  sourceUrl: string;
-  originalText: string;
-  salaryMin: SalaryFilter;
-  salaryMax: SalaryFilter;
-  applicationDeadline: string;
+  // changedは、求人の今の内容から入力を変えているか。
+  onCancel: (changed: boolean) => void;
 }
 
 function JobPostingEditForm({
@@ -39,6 +40,9 @@ function JobPostingEditForm({
   saving,
   expectedVersion,
   fieldErrors = {},
+  initialValues,
+  onChange,
+  autoFocusFirstField = false,
   onSave,
   onCancel,
 }: JobPostingEditFormProps) {
@@ -48,27 +52,29 @@ function JobPostingEditForm({
    * これらの入力値は編集フォームでのみ使うため、
    * Appではなく編集フォームのコンポーネントで管理する。
    */
-  const [editForm, setEditForm] =
-    useState<EditFormState>({
-      companyName:
-        jobPosting.companyName ?? '',
-      title: jobPosting.title,
-      sourceUrl:
-        jobPosting.sourceUrl ?? '',
-      originalText:
-        jobPosting.originalText,
-      salaryMin:
-        jobPosting.salaryMin ?? null,
-      salaryMax:
-        jobPosting.salaryMax ?? null,
-      applicationDeadline:
-        jobPosting.applicationDeadline ?? ''
-    });
+  const [editForm, setEditForm] = useState<PostingDraft>(
+    () => initialValues ?? postingValuesOf(jobPosting),
+  );
 
   const [
     validationError,
     setValidationError,
   ] = useState<string | null>(null);
+
+  const companyNameRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (autoFocusFirstField) {
+      companyNameRef.current?.focus();
+    }
+  }, [autoFocusFirstField]);
+
+  // 画面の入力と、一時保存のための通知を必ず一緒に行う。
+  const update = (patch: Partial<PostingDraft>) => {
+    const next = { ...editForm, ...patch };
+    setEditForm(next);
+    onChange?.(next);
+  };
 
   // 求人ごとに一意なIDで、各入力欄とサーバーの検証メッセージを関連付ける。
   const getFieldErrorAttributes = (field: keyof UpdateJobPostingRequest) => ({
@@ -95,6 +101,11 @@ function JobPostingEditForm({
     event: FormEvent<HTMLFormElement>,
   ) => {
     event.preventDefault();
+
+    // ボタンを無効にしないため、保存中の二重送信はここで防ぐ。
+    if (saving) {
+      return;
+    }
 
     const title = editForm.title.trim();
     const originalText =
@@ -129,12 +140,17 @@ function JobPostingEditForm({
     };
 
     /*
-     * 実際のAPI呼び出しは親のAppが担当する。
+     * 実際のAPI呼び出しは親が担当する。
      * 子は整理した入力データを親に渡す。
      */
     await onSave(jobPosting.id, request, editVersion);
   };
 
+  /*
+   * 保存中は入力を変更できないようにする。disabledにすると、保存を押した直後に
+   * キーボードのフォーカスがページの先頭へ外れるため、入力欄はreadOnly、ボタンはaria-disabledにする。
+   * 選択欄にはreadOnlyがないためdisabledにする(保存を押した時点でフォーカスはボタンにある)。
+   */
   return (
     <form className="job-posting-edit-form" onSubmit={handleSubmit}>
       <div>
@@ -145,18 +161,13 @@ function JobPostingEditForm({
         </label>
 
         <input
+          ref={companyNameRef}
           id={`edit-company-${jobPosting.id}`}
           {...getFieldErrorAttributes('companyName')}
           type="text"
           value={editForm.companyName}
-          disabled={saving}
-          onChange={(event) => {
-            setEditForm((previous) => ({
-              ...previous,
-              companyName:
-                event.target.value,
-            }));
-          }}
+          readOnly={saving}
+          onChange={(event) => update({ companyName: event.target.value })}
         />
         {renderFieldError('companyName')}
       </div>
@@ -173,14 +184,9 @@ function JobPostingEditForm({
           {...getFieldErrorAttributes('title')}
           type="text"
           value={editForm.title}
-          disabled={saving}
+          readOnly={saving}
           required
-          onChange={(event) => {
-            setEditForm((previous) => ({
-              ...previous,
-              title: event.target.value,
-            }));
-          }}
+          onChange={(event) => update({ title: event.target.value })}
         />
         {renderFieldError('title')}
       </div>
@@ -197,14 +203,8 @@ function JobPostingEditForm({
           {...getFieldErrorAttributes('sourceUrl')}
           type="url"
           value={editForm.sourceUrl}
-          disabled={saving}
-          onChange={(event) => {
-            setEditForm((previous) => ({
-              ...previous,
-              sourceUrl:
-                event.target.value,
-            }));
-          }}
+          readOnly={saving}
+          onChange={(event) => update({ sourceUrl: event.target.value })}
         />
         {renderFieldError('sourceUrl')}
       </div>
@@ -220,15 +220,9 @@ function JobPostingEditForm({
           id={`edit-text-${jobPosting.id}`}
           {...getFieldErrorAttributes('originalText')}
           value={editForm.originalText}
-          disabled={saving}
+          readOnly={saving}
           required
-          onChange={(event) => {
-            setEditForm((previous) => ({
-              ...previous,
-              originalText:
-                event.target.value,
-            }));
-          }}
+          onChange={(event) => update({ originalText: event.target.value })}
         />
         {renderFieldError('originalText')}
       </div>
@@ -241,12 +235,7 @@ function JobPostingEditForm({
           value={editForm.salaryMin ?? ""}
           onChange={(event) => {
             const value = event.target.value;
-
-            setEditForm((previous) => ({
-              ...previous,
-              salaryMin:
-                value === "" ? null : Number(value),
-            }));
+            update({ salaryMin: value === "" ? null : Number(value) });
           }}
           disabled={saving}
         >
@@ -276,12 +265,7 @@ function JobPostingEditForm({
           value={editForm.salaryMax ?? ""}
           onChange={(event) => {
             const value = event.target.value;
-
-            setEditForm((previous) => ({
-              ...previous,
-              salaryMax:
-                value === "" ? null : Number(value),
-            }));
+            update({ salaryMax: value === "" ? null : Number(value) });
           }}
           disabled={saving}
         >
@@ -299,24 +283,20 @@ function JobPostingEditForm({
               {salary.toLocaleString()}円
             </option>
           ))}
+
         </select>
         {renderFieldError('salaryMax')}
       </div>
 
       <div>
         <label htmlFor={`edit-applicationDeadline-${jobPosting.id}`}>応募締切日</label>
-          <input 
+          <input
             id={`edit-applicationDeadline-${jobPosting.id}`}
             {...getFieldErrorAttributes('applicationDeadline')}
             type="date"
             value={editForm.applicationDeadline}
-            disabled={saving}
-            onChange={(event) => {
-              setEditForm((previous) => ({
-                ...previous,
-                applicationDeadline: event.target.value,
-              }));
-            }}
+            readOnly={saving}
+            onChange={(event) => update({ applicationDeadline: event.target.value })}
           />
         {renderFieldError('applicationDeadline')}
       </div>
@@ -329,15 +309,19 @@ function JobPostingEditForm({
 
       <button
         type="submit"
-        disabled={saving}
+        aria-disabled={saving}
       >
         {saving ? '保存中…' : '保存'}
       </button>
 
       <button
         type="button"
-        disabled={saving}
-        onClick={onCancel}
+        aria-disabled={saving}
+        onClick={() => {
+          if (!saving) {
+            onCancel(!samePostingValues(editForm, postingValuesOf(jobPosting)));
+          }
+        }}
       >
         キャンセル
       </button>

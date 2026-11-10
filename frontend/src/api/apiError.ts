@@ -1,3 +1,5 @@
+import { CsrfTokenUnavailableError } from './apiClient';
+
 export class ApiError extends Error {
   readonly status: number;
   readonly code?: string;
@@ -68,6 +70,19 @@ export async function parseApiError(
 /**
  * 画面に表示するエラーメッセージを選ぶ。
  *
+ * サーバーのメッセージと、このアプリが利用者向けに書いた案内だけを表示する。
+ * 通信エラーやJSONの解析エラーの文言はブラウザが出す英語で、応答の本文を含むこともあるため表示しない。
+ */
+export function userMessageOf(error: unknown, fallbackMessage: string): string {
+  if (error instanceof ApiError || error instanceof CsrfTokenUnavailableError) {
+    return error.message;
+  }
+  return fallbackMessage;
+}
+
+/**
+ * 入力欄が1つのフォームで、画面に表示するエラーメッセージを選ぶ。
+ *
  * 入力欄が1つのフォームでは、全体の「入力値が正しくありません。」より
  * その項目の検証メッセージの方が具体的なため、項目のメッセージを優先する。
  */
@@ -76,11 +91,10 @@ export function errorMessageOf(
   field: string,
   fallbackMessage: string,
 ): string {
-  if (error instanceof ApiError) {
-    return error.fieldErrors[field] || error.message;
+  if (error instanceof ApiError && error.fieldErrors[field]) {
+    return error.fieldErrors[field];
   }
-  // 通信エラーやJSONの解析エラーの文言は英語で、応答の本文を含むこともあるため表示しない。
-  return fallbackMessage;
+  return userMessageOf(error, fallbackMessage);
 }
 
 export const isJobPostingVersionConflict = (

@@ -9,7 +9,7 @@ import {
   switchAuthContext,
 } from '../api/apiClient';
 import { ApiError } from '../api/apiError';
-import { clearAllMemoDrafts } from '../utils/memoDraftStorage';
+import { clearAllDrafts } from '../utils/draftStorage';
 import {
   deleteAccount as deleteAccountRequest,
   fetchMe,
@@ -70,9 +70,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const applyAnonymous = useCallback((reason: AnonymousReason) => {
     switchAuthContext(null);
     userRef.current = null;
-    // セッション切れは同じ人がログインし直すため、作成中のメモを残す。
+    // セッション切れは同じ人がログインし直すため、入力途中のメモや求人を残す。
     if (reason !== 'expired' && reason !== 'initial') {
-      clearAllMemoDrafts();
+      clearAllDrafts();
     }
     setState({ status: 'anonymous', reason });
   }, []);

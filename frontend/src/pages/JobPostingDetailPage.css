@@ -91,8 +91,8 @@
   width: auto;
 }
 
-.detail-posting__status-updating {
-  flex-basis: 100%;
+.detail-posting__status-notice {
+  margin: 4px 0 0;
   font-size: 0.85rem;
 }
 
@@ -224,6 +224,126 @@
 .detail-history__list time {
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
+}
+
+/* 編集と削除のボタン。 */
+.detail-posting__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 12px;
+}
+
+.detail-posting__actions button,
+.detail-posting__draft button,
+.detail-edit button {
+  max-width: 100%;
+  min-height: 2.5rem;
+  margin: 0.25rem 0.5rem 0.25rem 0;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--detail-action);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.detail-posting__actions button:hover:not([aria-disabled='true']),
+.detail-posting__draft button:hover,
+.detail-edit button:hover:not([aria-disabled='true']) {
+  border-color: var(--detail-action);
+  background: var(--detail-muted-bg);
+}
+
+.detail-posting__actions .detail-posting__delete {
+  color: var(--detail-danger);
+}
+
+.detail-posting__actions button[aria-disabled='true'],
+.detail-edit button[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.detail-posting__actions button:focus-visible,
+.detail-posting__draft button:focus-visible,
+.detail-edit :is(button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--detail-action);
+  outline-offset: 3px;
+}
+
+.detail-posting__notice {
+  min-height: 1em;
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+}
+
+.detail-posting__error,
+.detail-edit [role='alert'],
+.detail-edit .job-posting-edit-form__error {
+  color: var(--detail-danger);
+}
+
+/* 保存していない編集の案内。 */
+.detail-posting__draft {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  margin-top: 16px;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.detail-posting__draft p {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+/* 編集フォーム。求人カードの外にあるため、ここで見た目を定義する。 */
+.detail-edit {
+  margin-top: 24px;
+}
+
+.detail-edit form > div {
+  margin-bottom: 0.75rem;
+}
+
+.detail-edit form label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.detail-edit :is(input, select, textarea) {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+}
+
+.detail-edit textarea {
+  display: block;
+  min-height: 12rem;
+  resize: vertical;
+}
+
+.detail-edit [aria-invalid='true'] {
+  border-color: var(--detail-danger);
+}
+
+.detail-edit .job-posting-edit-form__error {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
 }
 
 @media (max-width: 640px) {

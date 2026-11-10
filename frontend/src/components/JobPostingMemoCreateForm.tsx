@@ -84,6 +84,9 @@ function JobPostingMemoCreateForm({
             id={contentId}
             value={content}
             maxLength={250}
+            // 登録中に書き足した内容は成功時に消えてしまうため、変更できないようにする。
+            // disabledにするとフォーカスが外れるため、readOnlyを使う。
+            readOnly={submitting}
             onChange={(event) =>
               updateContent(event.target.value)
             }

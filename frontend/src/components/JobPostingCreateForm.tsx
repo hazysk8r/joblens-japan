@@ -1,10 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import './JobPostingCreateForm.css';
 import { createJobPosting } from '../api/jobPostingApi';
-import { ApiError } from '../api/apiError';
+import { ApiError, userMessageOf } from '../api/apiError';
 import type { CreateJobPostingRequest, SalaryFilter } from '../types/jobPosting';
 import { SALARY_OPTIONS } from '../constants/salaryOptions';
+import {
+  EMPTY_POSTING_DRAFT,
+  readPostingDraft,
+  removePostingDraft,
+  writePostingDraft,
+} from '../utils/postingDraftStorage';
 
 interface JobPostingCreateFormProps {
   /**
@@ -12,23 +18,67 @@ interface JobPostingCreateFormProps {
    * 再取得するために呼び出す。
    */
   onCreated: () => Promise<void> | void;
+  // 入力途中の内容を一時保存するキー。ユーザーごとに分ける。
+  draftKey: string;
 }
 
 function JobPostingCreateForm({
   onCreated,
+  draftKey,
 }: JobPostingCreateFormProps) {
-  const [companyName, setCompanyName] = useState('');
-  const [title, setTitle] = useState('');
-  const [sourceUrl, setSourceUrl] = useState('');
-  const [originalText, setOriginalText] = useState('');
-  const [salaryMin, setSalaryMin] = useState<SalaryFilter>(null);
-  const [salaryMax, setSalaryMax] = useState<SalaryFilter>(null);
-  const [applicationDeadline, setApplicationDeadline] = useState('');
+  // 前回の入力が残っていれば、そこから始める。
+  const [restoredDraft] = useState(() => readPostingDraft(draftKey));
+  const initial = restoredDraft ?? EMPTY_POSTING_DRAFT;
+
+  const [companyName, setCompanyName] = useState(initial.companyName);
+  const [title, setTitle] = useState(initial.title);
+  const [sourceUrl, setSourceUrl] = useState(initial.sourceUrl);
+  const [originalText, setOriginalText] = useState(initial.originalText);
+  const [salaryMin, setSalaryMin] = useState<SalaryFilter>(initial.salaryMin);
+  const [salaryMax, setSalaryMax] = useState<SalaryFilter>(initial.salaryMax);
+  const [applicationDeadline, setApplicationDeadline] = useState(initial.applicationDeadline);
+  // 身に覚えのない入力に見えないよう、復元したことを知らせて消去できるようにする。
+  const [restored, setRestored] = useState(restoredDraft !== null);
+  const companyNameRef = useRef<HTMLInputElement>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // セッションが切れて登録できなかったり画面を離れたりしても、入力を失わないようにする。
+  useEffect(() => {
+    writePostingDraft(draftKey, {
+      companyName,
+      title,
+      sourceUrl,
+      originalText,
+      salaryMin,
+      salaryMax,
+      applicationDeadline,
+    });
+  }, [draftKey, companyName, title, sourceUrl, originalText, salaryMin, salaryMax, applicationDeadline]);
+
+  const clearInputs = () => {
+    setCompanyName('');
+    setTitle('');
+    setSourceUrl('');
+    setOriginalText('');
+    setSalaryMin(null);
+    setSalaryMax(null);
+    setApplicationDeadline('');
+    setRestored(false);
+    // 直後に画面を移動すると上のEffectは実行されないため、ここで消す。
+    removePostingDraft(draftKey);
+  };
+
+  const handleClearRestored = () => {
+    clearInputs();
+    setError(null);
+    setFieldErrors({});
+    // 押したボタンは案内と一緒に消え、キーボードのフォーカスがページの先頭へ外れるため、入力の始めに移す。
+    companyNameRef.current?.focus();
+  };
 
   // フィールドのエラー状態に応じて、アクセシビリティ属性を設定する。
   const getFieldErrorAttributes = (field: keyof CreateJobPostingRequest) => ({
@@ -79,13 +129,7 @@ function JobPostingCreateForm({
       /*
        * 登録成功後に入力欄を初期化する。
        */
-      setCompanyName('');
-      setTitle('');
-      setSourceUrl('');
-      setOriginalText('');
-      setSalaryMin(null);
-      setSalaryMax(null);
-      setApplicationDeadline('');
+      clearInputs();
 
       setMessage('求人を登録しました。');
 
@@ -99,12 +143,7 @@ function JobPostingCreateForm({
         setFieldErrors(caughtError.fieldErrors);
       }
 
-      const errorMessage =
-        caughtError instanceof Error
-          ? caughtError.message
-          : '不明なエラーが発生しました。';
-
-      setError(errorMessage);
+      setError(userMessageOf(caughtError, '不明なエラーが発生しました。'));
     } finally {
       setSubmitting(false);
     }
@@ -114,10 +153,18 @@ function JobPostingCreateForm({
     <section className="job-posting-create-form">
       <h2 >求人登録</h2>
 
+      {restored && (
+        <div className="job-posting-create-form__restored">
+          <p role="status">前回入力した内容を復元しました。</p>
+          <button type="button" onClick={handleClearRestored}>入力を消去</button>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit}>
         <div>
           <label htmlFor="companyName">会社名</label>
           <input
+            ref={companyNameRef}
             id="companyName"
             {...getFieldErrorAttributes('companyName')}
             type="text"

@@ -317,7 +317,7 @@ describe('保存完了時のセッション保護', () => {
     const cardA = cardFor(postingA.title);
     await beginEdit(user, cardA);
     await replaceTitle(user, cardA, '失敗後も保持する下書き');
-    vi.mocked(updateJobPosting).mockRejectedValueOnce(new Error('通常の保存失敗'));
+    vi.mocked(updateJobPosting).mockRejectedValueOnce(new ApiError('通常の保存失敗', 500));
     await submitEdit(user, cardA);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('通常の保存失敗');
@@ -345,8 +345,8 @@ describe('保存完了時のセッション保護', () => {
     await act(async () => previousSave.reject(new Error('以前のセッションの保存失敗')));
     expect(screen.queryByText('以前のセッションの保存失敗')).not.toBeInTheDocument();
     expect(within(cardA).getByRole('textbox', { name: '求人タイトル' })).toHaveValue('保存中の新しい下書き');
-    expect(within(cardA).getByRole('button', { name: '保存中…' })).toBeDisabled();
-    expect(within(cardA).getByRole('textbox', { name: '求人タイトル' })).toBeDisabled();
+    expect(within(cardA).getByRole('button', { name: '保存中…' })).toHaveAttribute('aria-disabled', 'true');
+    expect(within(cardA).getByRole('textbox', { name: '求人タイトル' })).toHaveAttribute('readonly');
     await act(async () => currentSave.resolve(posting({ version: 4 })));
   });
 

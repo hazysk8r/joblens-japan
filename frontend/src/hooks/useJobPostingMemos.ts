@@ -5,7 +5,7 @@ import {
   getJobPostingMemos,
   updateJobPostingMemo,
 } from '../api/jobPostingMemoApi';
-import { ApiError, errorMessageOf } from '../api/apiError';
+import { ApiError, errorMessageOf, userMessageOf } from '../api/apiError';
 import { useRefreshableResource } from './useRefreshableResource';
 
 import type { UpdateJobPostingMemoRequest } from '../types/jobPostingMemo';
@@ -141,9 +141,7 @@ export function useJobPostingMemos(jobPostingId: number) {
       }
 
       setMemoMutationError(
-        error instanceof ApiError
-          ? error.message
-          : '削除中に不明なエラーが発生しました。',
+        userMessageOf(error, '削除中に不明なエラーが発生しました。'),
       );
     } finally {
       // 別のMemoが削除中の場合、その削除状態を解除しない。
