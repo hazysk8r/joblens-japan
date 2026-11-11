@@ -9,6 +9,9 @@ import './JobPostingAnalysisPanel.css';
 
 type JobPostingAnalysisPanelProps = {
   analysis: JobPostingAnalysis;
+  // 根拠ごとに、原文の中で示せるか。示せる根拠にだけ「原文で見る」を出す。
+  showableEvidence?: boolean[];
+  onShowEvidence?: (index: number) => void;
 };
 
 type Verdict = {
@@ -53,29 +56,54 @@ function fixedOvertimeVerdict(result: FixedOvertimeAnalysis): Verdict {
   }
 }
 
-function EvidenceList({ evidence }: { evidence: AnalysisEvidence[] }) {
+function EvidenceList({
+  evidence,
+  showableEvidence,
+  onShowEvidence,
+}: {
+  evidence: AnalysisEvidence[];
+  showableEvidence: boolean[];
+  onShowEvidence?: (index: number) => void;
+}) {
+  const idPrefix = useId();
   if (evidence.length === 0) {
     return null;
   }
   return (
     <ul aria-label="根拠" className="job-posting-analysis__evidence">
-      {evidence.map((item, index) => (
-        // 同じ文が別の区間にあり得るため、順番も含めてキーにする。
-        <li key={`${index}-${item.text}`}>
-          {item.section !== null && (
-            <span className="job-posting-analysis__evidence-section">
-              {item.section}
-            </span>
-          )}
-          {item.text}
-        </li>
-      ))}
+      {evidence.map((item, index) => {
+        const textId = `${idPrefix}-evidence-${index}`;
+        return (
+          // 同じ文が別の区間にあり得るため、順番も含めてキーにする。
+          <li key={`${index}-${item.text}`}>
+            {item.section !== null && (
+              <span className="job-posting-analysis__evidence-section">
+                {item.section}
+              </span>
+            )}
+            <span id={textId}>{item.text}</span>
+            {onShowEvidence !== undefined && showableEvidence[index] === true && (
+              // 同じ名前のボタンが並ぶため、どの根拠のボタンかを説明として読み上げる。
+              <button
+                type="button"
+                className="job-posting-analysis__show-evidence"
+                aria-describedby={textId}
+                onClick={() => onShowEvidence(index)}
+              >
+                原文で見る
+              </button>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }
 
 export default function JobPostingAnalysisPanel({
   analysis,
+  showableEvidence = [],
+  onShowEvidence,
 }: JobPostingAnalysisPanelProps) {
   const headingId = useId();
   const fixedOvertimeHeadingId = `${headingId}-fixed-overtime`;
@@ -104,7 +132,11 @@ export default function JobPostingAnalysisPanel({
         {verdict.note !== null && (
           <p className="job-posting-analysis__note">{verdict.note}</p>
         )}
-        <EvidenceList evidence={fixedOvertime.evidence} />
+        <EvidenceList
+          evidence={fixedOvertime.evidence}
+          showableEvidence={showableEvidence}
+          onShowEvidence={onShowEvidence}
+        />
       </section>
 
       <section aria-labelledby={skillsHeadingId}>

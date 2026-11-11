@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 
@@ -16,8 +16,9 @@ import { useJobPostingDetail } from '../hooks/useJobPostingDetail';
 import { useJobPostingEdit } from '../hooks/useJobPostingEdit';
 import { useJobPostingStatusChange } from '../hooks/useJobPostingStatusChange';
 import { useJobPostingStatusHistory } from '../hooks/useJobPostingStatusHistory';
-import type { JobPosting, UpdateJobPostingRequest } from '../types/jobPosting';
+import type { JobPosting, JobPostingAnalysis, UpdateJobPostingRequest } from '../types/jobPosting';
 import { formatDateTime } from '../utils/date';
+import { locateEvidence, segmentsOf, type EvidenceRange } from '../utils/evidenceHighlight';
 import { removeDraft } from '../utils/draftStorage';
 import { isHttpUrl } from '../utils/httpUrl';
 import { formatSalaryRange } from '../utils/jobPostingFormat';
@@ -89,8 +90,16 @@ function NotFound() {
 }
 
 // 分析は求人を取得できてから要求する。失敗しても、求人の情報と原文の表示には影響させない。
-function JobPostingAnalysisBody({ jobPosting }: { jobPosting: JobPosting }) {
-  const { state, retry } = useJobPostingAnalysis(jobPosting);
+function JobPostingAnalysisBody({
+  analysis,
+  evidenceRanges,
+  onShowEvidence,
+}: {
+  analysis: ReturnType<typeof useJobPostingAnalysis>;
+  evidenceRanges: (EvidenceRange | null)[];
+  onShowEvidence: (index: number) => void;
+}) {
+  const { state, retry } = analysis;
 
   switch (state.status) {
     case 'loading':
@@ -105,7 +114,13 @@ function JobPostingAnalysisBody({ jobPosting }: { jobPosting: JobPosting }) {
       );
 
     case 'loaded':
-      return <JobPostingAnalysisPanel analysis={state.analysis} />;
+      return (
+        <JobPostingAnalysisPanel
+          analysis={state.analysis}
+          showableEvidence={evidenceRanges.map((range) => range !== null)}
+          onShowEvidence={onShowEvidence}
+        />
+      );
 
     default: {
       // 状態を追加して、ここでの表示を書き忘れた場合に型エラーになる。
@@ -113,6 +128,55 @@ function JobPostingAnalysisBody({ jobPosting }: { jobPosting: JobPosting }) {
       return unhandled;
     }
   }
+}
+
+/**
+ * 求人票の原文。分析の根拠の行を強調する。
+ * 原文の中には文字を足さない。複製したときに元の原文と同じになるようにするため。
+ * 強調した行が判定の根拠であることは、画面に出さない説明(aria-describedby)で読み上げる。
+ */
+function OriginalText({
+  text,
+  evidenceRanges,
+  currentEvidence,
+  markIdOf,
+}: {
+  text: string;
+  evidenceRanges: (EvidenceRange | null)[];
+  currentEvidence: number | null;
+  markIdOf: (index: number) => string;
+}) {
+  const descriptionId = useId();
+  const count = evidenceRanges.filter((range) => range !== null).length;
+
+  return (
+    <>
+      {count > 0 && (
+        <p className="detail-posting__evidence-notice">
+          {`色付きの行は固定残業代の判定の根拠です（${count}か所）。`}
+        </p>
+      )}
+      <p className="detail-posting__original-text">
+        {segmentsOf(text, evidenceRanges).map((segment) => (
+          segment.evidenceIndex === null ? segment.text : (
+            <mark
+              key={segment.evidenceIndex}
+              id={markIdOf(segment.evidenceIndex)}
+              // 「原文で見る」からフォーカスを移せるようにする。Tabの順番には入れない。
+              tabIndex={-1}
+              aria-describedby={descriptionId}
+              className={segment.evidenceIndex === currentEvidence
+                ? 'detail-posting__evidence detail-posting__evidence--current'
+                : 'detail-posting__evidence'}
+            >
+              {segment.text}
+            </mark>
+          )
+        ))}
+      </p>
+      <span id={descriptionId} hidden>固定残業代の判定の根拠</span>
+    </>
+  );
 }
 
 const PAGE_SECTIONS = [
@@ -163,6 +227,29 @@ function JobPostingDetail({
   const editDraftKey = postingEditDraftKey(userId, jobPosting.id);
 
   const statusHistory = useJobPostingStatusHistory(jobPosting.id);
+
+  // 分析は分析の欄と原文の両方で使うため、ここで取得する。
+  const analysis = useJobPostingAnalysis(jobPosting);
+  const loadedAnalysis = analysis.state.status === 'loaded' ? analysis.state.analysis : null;
+  const evidenceRanges = locateEvidence(jobPosting.originalText, loadedAnalysis?.fixedOvertime.evidence ?? []);
+  // 「原文で見る」で見ている根拠。分析を取り直したら位置が変わり得るため、どの分析の根拠かも持つ。
+  const [shownEvidence, setShownEvidence] = useState<{ analysis: JobPostingAnalysis; index: number } | null>(null);
+  const currentEvidence = shownEvidence !== null && shownEvidence.analysis === loadedAnalysis
+    ? shownEvidence.index
+    : null;
+  const evidenceIdPrefix = useId();
+  const markIdOf = (index: number) => `${evidenceIdPrefix}-evidence-${index}`;
+
+  function showEvidence(index: number) {
+    if (loadedAnalysis === null) {
+      return;
+    }
+    setShownEvidence({ analysis: loadedAnalysis, index });
+    const mark = document.getElementById(markIdOf(index));
+    // 上に固定した移動バーに隠れないよう、画面の中央に出す。
+    mark?.scrollIntoView({ block: 'center' });
+    mark?.focus({ preventScroll: true });
+  }
   const { updating, error: statusError, notice: statusNotice, changeStatus } = useJobPostingStatusChange({
     jobPosting,
     onChanged: (changed) => {
@@ -436,7 +523,11 @@ function JobPostingDetail({
           aria-labelledby="detail-analysis-heading"
         >
           <h3 id="detail-analysis-heading" tabIndex={-1}>求人票の分析</h3>
-          <JobPostingAnalysisBody jobPosting={jobPosting} />
+          <JobPostingAnalysisBody
+            analysis={analysis}
+            evidenceRanges={evidenceRanges}
+            onShowEvidence={showEvidence}
+          />
         </section>
 
         <section
@@ -444,7 +535,12 @@ function JobPostingDetail({
           aria-labelledby="detail-original-heading"
         >
           <h3 id="detail-original-heading" tabIndex={-1}>求人票の原文</h3>
-          <p className="detail-posting__original-text">{jobPosting.originalText}</p>
+          <OriginalText
+            text={jobPosting.originalText}
+            evidenceRanges={evidenceRanges}
+            currentEvidence={currentEvidence}
+            markIdOf={markIdOf}
+          />
         </section>
       </div>
 

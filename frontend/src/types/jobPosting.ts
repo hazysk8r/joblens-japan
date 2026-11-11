@@ -97,9 +97,12 @@ export type FixedOvertimeStatus =
   | 'UNDETERMINED';
 
 // 判定の根拠となった原文の行。sectionは見出しより前の行ではnull。
+// start・endは原文の中での行の位置(UTF-16の単位)。textが切り詰められていても、行全体を指す。
 export type AnalysisEvidence = {
   section: string | null;
   text: string;
+  start: number;
+  end: number;
 };
 
 export type FixedOvertimeAnalysis = {

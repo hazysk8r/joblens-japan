@@ -38,7 +38,7 @@ const analysis: JobPostingAnalysis = {
     status: 'PRESENT',
     hours: 40,
     excessPayStated: true,
-    evidence: [{ section: '給与', text: '固定残業代40時間分を含む' }],
+    evidence: [{ section: '給与', text: '固定残業代40時間分を含む', start: 0, end: 0 }],
   },
   skills: ['Java'],
 };

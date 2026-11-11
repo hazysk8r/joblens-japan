@@ -66,6 +66,31 @@
   font-size: 0.75rem;
 }
 
+/* 狭い画面でも押しやすいよう、根拠の文の下に置き、高さを確保する。 */
+.job-posting-analysis__show-evidence {
+  display: block;
+  min-height: 2.5rem;
+  margin-top: 0.25rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.job-posting-analysis__show-evidence:hover {
+  border-color: var(--text-h);
+}
+
+.job-posting-analysis__show-evidence:focus-visible {
+  outline: 2px solid var(--text-h);
+  outline-offset: 2px;
+}
+
 .job-posting-analysis__skills {
   display: flex;
   flex-wrap: wrap;

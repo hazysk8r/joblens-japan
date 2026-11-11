@@ -21,6 +21,53 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class FixedOvertimeAnalyzerTest {
 
+    /** 画面に出す区間と文だけを比べるための形。位置は別のテストで確かめる。 */
+    private record Shown(String section, String text) {
+    }
+
+    private static List<Shown> shown(List<AnalysisEvidence> evidence) {
+        return evidence.stream().map(item -> new Shown(item.section(), item.text())).toList();
+    }
+
+    @Test
+    void 根拠は原文での位置を持ち_その位置で原文を切り出すと根拠の文になる() {
+        String originalText = "給与\r\n　月給30万円（固定残業代40時間分を含む）　\r\n超過分は別途支給";
+
+        List<AnalysisEvidence> evidence = analyze(originalText).evidence();
+
+        assertThat(evidence).containsExactly(
+                new AnalysisEvidence("給与", "月給30万円（固定残業代40時間分を含む）", 5, 26),
+                new AnalysisEvidence("給与", "超過分は別途支給", 29, 37));
+        assertThat(evidence).allSatisfy(item ->
+                assertThat(originalText.substring(item.start(), item.end())).isEqualTo(item.text()));
+    }
+
+    @Test
+    void 同じ文が繰り返されたら最初の位置を根拠にする() {
+        List<AnalysisEvidence> evidence = analyze("固定残業代を含む\n固定残業代を含む").evidence();
+
+        assertThat(evidence).containsExactly(new AnalysisEvidence(null, "固定残業代を含む", 0, 8));
+    }
+
+    @Test
+    void 長い行は文だけを切り詰め_位置は行全体を指す() {
+        String longLine = "固定残業代を含む" + "あ".repeat(300);
+
+        AnalysisEvidence cut = analyze("\n" + longLine).evidence().get(0);
+
+        assertThat(cut.start()).isEqualTo(1);
+        assertThat(cut.end()).isEqualTo(1 + longLine.length());
+    }
+
+    @Test
+    void 切り詰めは文字の途中で切らない() {
+        String longLine = "固定残業代を含む" + "あ".repeat(191) + "😀" + "い".repeat(10);
+
+        String text = analyze(longLine).evidence().get(0).text();
+
+        assertThat(text).isEqualTo("固定残業代を含む" + "あ".repeat(191) + "😀…");
+    }
+
     private static FixedOvertimeAnalysis analyze(String originalText) {
         return FixedOvertimeAnalyzer.analyze(PostingSectionSplitter.split(originalText));
     }
@@ -39,7 +86,7 @@ class FixedOvertimeAnalyzerTest {
 
         assertThat(result.status()).isEqualTo(PRESENT);
         assertThat(result.hours()).isEqualTo(expectedHours);
-        assertThat(result.evidence()).containsExactly(new AnalysisEvidence(null, line));
+        assertThat(shown(result.evidence())).containsExactly(new Shown(null, line));
     }
 
     private static Stream<Arguments> 固定残業代ありの表現() {
@@ -122,7 +169,7 @@ class FixedOvertimeAnalyzerTest {
         FixedOvertimeAnalysis result = analyze(line);
 
         assertThat(result.status()).isEqualTo(ABSENT);
-        assertThat(result.evidence()).containsExactly(new AnalysisEvidence(null, line));
+        assertThat(shown(result.evidence())).containsExactly(new Shown(null, line));
     }
 
     @Test
@@ -163,7 +210,7 @@ class FixedOvertimeAnalyzerTest {
         assertThat(result.status()).isEqualTo(ABSENT);
         assertThat(result.hours()).isNull();
         assertThat(result.excessPayStated()).isNull();
-        assertThat(result.evidence()).containsExactly(new AnalysisEvidence(null, line));
+        assertThat(shown(result.evidence())).containsExactly(new Shown(null, line));
     }
 
     @ParameterizedTest
@@ -181,7 +228,7 @@ class FixedOvertimeAnalyzerTest {
         assertThat(result.status()).isEqualTo(NOT_MENTIONED);
         assertThat(result.hours()).isNull();
         assertThat(result.excessPayStated()).isNull();
-        assertThat(result.evidence()).isEmpty();
+        assertThat(shown(result.evidence())).isEmpty();
     }
 
     @ParameterizedTest
@@ -194,7 +241,7 @@ class FixedOvertimeAnalyzerTest {
         FixedOvertimeAnalysis result = analyze(line);
 
         assertThat(result.status()).isEqualTo(UNDETERMINED);
-        assertThat(result.evidence()).containsExactly(new AnalysisEvidence(null, line));
+        assertThat(shown(result.evidence())).containsExactly(new Shown(null, line));
     }
 
     @Test
@@ -208,9 +255,9 @@ class FixedOvertimeAnalyzerTest {
         assertThat(result.status()).isEqualTo(UNDETERMINED);
         assertThat(result.hours()).isNull();
         assertThat(result.excessPayStated()).isNull();
-        assertThat(result.evidence()).containsExactly(
-                new AnalysisEvidence(null, "固定残業代なし"),
-                new AnalysisEvidence("給与", "固定残業代30時間分を含む"));
+        assertThat(shown(result.evidence())).containsExactly(
+                new Shown(null, "固定残業代なし"),
+                new Shown("給与", "固定残業代30時間分を含む"));
     }
 
     @Test
@@ -232,7 +279,7 @@ class FixedOvertimeAnalyzerTest {
                 """);
 
         assertThat(result.status()).isEqualTo(ABSENT);
-        assertThat(result.evidence()).containsExactly(new AnalysisEvidence(null, "固定残業代なし"));
+        assertThat(shown(result.evidence())).containsExactly(new Shown(null, "固定残業代なし"));
     }
 
     @Test
@@ -307,9 +354,9 @@ class FixedOvertimeAnalyzerTest {
         assertThat(result.status()).isEqualTo(PRESENT);
         assertThat(result.excessPayStated()).isTrue();
         // 超過分の支給の判断も確かめられるよう、根拠に含める。
-        assertThat(result.evidence()).containsExactly(
-                new AnalysisEvidence(null, "固定残業代30時間分を含む"),
-                new AnalysisEvidence(null, excessLine));
+        assertThat(shown(result.evidence())).containsExactly(
+                new Shown(null, "固定残業代30時間分を含む"),
+                new Shown(null, excessLine));
     }
 
     @Test
@@ -324,10 +371,10 @@ class FixedOvertimeAnalyzerTest {
                 %s
                 """.formatted(longLine));
 
-        assertThat(result.evidence()).containsExactly(
-                new AnalysisEvidence(null, "固定残業代を含む"),
-                new AnalysisEvidence(null, "固定残業手当あり"),
-                new AnalysisEvidence(null, "みなし残業あり"));
+        assertThat(shown(result.evidence())).containsExactly(
+                new Shown(null, "固定残業代を含む"),
+                new Shown(null, "固定残業手当あり"),
+                new Shown(null, "みなし残業あり"));
 
         AnalysisEvidence cut = analyze(longLine).evidence().get(0);
         assertThat(cut.text()).hasSize(201).endsWith("…").startsWith("固定残業代を含む");
@@ -352,7 +399,7 @@ class FixedOvertimeAnalyzerTest {
         FixedOvertimeAnalysis result = analyze(originalText);
 
         assertThat(result.status()).isEqualTo(NOT_MENTIONED);
-        assertThat(result.evidence()).isEmpty();
+        assertThat(shown(result.evidence())).isEmpty();
     }
 
     @Test
@@ -362,10 +409,10 @@ class FixedOvertimeAnalyzerTest {
         assertThat(result.status()).isEqualTo(PRESENT);
         assertThat(result.hours()).isEqualTo(40);
         assertThat(result.excessPayStated()).isTrue();
-        assertThat(result.evidence()).containsExactly(
-                new AnalysisEvidence("給与", "基本給には固定残業手当を含み、固定残業時間を超える分は、別途時間外勤務手当を支給します。"),
-                new AnalysisEvidence("給与", "固定残業手当：100,000円 〜 175,000円"),
-                new AnalysisEvidence("給与", "※ 1か月の所定労働時間160時間、固定残業時間４０時間として計算"));
+        assertThat(shown(result.evidence())).containsExactly(
+                new Shown("給与", "基本給には固定残業手当を含み、固定残業時間を超える分は、別途時間外勤務手当を支給します。"),
+                new Shown("給与", "固定残業手当：100,000円 〜 175,000円"),
+                new Shown("給与", "※ 1か月の所定労働時間160時間、固定残業時間４０時間として計算"));
     }
 
     @Test
@@ -373,8 +420,8 @@ class FixedOvertimeAnalyzerTest {
         FixedOvertimeAnalysis result = analyze(fixture("doda-like-full-overtime-pay.txt"));
 
         assertThat(result.status()).isEqualTo(ABSENT);
-        assertThat(result.evidence()).containsExactly(
-                new AnalysisEvidence("平均残業時間", "月10時間程度（時間外手当は、1分単位で全額支給します）"),
-                new AnalysisEvidence("待遇・福利厚生", "■時間外手当（1分単位全額支給）"));
+        assertThat(shown(result.evidence())).containsExactly(
+                new Shown("平均残業時間", "月10時間程度（時間外手当は、1分単位で全額支給します）"),
+                new Shown("待遇・福利厚生", "■時間外手当（1分単位全額支給）"));
     }
 }

@@ -3,6 +3,8 @@
   --detail-muted-bg: #f7f8fa;
   --detail-action: #334e68;
   --detail-danger: #b42318;
+  --detail-evidence-bg: #fff3bf;
+  --detail-evidence-line: #9a6700;
 
   width: 100%;
   max-width: 800px;
@@ -64,6 +66,28 @@
   /* 長いURLなどが狭い画面からはみ出さないよう、途中でも折り返す。 */
   overflow-wrap: anywhere;
   line-height: 1.75;
+}
+
+.detail-posting__evidence-notice {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+}
+
+/* 分析の根拠の行。色だけに頼らないよう、左の線も付ける。折り返した各行にも線と余白を付ける。 */
+.detail-posting__evidence {
+  padding: 0 0.2em;
+  border-left: 3px solid var(--detail-evidence-line);
+  background: var(--detail-evidence-bg);
+  color: var(--text-h);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* 「原文で見る」で移動した根拠。フォーカスが外れても、どの行を見ていたか分かるように残す。 */
+.detail-posting__evidence--current,
+.detail-posting__evidence:focus {
+  outline: 2px solid var(--detail-action);
+  outline-offset: 2px;
 }
 
 .detail-posting__status-control {
@@ -357,5 +381,7 @@
     --detail-muted-bg: #1f2028;
     --detail-action: #b1cbe4;
     --detail-danger: #fda29b;
+    --detail-evidence-bg: #4d3d00;
+    --detail-evidence-line: #e3b341;
   }
 }

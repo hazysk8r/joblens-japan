@@ -34,8 +34,8 @@ describe('固定残業代の判定の表示', () => {
       hours: 40,
       excessPayStated: true,
       evidence: [
-        { section: '給与', text: '月給30万円（固定残業代40時間分を含む）' },
-        { section: null, text: '超過分は別途支給' },
+        { section: '給与', text: '月給30万円（固定残業代40時間分を含む）', start: 0, end: 0 },
+        { section: null, text: '超過分は別途支給', start: 0, end: 0 },
       ],
     });
 
@@ -56,7 +56,7 @@ describe('固定残業代の判定の表示', () => {
       status: 'PRESENT',
       hours: null,
       excessPayStated: false,
-      evidence: [{ section: '給与', text: '基本給には固定残業手当を含む' }],
+      evidence: [{ section: '給与', text: '基本給には固定残業手当を含む', start: 0, end: 0 }],
     });
 
     const section = fixedOvertimeSection();
@@ -72,7 +72,7 @@ describe('固定残業代の判定の表示', () => {
       status,
       hours: null,
       excessPayStated: null,
-      evidence: [{ section: '待遇', text: '残業代の記載' }],
+      evidence: [{ section: '待遇', text: '残業代の記載', start: 0, end: 0 }],
     });
 
     const section = fixedOvertimeSection();

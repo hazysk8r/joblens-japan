@@ -1000,7 +1000,11 @@ class JobPostingControllerTest {
                                 .andExpect(jsonPath("$.fixedOvertime.evidence[0].section").value("給与"))
                                 .andExpect(jsonPath("$.fixedOvertime.evidence[0].text")
                                                 .value("月給30万円（固定残業代40時間分を含む）"))
+                                .andExpect(jsonPath("$.fixedOvertime.evidence[0].start").value(29))
+                                .andExpect(jsonPath("$.fixedOvertime.evidence[0].end").value(50))
                                 .andExpect(jsonPath("$.fixedOvertime.evidence[1].text").value("超過分は別途支給"))
+                                .andExpect(jsonPath("$.fixedOvertime.evidence[1].start").value(51))
+                                .andExpect(jsonPath("$.fixedOvertime.evidence[1].end").value(59))
                                 .andExpect(jsonPath("$.skills", hasSize(2)))
                                 .andExpect(jsonPath("$.skills[0]").value("Java"))
                                 .andExpect(jsonPath("$.skills[1]").value("Docker"));

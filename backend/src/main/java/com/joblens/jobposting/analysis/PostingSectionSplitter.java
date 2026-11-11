@@ -10,8 +10,8 @@ import java.util.regex.Pattern;
 /**
  * 求人票の原文を見出しごとの区間に分ける。
  *
- * <p>NFKCで文字の数が変わることがあるため、原文全体の位置ではなく行単位で扱う。
- * 判定には正規化した文字列を使い、区間には元の行を保持する。
+ * <p>NFKCで文字の数が変わることがあるため、正規化した文字列の位置は使わない。
+ * 判定には正規化した文字列を使い、区間には元の行と、元の原文の中での行の位置を保持する。
  */
 public final class PostingSectionSplitter {
 
@@ -56,14 +56,28 @@ public final class PostingSectionSplitter {
         }
 
         String heading = null;
-        List<String> lines = new ArrayList<>();
+        List<SourceLine> lines = new ArrayList<>();
         boolean started = false;
 
-        for (String rawLine : LINE_BREAK.split(originalText)) {
+        // 行の位置を数えるため、splitではなく改行を一つずつ探して行に分ける。
+        Matcher lineBreak = LINE_BREAK.matcher(originalText);
+        int lineStart = 0;
+        boolean more = true;
+        while (more) {
+            more = lineBreak.find();
+            int lineEnd = more ? lineBreak.start() : originalText.length();
+            String rawLine = originalText.substring(lineStart, lineEnd);
+            int rawLineStart = lineStart;
+            if (more) {
+                lineStart = lineBreak.end();
+            }
+
             String line = rawLine.strip();
             if (line.isEmpty()) {
                 continue;
             }
+            // 前の空白を除いた分だけ、行の開始位置を後ろへずらす。
+            int start = rawLineStart + rawLine.indexOf(line);
             String normalized = normalize(line);
             if (SITE_APPENDIX_MARKERS.contains(normalized)) {
                 break;
@@ -71,10 +85,12 @@ public final class PostingSectionSplitter {
 
             String newHeading = null;
             String rest = "";
+            int restStart = 0;
             Matcher bracket = BRACKET_HEADING.matcher(line);
             if (bracket.matches()) {
                 newHeading = normalize(bracket.group(1));
                 rest = bracket.group(2).strip();
+                restStart = start + bracket.start(2) + bracket.group(2).indexOf(rest);
             } else {
                 String candidate = TRAILING_COLON.matcher(normalized).replaceFirst("");
                 if (HEADINGS.contains(candidate)) {
@@ -90,12 +106,12 @@ public final class PostingSectionSplitter {
                 lines = new ArrayList<>();
                 started = true;
                 if (!rest.isEmpty()) {
-                    lines.add(rest);
+                    lines.add(new SourceLine(rest, restStart));
                 }
                 continue;
             }
 
-            lines.add(line);
+            lines.add(new SourceLine(line, start));
             started = true;
         }
 

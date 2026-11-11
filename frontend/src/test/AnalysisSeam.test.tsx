@@ -76,7 +76,7 @@ describe('求人票の分析', () => {
         status: 'PRESENT',
         hours: 40,
         excessPayStated: false,
-        evidence: [{ section: '給与', text: '月給30万円（固定残業代40時間分を含む）' }],
+        evidence: [{ section: '給与', text: '月給30万円（固定残業代40時間分を含む）', start: 3, end: 24 }],
       },
       skills: ['Java'],
     }, 200));
@@ -88,6 +88,9 @@ describe('求人票の分析', () => {
     expect(within(fixedOvertime).getByRole('list', { name: '根拠' }))
       .toHaveTextContent('給与月給30万円（固定残業代40時間分を含む）');
     expect(within(screen.getByRole('region', { name: '技術スタック' })).getByText('Java')).toBeInTheDocument();
+    // 応答の位置で、原文の根拠の行を強調する。
+    const marks = screen.getByRole('region', { name: '求人票の原文' }).querySelectorAll('mark');
+    expect(Array.from(marks).map((mark) => mark.textContent)).toEqual(['月給30万円（固定残業代40時間分を含む）']);
     expect(analysisCalls()).toHaveLength(1);
   });
 

@@ -2,8 +2,10 @@ package com.joblens.jobposting.analysis;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
@@ -66,8 +68,8 @@ public final class FixedOvertimeAnalyzer {
     public static FixedOvertimeAnalysis analyze(List<PostingSection> sections) {
         List<Line> lines = new ArrayList<>();
         for (PostingSection section : sections) {
-            for (String text : section.lines()) {
-                lines.add(Line.of(section.heading(), text));
+            for (SourceLine line : section.lines()) {
+                lines.add(Line.of(section.heading(), line));
             }
         }
 
@@ -121,16 +123,19 @@ public final class FixedOvertimeAnalyzer {
     }
 
     private static List<AnalysisEvidence> evidence(List<Line> lines, Predicate<Line> relevant) {
-        Set<AnalysisEvidence> evidence = new LinkedHashSet<>();
+        // 同じ区間の同じ文は一つにまとめ、最初の位置を根拠にする。
+        Map<List<String>, AnalysisEvidence> evidence = new LinkedHashMap<>();
         for (Line line : lines) {
             if (evidence.size() >= MAX_EVIDENCE) {
                 break;
             }
             if (relevant.test(line)) {
-                evidence.add(new AnalysisEvidence(line.section(), truncate(line.original())));
+                String text = truncate(line.source().text());
+                evidence.putIfAbsent(Arrays.asList(line.section(), text), new AnalysisEvidence(
+                        line.section(), text, line.source().start(), line.source().end()));
             }
         }
-        return List.copyOf(evidence);
+        return List.copyOf(evidence.values());
     }
 
     /** 残業代の語と時間数の「分」が同じ文にあるか。別の文の「研修40時間分」などを固定残業代と読まない。 */
@@ -139,17 +144,18 @@ public final class FixedOvertimeAnalyzer {
                 OVERTIME_PAY.matcher(sentence).find() && HOURS_PORTION.matcher(sentence).find());
     }
 
+    /** 絵文字などのサロゲートペアを途中で切らないよう、コードポイントの数で切り詰める。 */
     private static String truncate(String text) {
-        if (text.length() <= MAX_EVIDENCE_LENGTH) {
+        if (text.codePointCount(0, text.length()) <= MAX_EVIDENCE_LENGTH) {
             return text;
         }
-        return text.substring(0, MAX_EVIDENCE_LENGTH) + "…";
+        return text.substring(0, text.offsetByCodePoints(0, MAX_EVIDENCE_LENGTH)) + "…";
     }
 
     /** 1行分の判定材料。 */
     private record Line(
             String section,
-            String original,
+            SourceLine source,
             String normalized,
             boolean positive,
             boolean negated,
@@ -157,8 +163,8 @@ public final class FixedOvertimeAnalyzer {
             boolean mentionsOvertimePay,
             boolean excessPay) {
 
-        static Line of(String section, String original) {
-            String normalized = PostingSectionSplitter.normalize(original);
+        static Line of(String section, SourceLine source) {
+            String normalized = PostingSectionSplitter.normalize(source.text());
             boolean negated = NEGATED_KEYWORD.matcher(normalized).find();
             boolean mentionsOvertimePay = OVERTIME_PAY.matcher(normalized).find();
             // 否定された箇所を取り除いても残るキーワードだけを「あり」の記載とみなす。
@@ -167,7 +173,7 @@ public final class FixedOvertimeAnalyzer {
                     || statesHoursPortion(normalized);
             boolean fullPay = mentionsOvertimePay && FULL_PAY.matcher(normalized).find();
             boolean excessPay = EXCESS_PAY.matcher(normalized).find();
-            return new Line(section, original, normalized, positive, negated, fullPay, mentionsOvertimePay,
+            return new Line(section, source, normalized, positive, negated, fullPay, mentionsOvertimePay,
                     excessPay);
         }
     }

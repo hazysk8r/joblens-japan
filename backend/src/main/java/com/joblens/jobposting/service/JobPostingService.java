@@ -7,6 +7,7 @@ import com.joblens.common.response.PageResponse;
 import com.joblens.jobposting.analysis.FixedOvertimeAnalyzer;
 import com.joblens.jobposting.analysis.PostingSection;
 import com.joblens.jobposting.analysis.PostingSectionSplitter;
+import com.joblens.jobposting.analysis.SourceLine;
 import com.joblens.jobposting.domain.ApplicationStatus;
 import com.joblens.jobposting.domain.JobPosting;
 import com.joblens.jobposting.domain.JobPostingStatusHistory;
@@ -331,7 +332,7 @@ public class JobPostingService {
         String body = sections.stream()
                 .flatMap(section -> Stream.concat(
                         Stream.ofNullable(section.heading()),
-                        section.lines().stream()))
+                        section.lines().stream().map(SourceLine::text)))
                 .collect(Collectors.joining("\n"));
 
         return new JobPostingAnalysisResponse(
