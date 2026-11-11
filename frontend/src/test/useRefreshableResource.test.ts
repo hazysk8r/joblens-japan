@@ -242,4 +242,83 @@ describe('useRefreshableResource', () => {
     await act(async () => pending.resolve('IDが2のデータ'));
     expect(result.current.state).toEqual(loaded('IDが2のデータ'));
   });
+
+  describe('渡す関数と文言が変わったとき', () => {
+    type Props = {
+      fetcher: (id: number, signal: AbortSignal) => Promise<string>;
+      fallbackMessage: string;
+    };
+
+    function setupWith(initialProps: Props) {
+      return renderHook(
+        ({ fetcher, fallbackMessage }: Props) => useRefreshableResource(1, fetcher, fallbackMessage),
+        { initialProps },
+      );
+    }
+
+    test('レンダーごとに新しい関数を渡しても、取得は1回だけで読み込みを終える', async () => {
+      const base = vi.fn().mockResolvedValue('データ');
+      const { result } = renderHook(() =>
+        // 呼び出し側が関数をその場で作る書き方。
+        useRefreshableResource(1, (id, signal) => base(id, signal), FALLBACK));
+
+      await waitFor(() => expect(result.current.state).toEqual(loaded('データ')));
+      // 取得のやり直しが続いていないことを、何度か待って確かめる。
+      for (let i = 0; i < 5; i += 1) {
+        await act(async () => {
+          await Promise.resolve();
+        });
+      }
+      expect(base).toHaveBeenCalledTimes(1);
+    });
+
+    test('取得中に新しい関数で描画し直しても、通信を取り消さない', async () => {
+      const pending = deferred<string>();
+      const first = vi.fn().mockReturnValue(pending.promise);
+      const { result, rerender } = setupWith({ fetcher: first, fallbackMessage: FALLBACK });
+      const signal = first.mock.calls[0][1] as AbortSignal;
+
+      rerender({ fetcher: vi.fn().mockResolvedValue('別のデータ'), fallbackMessage: FALLBACK });
+
+      expect(signal.aborted).toBe(false);
+      await act(async () => pending.resolve('データ'));
+      expect(result.current.state).toEqual(loaded('データ'));
+    });
+
+    test('別の関数に変えても、すぐには取り直さず、次の再取得と再試行から使う', async () => {
+      const first = vi.fn().mockResolvedValue('前のデータ');
+      const next = vi.fn().mockResolvedValue('新しいデータ');
+      const { result, rerender } = setupWith({ fetcher: first, fallbackMessage: FALLBACK });
+      await waitFor(() => expect(result.current.state).toEqual(loaded('前のデータ')));
+
+      rerender({ fetcher: next, fallbackMessage: FALLBACK });
+      expect(next).not.toHaveBeenCalled();
+
+      await act(async () => {
+        await result.current.refresh();
+      });
+      expect(next).toHaveBeenCalledTimes(1);
+      expect(result.current.state).toEqual(loaded('新しいデータ'));
+
+      act(() => result.current.retry());
+      await waitFor(() => expect(next).toHaveBeenCalledTimes(2));
+      expect(first).toHaveBeenCalledTimes(1);
+    });
+
+    test('文言を変えても取り直さず、次の失敗から新しい文言を使う', async () => {
+      const fetcher = vi.fn()
+        .mockResolvedValueOnce('データ')
+        .mockRejectedValueOnce(new TypeError('Failed to fetch'));
+      const { result, rerender } = setupWith({ fetcher, fallbackMessage: FALLBACK });
+      await waitFor(() => expect(result.current.state).toEqual(loaded('データ')));
+
+      rerender({ fetcher, fallbackMessage: '新しい文言' });
+      expect(fetcher).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await result.current.refresh();
+      });
+      expect(result.current.state).toEqual(loaded('データ', '新しい文言'));
+    });
+  });
 });
