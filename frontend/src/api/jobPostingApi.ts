@@ -2,6 +2,7 @@ import type {
   CreateJobPostingRequest,
   UpdateJobPostingRequest,
   JobPosting,
+  ListedJobPosting,
   PageResponse,
   UpdateApplicationStatusRequest,
   ApplicationStatusSummaryResponse,
@@ -31,7 +32,7 @@ export async function fetchJobPostings(
   salaryMax: SalaryFilter,
   deadlineFrom: DeadlineFilter,
   deadlineTo: DeadlineFilter,
-): Promise<PageResponse<JobPosting>> {
+): Promise<PageResponse<ListedJobPosting>> {
   const params = new URLSearchParams({
     /*
      * Reactが管理している現在のページ番号をAPIに渡す。
@@ -81,7 +82,7 @@ export async function fetchJobPostings(
     );
   }
 
-  return (await response.json()) as PageResponse<JobPosting>;
+  return (await response.json()) as PageResponse<ListedJobPosting>;
 }
 
 /**

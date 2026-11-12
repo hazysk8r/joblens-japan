@@ -6,6 +6,7 @@ import com.joblens.jobposting.dto.ApplicationStatusSummaryResponse;
 import com.joblens.jobposting.dto.CreateJobPostingRequest;
 import com.joblens.jobposting.dto.JobPostingAnalysisResponse;
 import com.joblens.jobposting.dto.JobPostingDeadlineFilterRequest;
+import com.joblens.jobposting.dto.JobPostingListItemResponse;
 import com.joblens.jobposting.dto.JobPostingResponse;
 import com.joblens.jobposting.dto.JobPostingSalaryFilterRequest;
 import com.joblens.jobposting.dto.JobPostingStatusHistoryResponse;
@@ -103,7 +104,7 @@ public class JobPostingController {
      * GET /api/job-postings?keyword=AWS&page=0&size=10&sort=createdAt,desc
      */
     @GetMapping
-    public PageResponse<JobPostingResponse> findAll(
+    public PageResponse<JobPostingListItemResponse> findAll(
             @AuthenticationPrincipal AuthenticatedUser user,
             @RequestParam(required = false) String keyword,
 

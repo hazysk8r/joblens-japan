@@ -11,7 +11,7 @@ import {
 import { userMessageOf } from '../api/apiError';
 
 import {
-  type JobPosting,
+  type ListedJobPosting,
   type ApplicationStatusSummaryResponse,
   type StatusFilter,
   type SalaryFilter,
@@ -73,7 +73,7 @@ function HomePage() {
   const summaryMountedRef = useRef(false);
 
   const [keyword, setKeyword] = useState(keywordFromUrl);
-  const [jobPostings, setJobPostings] = useState<JobPosting[]>([]);
+  const [jobPostings, setJobPostings] = useState<ListedJobPosting[]>([]);
   const [loading, setLoading] = useState(true);
   // false = 一覧APIのリクエストは進行中でない、true = 一覧APIのリクエストが進行中
   const [error, setError] = useState<string | null>(null);
@@ -118,7 +118,7 @@ function HomePage() {
   }
 
   // 一覧の応答を画面に反映する。呼び出す側で、最新の要求の応答かを確かめてから呼ぶ。
-  const applyListPage = useCallback((page: PageResponse<JobPosting>) => {
+  const applyListPage = useCallback((page: PageResponse<ListedJobPosting>) => {
     setJobPostings(page.content);
     setCurrentPage(page.page);
     setTotalPages(page.totalPages);
@@ -733,11 +733,17 @@ function HomePage() {
       ) : jobPostings.length === 0 ? (
         <p>検索結果はありません。</p>
       ) : (
-        <ul className="job-posting-list" role="list">
-          {jobPostings.map((jobPosting) => (
-            <JobPostingListItem key={jobPosting.id} jobPosting={jobPosting} />
-          ))}
-        </ul>
+        <>
+          {/* 自動判定であることと、根拠の確かめ方を一覧の前で伝える。カードごとに書くと繰り返しが多すぎるため。 */}
+          <p className="job-posting-list__notice">
+            固定残業代の表示は求人票からの自動判定です。根拠は詳細画面で確認できます。
+          </p>
+          <ul className="job-posting-list" role="list">
+            {jobPostings.map((jobPosting) => (
+              <JobPostingListItem key={jobPosting.id} jobPosting={jobPosting} />
+            ))}
+          </ul>
+        </>
       )}
 
       {!error && totalPages > 0 && (

@@ -5,6 +5,7 @@ import com.joblens.auth.repository.UserRepository;
 import com.joblens.common.limit.UsageLimits;
 import com.joblens.common.response.PageResponse;
 import com.joblens.jobposting.analysis.FixedOvertimeAnalyzer;
+import com.joblens.jobposting.analysis.FixedOvertimeSummary;
 import com.joblens.jobposting.analysis.PostingSection;
 import com.joblens.jobposting.analysis.PostingSectionSplitter;
 import com.joblens.jobposting.analysis.SourceLine;
@@ -14,6 +15,7 @@ import com.joblens.jobposting.domain.JobPostingStatusHistory;
 import com.joblens.jobposting.dto.ApplicationStatusSummaryResponse;
 import com.joblens.jobposting.dto.CreateJobPostingRequest;
 import com.joblens.jobposting.dto.JobPostingAnalysisResponse;
+import com.joblens.jobposting.dto.JobPostingListItemResponse;
 import com.joblens.jobposting.dto.JobPostingResponse;
 import com.joblens.jobposting.dto.JobPostingStatusHistoryResponse;
 import com.joblens.jobposting.dto.UpdateJobPostingRequest;
@@ -27,6 +29,7 @@ import com.joblens.jobposting.exception.JobPostingNotFoundException;
 import com.joblens.jobposting.exception.JobPostingVersionConflictException;
 import com.joblens.jobposting.validation.JobPostingSortValidator;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,6 +51,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.dao.OptimisticLockingFailureException;
 
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -189,7 +193,7 @@ public class JobPostingService {
      * keywordがない場合は全件を取得し、
      * keywordがある場合はタイトル・会社名・原文から検索する。
      */
-    public PageResponse<JobPostingResponse> findAll(
+    public PageResponse<JobPostingListItemResponse> findAll(
             Long userId,
             String keyword,
             Pageable pageable,
@@ -241,8 +245,8 @@ public class JobPostingService {
         * Page<JobPosting>をPage<JobPostingResponse>に変換する。
         * ページ番号や全件数などの情報はそのまま維持される。
         */
-        Page<JobPostingResponse> responsePage =
-                jobPostingPage.map(JobPostingResponse::from);
+        Page<JobPostingListItemResponse> responsePage = jobPostingPage.map(jobPosting ->
+                JobPostingListItemResponse.from(jobPosting, summarizeFixedOvertime(jobPosting)));
 
         return PageResponse.from(responsePage);
     }
@@ -338,6 +342,20 @@ public class JobPostingService {
         return new JobPostingAnalysisResponse(
                 FixedOvertimeAnalyzer.analyze(sections),
                 extractSkillsFrom(body));
+    }
+
+    /**
+     * 一覧のバッジに使う固定残業代の判定。分析に失敗しても一覧全体は返すため、その求人だけnullにする。
+     * 失敗は分析のバグなので、原因を追えるよう求人のIDと一緒に記録する(原文は記録しない)。
+     */
+    private FixedOvertimeSummary summarizeFixedOvertime(JobPosting jobPosting) {
+        try {
+            return FixedOvertimeSummary.from(
+                    FixedOvertimeAnalyzer.analyze(PostingSectionSplitter.split(jobPosting.getOriginalText())));
+        } catch (RuntimeException exception) {
+            log.warn("求人の固定残業代を分析できませんでした: jobPostingId={}", jobPosting.getId(), exception);
+            return null;
+        }
     }
 
     private List<String> extractSkillsFrom(String text) {

@@ -11,14 +11,14 @@ import {
   fetchApplicationStatusSummary,
   fetchJobPostings,
 } from '../api/jobPostingApi';
-import type { JobPosting, PageResponse } from '../types/jobPosting';
+import type { ListedJobPosting, PageResponse } from '../types/jobPosting';
 
 vi.mock('../api/jobPostingApi');
 
 // ブラウザが出す英語の文言。応答の本文を含むこともあるため、画面には出さない。
 const NETWORK_ERROR = new TypeError('Failed to fetch');
 
-const posting: JobPosting = {
+const posting: ListedJobPosting = {
   id: 1,
   companyName: '東京テック',
   title: 'Java求人',
@@ -30,9 +30,10 @@ const posting: JobPosting = {
   salaryMax: null,
   applicationDeadline: null,
   version: 0,
+  fixedOvertime: null,
 };
 
-const page: PageResponse<JobPosting> = {
+const page: PageResponse<ListedJobPosting> = {
   content: [posting], page: 0, size: 5, totalElements: 1, totalPages: 1, first: true, last: true,
 };
 

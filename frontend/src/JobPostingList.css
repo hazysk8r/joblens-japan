@@ -6,8 +6,17 @@
   list-style: none;
 }
 
+/* 一覧の上の自動判定の案内。一覧と同じ左右の余白にそろえる。 */
+.job-posting-list__notice {
+  margin: 1rem 0 -0.75rem;
+  padding: 0 1rem;
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
 @media (max-width: 600px) {
-  .job-posting-list {
+  .job-posting-list,
+  .job-posting-list__notice {
     padding-inline: 0.75rem;
   }
 }

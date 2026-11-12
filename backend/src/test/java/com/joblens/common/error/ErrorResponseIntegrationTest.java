@@ -298,14 +298,15 @@ class ErrorResponseIntegrationTest {
     // ---- ページの上限 ----
 
     // 2147483647(page=2147483647&size=1)は、ちょうどInteger.MAX_VALUE。
+    // sizeは上限の20に切り詰められるため、page=107374182&size=20のオフセット(2147483640)が範囲内の最後のページ。
     @ParameterizedTest
-    @ValueSource(strings = {"page=21474836&size=100", "page=2147483647&size=1"})
+    @ValueSource(strings = {"page=107374182&size=20", "page=107374182&size=100", "page=2147483647&size=1"})
     void オフセットがDBで扱える範囲なら空のページを返す(String query) throws Exception {
         assertEquals(200, send("GET", "/api/job-postings?" + query, null, null).statusCode());
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"page=21474837&size=100", "page=2147483647&size=100"})
+    @ValueSource(strings = {"page=107374183&size=20", "page=107374183&size=100", "page=2147483647&size=20"})
     void オフセットが範囲を超えると_400を返す(String query) throws Exception {
         assertErrorFormat(send("GET", "/api/job-postings?" + query, null, null),
                 400, "INVALID_PAGE", "/api/job-postings");

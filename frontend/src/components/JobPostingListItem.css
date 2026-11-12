@@ -1,6 +1,8 @@
 .job-posting-card {
   --card-muted-bg: #f7f8fa;
   --card-action: #334e68;
+  /* 詳細画面の分析と同じ注意の色にし、画面の間で判定の見え方をそろえる。 */
+  --card-warning: #b42318;
 
   min-width: 0;
   padding: 1.5rem;
@@ -73,6 +75,36 @@
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * 固定残業代のバッジ。判定は文字で読めるようにし、色だけに頼らない。
+ * 「なし」は安心させる色にしない(自動判定のため)。「記載なし」は「なし」と取り違えないよう目立たせない。
+ */
+.job-posting-card__badge {
+  display: inline-block;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 0.6rem 0 0;
+  padding: 0.15rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card-muted-bg);
+  color: var(--text-h);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.job-posting-card__badge--warning {
+  border: 2px solid var(--card-warning);
+  color: var(--card-warning);
+}
+
+.job-posting-card__badge--muted {
+  border-style: dashed;
+  background: transparent;
+  color: var(--text);
+  font-weight: 400;
+}
+
 .job-posting-card__status {
   flex: 0 1 11rem;
   min-width: 0;
@@ -126,6 +158,7 @@
   .job-posting-card {
     --card-muted-bg: #1f2028;
     --card-action: #b1cbe4;
+    --card-warning: #fda29b;
   }
 }
 

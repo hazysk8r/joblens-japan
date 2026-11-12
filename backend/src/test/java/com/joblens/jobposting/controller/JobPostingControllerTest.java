@@ -511,8 +511,8 @@ class JobPostingControllerTest {
         }
 
         @Test
-        void ページサイズを上限より大きく要求しても100件までしか返さない() throws Exception {
-                List<JobPosting> postings = IntStream.rangeClosed(1, 101)
+        void ページサイズを上限より大きく要求しても20件までしか返さない() throws Exception {
+                List<JobPosting> postings = IntStream.rangeClosed(1, 21)
                                 .mapToObj(i -> new JobPosting(testUsers.defaultUserId(), null, "求人" + i,
                                                 null, "原文" + i, null, null, null))
                                 .toList();
@@ -520,9 +520,9 @@ class JobPostingControllerTest {
 
                 mockMvc.perform(get("/api/job-postings").param("size", "2000"))
                                 .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.content.length()").value(100))
-                                .andExpect(jsonPath("$.size").value(100))
-                                .andExpect(jsonPath("$.totalElements").value(101))
+                                .andExpect(jsonPath("$.content.length()").value(20))
+                                .andExpect(jsonPath("$.size").value(20))
+                                .andExpect(jsonPath("$.totalElements").value(21))
                                 .andExpect(jsonPath("$.totalPages").value(2));
         }
     }

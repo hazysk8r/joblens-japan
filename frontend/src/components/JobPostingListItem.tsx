@@ -1,10 +1,11 @@
-import type { JobPosting } from '../types/jobPosting';
+import type { ListedJobPosting } from '../types/jobPosting';
 
 import { Link, useLocation } from 'react-router';
 import './JobPostingListItem.css';
 import { APPLICATION_STATUS_LABELS, excerptOf, formatSalaryRange } from '../utils/jobPostingFormat';
 import { listReturnState } from '../utils/listReturn';
 import { isHttpUrl } from '../utils/httpUrl';
+import { fixedOvertimeVerdict } from '../utils/fixedOvertimeVerdict';
 
 // 一覧で表示する原文の長さ。選ぶための手がかりなので、数行に収まる長さにする。
 const EXCERPT_LENGTH = 100;
@@ -12,8 +13,11 @@ const EXCERPT_LENGTH = 100;
 /**
  * 一覧の求人の要約カード。一覧は選ぶ場所のため、編集や削除などの操作は詳細画面で行う。
  */
-function JobPostingListItem({ jobPosting }: { jobPosting: JobPosting }) {
+function JobPostingListItem({ jobPosting }: { jobPosting: ListedJobPosting }) {
 	const location = useLocation();
+	const { fixedOvertime } = jobPosting;
+	// 応答に判定がない(nullや項目自体がない)ときはバッジを出さない。一覧の表示は止めない。
+	const verdict = fixedOvertime == null ? null : fixedOvertimeVerdict(fixedOvertime.status, fixedOvertime.hours);
 
 	return (
 		<li className="job-posting-card">
@@ -41,6 +45,12 @@ function JobPostingListItem({ jobPosting }: { jobPosting: JobPosting }) {
 							{jobPosting.applicationDeadline ?? '未登録'}
 						</p>
 					</div>
+					{/* 給与の近くで比べられるよう、給与と締切日の下に置く。「なし」だけでは何がないのか分からないため、項目名を付ける。 */}
+					{verdict !== null && (
+						<p className={`job-posting-card__badge job-posting-card__badge--${verdict.tone}`}>
+							{`固定残業代 ${verdict.label}`}
+						</p>
+					)}
 				</div>
 				<p className="job-posting-card__status">
 					応募ステータス: {APPLICATION_STATUS_LABELS[jobPosting.applicationStatus]}

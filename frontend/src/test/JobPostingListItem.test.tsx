@@ -7,7 +7,7 @@ import '@testing-library/jest-dom/vitest';
 
 import { fetchApplicationStatusHistory } from '../api/jobPostingApi';
 import { getJobPostingMemos } from '../api/jobPostingMemoApi';
-import type { JobPosting } from '../types/jobPosting';
+import type { ListedJobPosting } from '../types/jobPosting';
 import JobPostingListItem from '../components/JobPostingListItem';
 
 beforeEach(() => {
@@ -28,7 +28,7 @@ vi.mock('../api/jobPostingMemoApi')
 
 describe('求人原文のリンク', () => {
   const renderWithSourceUrl = async (sourceUrl: string | null) => {
-    const jobPosting: JobPosting = {
+    const jobPosting: ListedJobPosting = {
       id: 1,
       companyName: '黄猿',
       title: 'エンジニア求人',
@@ -40,6 +40,7 @@ describe('求人原文のリンク', () => {
       salaryMax: null,
       applicationDeadline: null,
       version: 0,
+      fixedOvertime: null,
     };
 
     render(
@@ -80,7 +81,7 @@ describe('求人原文のリンク', () => {
 
 describe('詳細画面へのリンク', () => {
   test('タイトルが詳細画面へのリンクになる', () => {
-    const jobPosting: JobPosting = {
+    const jobPosting: ListedJobPosting = {
       id: 42,
       companyName: '○○株式会社',
       title: 'バックエンドエンジニア',
@@ -92,6 +93,7 @@ describe('詳細画面へのリンク', () => {
       salaryMax: null,
       applicationDeadline: null,
       version: 0,
+      fixedOvertime: null,
     };
 
     render(
@@ -106,7 +108,7 @@ describe('詳細画面へのリンク', () => {
 });
 
 describe('応募ステータスとメモ', () => {
-  const jobPosting: JobPosting = {
+  const jobPosting: ListedJobPosting = {
     id: 42,
     companyName: '○○株式会社',
     title: 'バックエンドエンジニア',
@@ -118,6 +120,7 @@ describe('応募ステータスとメモ', () => {
     salaryMax: null,
     applicationDeadline: null,
     version: 0,
+    fixedOvertime: null,
   };
 
   // 変更やメモの操作は詳細画面で行う。
@@ -141,7 +144,7 @@ describe('一覧の要約カード', () => {
 ${'バックエンド開発'.repeat(30)}
 【応募資格】
 Javaの実務経験`;
-  const posting: JobPosting = {
+  const posting: ListedJobPosting = {
     id: 7,
     companyName: '○○株式会社',
     title: '要約の確認',
@@ -153,6 +156,7 @@ Javaの実務経験`;
     salaryMax: null,
     applicationDeadline: '2026-12-01',
     version: 0,
+    fixedOvertime: null,
   };
 
   // 画面で隠すだけだと、読み上げでは原文全体が読まれてしまう。

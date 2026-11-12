@@ -11,11 +11,7 @@ import {
   fetchApplicationStatusSummary,
   fetchJobPostings,
 } from '../api/jobPostingApi';
-import type {
-  ApplicationStatusSummaryResponse,
-  JobPosting,
-  PageResponse,
-} from '../types/jobPosting';
+import type { ApplicationStatusSummaryResponse, ListedJobPosting, PageResponse } from '../types/jobPosting';
 
 vi.mock('../api/jobPostingApi');
 vi.mock('../api/jobPostingMemoApi');
@@ -30,7 +26,7 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-const jobPosting: JobPosting = {
+const jobPosting: ListedJobPosting = {
   id: 1,
   companyName: '東京テック',
   title: 'Java求人',
@@ -42,9 +38,10 @@ const jobPosting: JobPosting = {
   salaryMax: 700000,
   applicationDeadline: '2026-12-01',
   version: 3,
+  fixedOvertime: null,
 };
 
-const page: PageResponse<JobPosting> = {
+const page: PageResponse<ListedJobPosting> = {
   content: [jobPosting],
   page: 0,
   size: 5,

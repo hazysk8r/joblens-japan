@@ -11,7 +11,7 @@ import {
   fetchApplicationStatusSummary,
   fetchJobPostings,
 } from '../api/jobPostingApi';
-import type { JobPosting, PageResponse } from '../types/jobPosting';
+import type { ListedJobPosting, PageResponse } from '../types/jobPosting';
 
 vi.mock('../api/jobPostingApi');
 vi.mock('../api/jobPostingMemoApi');
@@ -28,7 +28,7 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-function posting(title: string): JobPosting {
+function posting(title: string): ListedJobPosting {
   return {
     id: title.length,
     companyName: '東京テック',
@@ -41,13 +41,14 @@ function posting(title: string): JobPosting {
     salaryMax: null,
     applicationDeadline: null,
     version: 0,
+    fixedOvertime: null,
   };
 }
 
 const titleOfPage = (page: number) => `${page + 1}ページ目の求人`;
 
 // 実際のサーバーと同じく、範囲外のページには空のcontentと本当のtotalPagesを返す。
-function pageResponse(page: number, totalPages: number): PageResponse<JobPosting> {
+function pageResponse(page: number, totalPages: number): PageResponse<ListedJobPosting> {
   const outOfRange = page >= totalPages;
   return {
     content: outOfRange ? [] : [posting(titleOfPage(page))],
@@ -143,7 +144,7 @@ describe('JobLens Japanを押したときの初期化', () => {
   test('応答を待つ間は読み込み中を表示し、次のページへは進めない', async () => {
     const user = renderHome();
     await findPosting(titleOfPage(0));
-    const pending = deferred<PageResponse<JobPosting>>();
+    const pending = deferred<PageResponse<ListedJobPosting>>();
     vi.mocked(fetchJobPostings).mockReturnValueOnce(pending.promise);
 
     await clickTitle(user);
@@ -196,7 +197,7 @@ describe('初回表示のURLのページが範囲外のとき', () => {
   });
 
   test('応答の前に別の取得が始まったら、古い応答では補正しない', async () => {
-    const first = deferred<PageResponse<JobPosting>>();
+    const first = deferred<PageResponse<ListedJobPosting>>();
     vi.mocked(fetchJobPostings).mockReturnValueOnce(first.promise);
     const user = renderHome(['/?page=99']);
 
@@ -209,7 +210,7 @@ describe('初回表示のURLのページが範囲外のとき', () => {
   });
 
   test('応答の前に別の取得が始まったら、古い一覧を表示しない', async () => {
-    const first = deferred<PageResponse<JobPosting>>();
+    const first = deferred<PageResponse<ListedJobPosting>>();
     vi.mocked(fetchJobPostings).mockReturnValueOnce(first.promise);
     const user = renderHome(['/?page=1']);
 

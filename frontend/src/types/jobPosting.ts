@@ -53,6 +53,17 @@ export interface JobPosting {
   version: number;
 }
 
+// 一覧のバッジに使う固定残業代の判定。根拠の文は詳細画面で確認する。
+export type FixedOvertimeSummary = {
+  status: FixedOvertimeStatus;
+  hours: number | null;
+};
+
+// 一覧の求人。fixedOvertimeは、サーバーでその求人の分析に失敗したときnull。
+export interface ListedJobPosting extends JobPosting {
+  fixedOvertime: FixedOvertimeSummary | null;
+}
+
 export interface PageResponse<T> {
   content: T[];
   page: number;

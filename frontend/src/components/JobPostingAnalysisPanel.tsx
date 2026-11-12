@@ -2,9 +2,9 @@ import { useId } from 'react';
 
 import type {
   AnalysisEvidence,
-  FixedOvertimeAnalysis,
   JobPostingAnalysis,
 } from '../types/jobPosting';
+import { fixedOvertimeVerdict } from '../utils/fixedOvertimeVerdict';
 import './JobPostingAnalysisPanel.css';
 
 type JobPostingAnalysisPanelProps = {
@@ -13,48 +13,6 @@ type JobPostingAnalysisPanelProps = {
   showableEvidence?: boolean[];
   onShowEvidence?: (index: number) => void;
 };
-
-type Verdict = {
-  label: string;
-  note: string | null;
-  tone: 'warning' | 'neutral';
-};
-
-function fixedOvertimeVerdict(result: FixedOvertimeAnalysis): Verdict {
-  switch (result.status) {
-    case 'PRESENT':
-      return {
-        label: result.hours !== null
-          ? `あり（月${result.hours}時間分）`
-          : 'あり（時間数は特定できず）',
-        note: null,
-        tone: 'warning',
-      };
-    case 'ABSENT':
-      return {
-        label: 'なし',
-        note: '固定残業代がないこと、または残業代を全額支給することが書かれています。',
-        tone: 'neutral',
-      };
-    case 'NOT_MENTIONED':
-      return {
-        label: '記載なし',
-        note: '記載がないことは「固定残業代なし」を意味しません。',
-        tone: 'neutral',
-      };
-    case 'UNDETERMINED':
-      return {
-        label: '判定できず',
-        note: '残業代についての記載を解釈できないか、記載が矛盾しています。根拠の文を確認してください。',
-        tone: 'warning',
-      };
-    default: {
-      // 状態を追加したときに表示の追加漏れを型チェックで検出する。
-      const unexpected: never = result.status;
-      throw new Error(`未対応の判定です: ${String(unexpected)}`);
-    }
-  }
-}
 
 function EvidenceList({
   evidence,
@@ -109,7 +67,10 @@ export default function JobPostingAnalysisPanel({
   const fixedOvertimeHeadingId = `${headingId}-fixed-overtime`;
   const skillsHeadingId = `${headingId}-skills`;
   const { fixedOvertime, skills } = analysis;
-  const verdict = fixedOvertimeVerdict(fixedOvertime);
+  const verdict = fixedOvertimeVerdict(fixedOvertime.status, fixedOvertime.hours);
+  if (verdict === null) {
+    throw new Error(`未対応の判定です: ${String(fixedOvertime.status)}`);
+  }
 
   return (
     <div className="job-posting-analysis">

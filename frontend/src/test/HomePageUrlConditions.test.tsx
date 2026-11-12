@@ -13,7 +13,7 @@ import {
   fetchJobPostings,
 } from '../api/jobPostingApi';
 import { getJobPostingMemos } from '../api/jobPostingMemoApi';
-import type { JobPosting, PageResponse } from '../types/jobPosting';
+import type { ListedJobPosting, PageResponse } from '../types/jobPosting';
 
 vi.mock('../api/jobPostingApi');
 vi.mock('../api/jobPostingMemoApi');
@@ -25,7 +25,7 @@ const ALL_CONDITIONS =
   '/?keyword=Java&status=APPLIED&salaryMin=300000&salaryMax=500000'
   + '&deadlineFrom=2026-12-01&deadlineTo=2026-12-31&sort=companyName%2Casc';
 
-function posting(page: number): JobPosting {
+function posting(page: number): ListedJobPosting {
   return {
     id: page + 1,
     companyName: '東京テック',
@@ -38,10 +38,11 @@ function posting(page: number): JobPosting {
     salaryMax: null,
     applicationDeadline: null,
     version: 0,
+    fixedOvertime: null,
   };
 }
 
-function pageResponse(page: number): PageResponse<JobPosting> {
+function pageResponse(page: number): PageResponse<ListedJobPosting> {
   return {
     content: [posting(page)],
     page,

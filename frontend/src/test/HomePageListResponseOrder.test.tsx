@@ -9,7 +9,7 @@ import {
   fetchApplicationStatusSummary,
   fetchJobPostings,
 } from '../api/jobPostingApi';
-import type { JobPosting, PageResponse } from '../types/jobPosting';
+import type { ListedJobPosting, PageResponse } from '../types/jobPosting';
 
 vi.mock('../api/jobPostingApi');
 vi.mock('../api/jobPostingMemoApi');
@@ -24,7 +24,7 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-function posting(overrides: Partial<JobPosting> = {}): JobPosting {
+function posting(overrides: Partial<ListedJobPosting> = {}): ListedJobPosting {
   return {
     id: 1,
     companyName: '札幌クラウド',
@@ -37,13 +37,14 @@ function posting(overrides: Partial<JobPosting> = {}): JobPosting {
     salaryMax: 500000,
     applicationDeadline: '2026-12-01',
     version: 3,
+    fixedOvertime: null,
     ...overrides,
   };
 }
 
 const postingA = posting();
 
-function pageOf(...postings: JobPosting[]): PageResponse<JobPosting> {
+function pageOf(...postings: ListedJobPosting[]): PageResponse<ListedJobPosting> {
   return {
     content: postings,
     page: 0,
@@ -84,8 +85,8 @@ describe('検索結果が0件のとき', () => {
 
 describe('一覧取得の経路の応答順序', () => {
   test('初回取得がpendingでも新しいPOPの応答が表示され、読み込み状態が終わる', async () => {
-    const initial = deferred<PageResponse<JobPosting>>();
-    const history = deferred<PageResponse<JobPosting>>();
+    const initial = deferred<PageResponse<ListedJobPosting>>();
+    const history = deferred<PageResponse<ListedJobPosting>>();
     function HistoryControl() {
       const navigate = useNavigate();
       return <button type="button" onClick={() => navigate(-1)}>テスト用の戻る</button>;
@@ -114,8 +115,8 @@ describe('一覧取得の経路の応答順序', () => {
   });
 
   test('初回取得が遅れて終わっても最新の並び替え結果を上書きしない', async () => {
-    const initial = deferred<PageResponse<JobPosting>>();
-    const sorted = deferred<PageResponse<JobPosting>>();
+    const initial = deferred<PageResponse<ListedJobPosting>>();
+    const sorted = deferred<PageResponse<ListedJobPosting>>();
     const user = userEvent.setup();
     vi.mocked(fetchJobPostings).mockReturnValueOnce(initial.promise).mockReturnValueOnce(sorted.promise);
     render(<MemoryRouter><AuthenticatedApp /></MemoryRouter>);
@@ -130,8 +131,8 @@ describe('一覧取得の経路の応答順序', () => {
   });
 
   test('POPの取得が遅れて終わっても、その後の並び替え結果を上書きしない', async () => {
-    const history = deferred<PageResponse<JobPosting>>();
-    const sorted = deferred<PageResponse<JobPosting>>();
+    const history = deferred<PageResponse<ListedJobPosting>>();
+    const sorted = deferred<PageResponse<ListedJobPosting>>();
     function HistoryControl() {
       const navigate = useNavigate();
       return <button type="button" onClick={() => navigate(-1)}>テスト用の戻る</button>;

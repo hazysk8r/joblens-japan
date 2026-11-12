@@ -6,7 +6,7 @@ import { afterEach, beforeEach, vi, test, expect, describe, } from 'vitest';
 
 import { AuthenticatedApp } from './testAuth';
 import { fetchApplicationStatusSummary, fetchJobPostings, createJobPosting } from '../api/jobPostingApi';
-import type { JobPosting, PageResponse } from '../types/jobPosting';
+import type { ListedJobPosting, PageResponse } from '../types/jobPosting';
 
 // 以前のMock呼び出し履歴を削除
 beforeEach(() => {
@@ -268,7 +268,7 @@ test('ユーザーが選んだ並び順を維持したまま次のページへ�
 });
 
 test('検索キーワードやフィルターが適用された状態でJobLens Japanを押すと、最初のページと既定の並び順に戻る', async () => {
-  const mockContent: JobPosting = {
+  const mockContent: ListedJobPosting = {
     id: 0,
     companyName: '黄猿',
     title: 'エンジニア求人',
@@ -280,6 +280,7 @@ test('検索キーワードやフィルターが適用された状態でJobLens 
     salaryMax: null,
     applicationDeadline: null,
     version: 0,
+    fixedOvertime: null,
   };
 
   const pageWithContent = {
@@ -557,16 +558,16 @@ test('ホームで「求人を登録する」リンクを押すと、求人登�
 
 test('古い一覧の応答が最新の並び替え結果を上書きしない', async () => {
 
-  const firstSortRequest = deferred<PageResponse<JobPosting>>();
-  const secondSortRequest = deferred<PageResponse<JobPosting>>();
+  const firstSortRequest = deferred<PageResponse<ListedJobPosting>>();
+  const secondSortRequest = deferred<PageResponse<ListedJobPosting>>();
   
-  const initialPage: PageResponse<JobPosting> = {
+  const initialPage: PageResponse<ListedJobPosting> = {
     ...mockPage,
     totalPages: 1,
     last: true,
   };
 
-  const olderResponseJob: JobPosting = {
+  const olderResponseJob: ListedJobPosting = {
     id: 1,
     companyName: 'Old Company',
     title: '古いソート結果',
@@ -578,9 +579,10 @@ test('古い一覧の応答が最新の並び替え結果を上書きしない',
     salaryMax: null,
     applicationDeadline: null,
     version: 0,
+    fixedOvertime: null,
   };
 
-  const latestResponseJob: JobPosting = {
+  const latestResponseJob: ListedJobPosting = {
     ...olderResponseJob,
     id: 2,
     companyName: 'Latest Company',
@@ -657,16 +659,16 @@ test('古い一覧の応答が最新の並び替え結果を上書きしない',
 
 test('古い一覧リクエストのエラーが最新の並び替え結果の画面に表示されない', async () => {
 
-  const firstSortRequest = deferred<PageResponse<JobPosting>>();
-  const secondSortRequest = deferred<PageResponse<JobPosting>>();
+  const firstSortRequest = deferred<PageResponse<ListedJobPosting>>();
+  const secondSortRequest = deferred<PageResponse<ListedJobPosting>>();
 
-  const initialPage: PageResponse<JobPosting> = {
+  const initialPage: PageResponse<ListedJobPosting> = {
     ...mockPage,
     totalPages: 1,
     last: true,
   }
 
-  const latestResponseJob: JobPosting = {
+  const latestResponseJob: ListedJobPosting = {
     id: 2,
     companyName: 'Latest Company',
     title: '最新ソート結果',
@@ -678,6 +680,7 @@ test('古い一覧リクエストのエラーが最新の並び替え結果の�
     salaryMax: null,
     applicationDeadline: null,
     version: 0,
+    fixedOvertime: null,
   };
 
   vi.mocked(fetchJobPostings)
