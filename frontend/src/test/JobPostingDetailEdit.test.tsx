@@ -229,7 +229,7 @@ describe('求人の編集', () => {
 
     await user.click(saveButton());
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(new RegExp(`^${message}$`));
+    expect((await screen.findByRole('alert')).textContent).toBe(message);
     expect(field('求人タイトル')).toHaveValue('残すタイトル');
     expect(screen.queryByRole('button', { name: RELOAD_LATEST })).not.toBeInTheDocument();
   });
@@ -543,7 +543,7 @@ describe('求人の削除', () => {
 
     await user.click(deleteButton());
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(new RegExp(`^${message}$`));
+    expect((await screen.findByRole('alert')).textContent).toBe(message);
     expect(screen.getByTestId('location')).toHaveTextContent('/job-postings/5');
 
     await user.click(deleteButton());

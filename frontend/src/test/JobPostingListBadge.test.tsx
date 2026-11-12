@@ -76,7 +76,8 @@ describe('一覧のカードの固定残業代のバッジ', () => {
     const card = renderCard(listed({ status, hours }));
 
     const badge = badgeOf(card);
-    expect(badge).toHaveTextContent(new RegExp(`^${text.replace(/[()（）]/g, '\\$&')}$`));
+    // 文言の全体が一致することを確かめる。正規表現にすると、文言の記号のエスケープ漏れで誤判定し得るため。
+    expect(badge?.textContent).toBe(text);
     expect(badge).toHaveClass(`job-posting-card__badge--${tone}`);
   });
 
