@@ -40,7 +40,7 @@ const analysis: JobPostingAnalysis = {
     excessPayStated: true,
     evidence: [{ section: '給与', text: '固定残業代40時間分を含む', start: 0, end: 0 }],
   },
-  skills: ['Java'],
+  skills: [{ name: 'Java', level: 'MENTIONED', alternatives: [], evidence: [] }],
 };
 
 function deferred<T>() {

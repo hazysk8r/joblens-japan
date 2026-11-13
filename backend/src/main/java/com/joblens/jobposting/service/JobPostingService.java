@@ -8,7 +8,7 @@ import com.joblens.jobposting.analysis.FixedOvertimeAnalyzer;
 import com.joblens.jobposting.analysis.FixedOvertimeSummary;
 import com.joblens.jobposting.analysis.PostingSection;
 import com.joblens.jobposting.analysis.PostingSectionSplitter;
-import com.joblens.jobposting.analysis.SourceLine;
+import com.joblens.jobposting.analysis.SkillAnalyzer;
 import com.joblens.jobposting.domain.ApplicationStatus;
 import com.joblens.jobposting.domain.JobPosting;
 import com.joblens.jobposting.domain.JobPostingStatusHistory;
@@ -34,14 +34,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
-import java.util.regex.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -62,17 +57,6 @@ public class JobPostingService {
     private final JobPostingStatusHistoryRepository jobPostingStatusHistoryRepository;
     private final UserRepository userRepository;
     private final UsageLimits usageLimits;
-    private static final List<String> SUPPORTED_SKILLS = List.of(
-            "Java",
-            "Spring Boot",
-            "AWS",
-            "Docker",
-            "PostgreSQL",
-            "React",
-            "TypeScript",
-            "C",
-            "C++");
-
 
     @Transactional
     public JobPostingResponse create(Long userId, CreateJobPostingRequest request) {
@@ -329,19 +313,12 @@ public class JobPostingService {
 
     public JobPostingAnalysisResponse analyze(Long userId, Long id) {
         JobPosting jobPosting = findEntityById(userId, id);
+        // サイトが付け加えた他社の求人は区間に分けるときに除かれる。
         List<PostingSection> sections = PostingSectionSplitter.split(jobPosting.getOriginalText());
-
-        // サイトが付け加えた他社の求人を除いた本文だけから技術名を探す。
-        // 「【Java経験者歓迎】」のように見出しにも技術名が書かれるため、見出しも含める。
-        String body = sections.stream()
-                .flatMap(section -> Stream.concat(
-                        Stream.ofNullable(section.heading()),
-                        section.lines().stream().map(SourceLine::text)))
-                .collect(Collectors.joining("\n"));
 
         return new JobPostingAnalysisResponse(
                 FixedOvertimeAnalyzer.analyze(sections),
-                extractSkillsFrom(body));
+                SkillAnalyzer.analyze(sections));
     }
 
     /**
@@ -357,26 +334,6 @@ public class JobPostingService {
             return null;
         }
     }
-
-    private List<String> extractSkillsFrom(String text) {
-        String normalizedText = text.toLowerCase(Locale.ROOT);
-        List<String> extractedSkills = new ArrayList<>();
-        String lookbehind = "(?<![a-zA-Z0-9+#.])";
-        // 文末のピリオドは許可し、ドットで接続された識別子は除外する。
-        String lookahead = "(?![a-zA-Z0-9+#]|\\.+[a-zA-Z0-9_+$#])";
-        for (String skill : SUPPORTED_SKILLS) {
-            String normalizedSkill = skill.toLowerCase(Locale.ROOT);
-            String escapedSkill = Pattern.quote(normalizedSkill);
-            String finalRegex = lookbehind + escapedSkill + lookahead;
-            Pattern pattern = Pattern.compile(finalRegex);
-            Matcher matcher = pattern.matcher(normalizedText);
-            
-            if (matcher.find()) {
-                extractedSkills.add(skill);
-            }
-        }
-        return extractedSkills;
-    }   
 
     public List<JobPostingStatusHistoryResponse>
         getApplicationStatusHistory(Long userId, Long jobPostingId) {

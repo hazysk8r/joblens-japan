@@ -100,6 +100,48 @@
   font-size: 0.9rem;
 }
 
+/* 技術の判定の欄。欄の名前で判定の意味を伝えるため、名前を技術名の上に置く。 */
+.job-posting-analysis__skill-group + .job-posting-analysis__skill-group {
+  margin-top: 0.75rem;
+}
+
+.job-posting-analysis__skill-label {
+  margin: 0 0 0.25rem;
+  color: var(--text-h);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.job-posting-analysis__skill-evidence {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.job-posting-analysis__skill-evidence summary {
+  cursor: pointer;
+}
+
+.job-posting-analysis__skill-evidence ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+  overflow-wrap: anywhere;
+}
+
+.job-posting-analysis__skill-evidence li + li {
+  margin-top: 0.5rem;
+}
+
+.job-posting-analysis__skill-name {
+  display: block;
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+/* 判定できずのときは根拠が2つあるため、1行ずつ分ける。 */
+.job-posting-analysis__skill-line {
+  display: block;
+}
+
 .job-posting-analysis__disclaimer {
   margin: 1rem 0 0;
   font-size: 0.75rem;

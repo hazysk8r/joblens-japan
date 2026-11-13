@@ -22,6 +22,10 @@ public final class PostingSectionSplitter {
             "仕事内容", "具体的な仕事内容", "職務内容", "職務内容詳細", "業務内容",
             "応募資格", "対象となる方", "必須", "必須条件", "必須要件", "必須スキル", "必須スキル・条件",
             "歓迎", "歓迎条件", "歓迎要件", "歓迎スキル", "歓迎スキル・条件", "求める人物像",
+            // 応募の要件の見出し。技術の必須・歓迎の判定に使う。
+            "応募条件", "必要なスキル", "求めるスキル", "求める経験", "歓迎する経験",
+            // 開発環境の見出し。応募資格の判定がこの後ろの区間まで続かないよう、区間を分ける。
+            "開発環境", "使用技術", "技術スタック", "開発言語",
             "勤務地", "勤務時間", "平均残業時間", "残業", "雇用形態", "契約形態", "試用期間",
             "休日・休暇", "休日休暇", "休暇", "年間休日", "選考プロセス", "選考の流れ",
             "会社概要", "事業概要", "その他");
@@ -56,6 +60,7 @@ public final class PostingSectionSplitter {
         }
 
         String heading = null;
+        SourceLine headingLine = null;
         List<SourceLine> lines = new ArrayList<>();
         boolean started = false;
 
@@ -84,25 +89,31 @@ public final class PostingSectionSplitter {
             }
 
             String newHeading = null;
+            SourceLine newHeadingLine = null;
             String rest = "";
             int restStart = 0;
             Matcher bracket = BRACKET_HEADING.matcher(line);
             if (bracket.matches()) {
                 newHeading = normalize(bracket.group(1));
+                String headingText = bracket.group(1).strip();
+                newHeadingLine = new SourceLine(
+                        headingText, start + bracket.start(1) + bracket.group(1).indexOf(headingText));
                 rest = bracket.group(2).strip();
                 restStart = start + bracket.start(2) + bracket.group(2).indexOf(rest);
             } else {
                 String candidate = TRAILING_COLON.matcher(normalized).replaceFirst("");
                 if (HEADINGS.contains(candidate)) {
                     newHeading = candidate;
+                    newHeadingLine = new SourceLine(line, start);
                 }
             }
 
             if (newHeading != null) {
                 if (started) {
-                    sections.add(new PostingSection(heading, lines));
+                    sections.add(new PostingSection(heading, lines, headingLine));
                 }
                 heading = newHeading;
+                headingLine = newHeadingLine;
                 lines = new ArrayList<>();
                 started = true;
                 if (!rest.isEmpty()) {
@@ -116,7 +127,7 @@ public final class PostingSectionSplitter {
         }
 
         if (started) {
-            sections.add(new PostingSection(heading, lines));
+            sections.add(new PostingSection(heading, lines, headingLine));
         }
         return sections;
     }

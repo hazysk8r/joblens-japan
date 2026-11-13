@@ -1,15 +1,16 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, test } from 'vitest';
 
 import JobPostingAnalysisPanel from '../components/JobPostingAnalysisPanel';
-import type { FixedOvertimeAnalysis, JobPostingAnalysis } from '../types/jobPosting';
+import type { FixedOvertimeAnalysis, JobPostingAnalysis, SkillAnalysis } from '../types/jobPosting';
 
 afterEach(() => {
   cleanup();
 });
 
-function renderPanel(fixedOvertime: FixedOvertimeAnalysis, skills: string[] = []) {
+function renderPanel(fixedOvertime: FixedOvertimeAnalysis, skills: SkillAnalysis[] = []) {
   const analysis: JobPostingAnalysis = { fixedOvertime, skills };
   render(<JobPostingAnalysisPanel analysis={analysis} />);
 }
@@ -97,11 +98,96 @@ describe('技術スタックと注意書きの表示', () => {
     status: 'NOT_MENTIONED', hours: null, excessPayStated: null, evidence: [],
   };
 
-  test('技術名を一覧で表示する', () => {
-    renderPanel(notMentioned, ['Java', 'AWS']);
+  const evidence = (text: string, section: string | null = '応募資格') => ({ section, text, start: 0, end: 0 });
+  const skill = (
+    name: string,
+    level: SkillAnalysis['level'],
+    text: string,
+    alternatives: string[] = [],
+  ): SkillAnalysis => ({ name, level, alternatives, evidence: [evidence(text)] });
 
-    const section = screen.getByRole('region', { name: '技術スタック' });
-    expect(within(section).getAllByRole('listitem').map((item) => item.textContent)).toEqual(['Java', 'AWS']);
+  const skillSection = () => screen.getByRole('region', { name: '技術スタック' });
+  const itemsOf = (groupLabel: string) =>
+    within(within(skillSection()).getByRole('list', { name: groupLabel }))
+      .getAllByRole('listitem').map((item) => item.textContent);
+
+  test('判定ごとにまとめ、表示のない判定を「必須」や「歓迎」と書かない', () => {
+    renderPanel(notMentioned, [
+      skill('Java', 'REQUIRED', '必須：Java'),
+      skill('AWS', 'PREFERRED', 'AWS経験あれば尚可'),
+      skill('Python', 'IN_REQUIREMENTS', 'Pythonの実務経験'),
+      { name: 'Go', level: 'UNDETERMINED', alternatives: [], evidence: [evidence('必須：Go言語'), evidence('Go言語経験不問')] },
+      skill('Docker', 'MENTIONED', 'Dockerで開発', ),
+    ]);
+
+    expect(itemsOf('必須')).toEqual(['Java']);
+    expect(itemsOf('歓迎')).toEqual(['AWS']);
+    expect(itemsOf('応募資格に記載（必須・歓迎の記載なし）')).toEqual(['Python']);
+    expect(itemsOf('判定できず（記載が矛盾しています）')).toEqual(['Go']);
+    expect(itemsOf('その他の記載（業務内容・開発環境など）')).toEqual(['Docker']);
+  });
+
+  test('いずれかの技術は、全部が必要だと読めないよう1つにまとめる', () => {
+    renderPanel(notMentioned, [
+      skill('Java', 'REQUIRED', 'Java、Python、Go言語いずれかの経験', ['Python', 'Go']),
+      skill('Python', 'REQUIRED', 'Java、Python、Go言語いずれかの経験', ['Java', 'Go']),
+      skill('Go', 'REQUIRED', 'Java、Python、Go言語いずれかの経験', ['Java', 'Python']),
+      skill('Kotlin', 'REQUIRED', 'Kotlinの経験'),
+    ]);
+
+    expect(itemsOf('必須')).toEqual(['Java・Python・Goのいずれか', 'Kotlin']);
+  });
+
+  test('いずれかの技術は、根拠の文に書かれた順に並べる', () => {
+    // 単独の必須(Java)が別にあると、いずれかのまとまりはKotlinの判定として届く。
+    renderPanel(notMentioned, [
+      skill('Java', 'REQUIRED', 'Javaでの開発経験3年以上'),
+      skill('Kotlin', 'REQUIRED', 'JavaまたはKotlinの実務経験', ['Java']),
+    ]);
+
+    expect(itemsOf('必須')).toEqual(['Java', 'Java・Kotlinのいずれか']);
+  });
+
+  test('判定のない欄は表示しない', () => {
+    renderPanel(notMentioned, [skill('Java', 'REQUIRED', '必須：Java')]);
+
+    expect(within(skillSection()).queryByRole('list', { name: '歓迎' })).not.toBeInTheDocument();
+    expect(within(skillSection()).queryByRole('list', { name: '応募資格に記載（必須・歓迎の記載なし）' }))
+      .not.toBeInTheDocument();
+  });
+
+  test('判定の根拠は開いたときに見せ、技術ごとに区間と文を示す', async () => {
+    const user = userEvent.setup();
+    renderPanel(notMentioned, [
+      skill('Java', 'REQUIRED', '必須：Java'),
+      { name: 'Go', level: 'UNDETERMINED', alternatives: [], evidence: [evidence('必須：Go言語'), evidence('Go言語経験不問', null)] },
+    ]);
+    const details = within(skillSection()).getByText('判定の根拠を見る').closest('details') as HTMLDetailsElement;
+    expect(details.open).toBe(false);
+
+    await user.click(within(skillSection()).getByText('判定の根拠を見る'));
+
+    expect(details.open).toBe(true);
+    const items = within(within(details).getByRole('list')).getAllByRole('listitem');
+    expect(items.map((item) => item.textContent)).toEqual([
+      'Java応募資格必須：Java',
+      'Go応募資格必須：Go言語Go言語経験不問',
+    ]);
+  });
+
+  test('知らない判定の技術は表示しない', () => {
+    renderPanel(notMentioned, [
+      skill('Java', 'REQUIRED', '必須：Java'),
+      skill('Rust', 'SOMETHING_NEW' as SkillAnalysis['level'], 'Rust'),
+    ]);
+
+    expect(skillSection()).not.toHaveTextContent('Rust');
+  });
+
+  test('辞書にある技術名だけを表示することを伝える', () => {
+    renderPanel(notMentioned, [skill('Java', 'MENTIONED', 'Javaで開発')]);
+
+    expect(within(skillSection()).getByText('辞書にある技術名だけを表示します。')).toBeInTheDocument();
   });
 
   test('技術名がなければメッセージを表示する', () => {

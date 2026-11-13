@@ -3,6 +3,8 @@ import { useId } from 'react';
 import type {
   AnalysisEvidence,
   JobPostingAnalysis,
+  SkillAnalysis,
+  SkillLevel,
 } from '../types/jobPosting';
 import { fixedOvertimeVerdict } from '../utils/fixedOvertimeVerdict';
 import './JobPostingAnalysisPanel.css';
@@ -58,6 +60,104 @@ function EvidenceList({
   );
 }
 
+// 判定ごとの欄。表示のない判定を「必須」「歓迎」と読まれないよう、欄の名前で何を意味するかを書く。
+const SKILL_GROUPS: { level: SkillLevel; label: string }[] = [
+  { level: 'REQUIRED', label: '必須' },
+  { level: 'PREFERRED', label: '歓迎' },
+  { level: 'IN_REQUIREMENTS', label: '応募資格に記載（必須・歓迎の記載なし）' },
+  { level: 'UNDETERMINED', label: '判定できず（記載が矛盾しています）' },
+  { level: 'MENTIONED', label: 'その他の記載（業務内容・開発環境など）' },
+];
+
+type SkillItem = { key: string; label: string; evidence: AnalysisEvidence[] };
+
+/**
+ * 「いずれか」の技術を、根拠の文に書かれた順に並べる。根拠と見比べやすくするため。
+ * 文の中に見つからない名前(全角や別の書き方)は、元の順のまま後ろに置く。
+ */
+function inTextOrder(names: string[], text: string): string[] {
+  const lower = text.toLowerCase();
+  const positionOf = (name: string) => {
+    const index = lower.indexOf(name.toLowerCase());
+    return index < 0 ? Number.MAX_SAFE_INTEGER : index;
+  };
+  return [...names].sort((a, b) => positionOf(a) - positionOf(b));
+}
+
+/**
+ * 欄に並べる項目。「いずれか」の技術は、全部が必要だと読まれないよう「Java・Pythonのいずれか」の1項目にまとめる。
+ */
+function skillItemsOf(skills: SkillAnalysis[], level: SkillLevel): SkillItem[] {
+  const items: SkillItem[] = [];
+  const seen = new Set<string>();
+  for (const skill of skills) {
+    if (skill.level !== level) {
+      continue;
+    }
+    const names = inTextOrder([skill.name, ...skill.alternatives], skill.evidence[0]?.text ?? '');
+    const key = [...names].sort().join('|');
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    items.push({
+      key,
+      label: names.length > 1 ? `${names.join('・')}のいずれか` : skill.name,
+      evidence: skill.evidence,
+    });
+  }
+  return items;
+}
+
+function SkillGroups({ skills }: { skills: SkillAnalysis[] }) {
+  const idPrefix = useId();
+  // 知らない判定(サーバーが新しい判定を返した場合など)の技術は表示しない。
+  const groups = SKILL_GROUPS
+    .map((group) => ({ ...group, items: skillItemsOf(skills, group.level) }))
+    .filter((group) => group.items.length > 0);
+
+  if (groups.length === 0) {
+    return <p>抽出された技術スタックはありません。</p>;
+  }
+
+  return (
+    <>
+      {groups.map((group) => {
+        const labelId = `${idPrefix}-${group.level}`;
+        return (
+          <div key={group.level} className="job-posting-analysis__skill-group">
+            <p id={labelId} className="job-posting-analysis__skill-label">{group.label}</p>
+            <ul aria-labelledby={labelId} className="job-posting-analysis__skills">
+              {group.items.map((item) => (
+                <li key={item.key}>{item.label}</li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+      {/* 根拠を最初から全部出すと長くなるため、開いたときに見せる。 */}
+      <details className="job-posting-analysis__skill-evidence">
+        <summary>判定の根拠を見る</summary>
+        <ul>
+          {groups.flatMap((group) => group.items).map((item) => (
+            <li key={item.key}>
+              <span className="job-posting-analysis__skill-name">{item.label}</span>
+              {item.evidence.map((line, index) => (
+                <span key={index} className="job-posting-analysis__skill-line">
+                  {line.section !== null && (
+                    <span className="job-posting-analysis__evidence-section">{line.section}</span>
+                  )}
+                  {line.text}
+                </span>
+              ))}
+            </li>
+          ))}
+        </ul>
+      </details>
+    </>
+  );
+}
+
 export default function JobPostingAnalysisPanel({
   analysis,
   showableEvidence = [],
@@ -104,15 +204,8 @@ export default function JobPostingAnalysisPanel({
         <h4 id={skillsHeadingId} className="job-posting-analysis__heading">
           技術スタック
         </h4>
-        {skills.length > 0 ? (
-          <ul className="job-posting-analysis__skills">
-            {skills.map((skill) => (
-              <li key={skill}>{skill}</li>
-            ))}
-          </ul>
-        ) : (
-          <p>抽出された技術スタックはありません。</p>
-        )}
+        <SkillGroups skills={skills} />
+        <p className="job-posting-analysis__note">辞書にある技術名だけを表示します。</p>
       </section>
 
       <p className="job-posting-analysis__disclaimer">

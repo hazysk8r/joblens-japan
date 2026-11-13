@@ -78,7 +78,12 @@ describe('求人票の分析', () => {
         excessPayStated: false,
         evidence: [{ section: '給与', text: '月給30万円（固定残業代40時間分を含む）', start: 3, end: 24 }],
       },
-      skills: ['Java'],
+      skills: [{
+        name: 'Java',
+        level: 'MENTIONED',
+        alternatives: [],
+        evidence: [{ section: '給与', text: '月給30万円（固定残業代40時間分を含む）', start: 3, end: 24 }],
+      }],
     }, 200));
 
     renderDetail();
@@ -87,7 +92,10 @@ describe('求人票の分析', () => {
     expect(within(fixedOvertime).getByText('あり（月40時間分）')).toBeInTheDocument();
     expect(within(fixedOvertime).getByRole('list', { name: '根拠' }))
       .toHaveTextContent('給与月給30万円（固定残業代40時間分を含む）');
-    expect(within(screen.getByRole('region', { name: '技術スタック' })).getByText('Java')).toBeInTheDocument();
+    // 応答の判定の欄に、技術名を表示する。
+    const skillSection = screen.getByRole('region', { name: '技術スタック' });
+    expect(within(within(skillSection).getByRole('list', { name: 'その他の記載（業務内容・開発環境など）' }))
+      .getByText('Java')).toBeInTheDocument();
     // 応答の位置で、原文の根拠の行を強調する。
     const marks = screen.getByRole('region', { name: '求人票の原文' }).querySelectorAll('mark');
     expect(Array.from(marks).map((mark) => mark.textContent)).toEqual(['月給30万円（固定残業代40時間分を含む）']);

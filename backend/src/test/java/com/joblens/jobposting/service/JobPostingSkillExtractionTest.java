@@ -16,6 +16,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.joblens.jobposting.analysis.SkillAnalysis;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -48,12 +50,17 @@ class JobPostingSkillExtractionTest {
         when(repository.findByIdAndUserId(1L, USER_ID)).thenReturn(Optional.of(jobPosting));
     }
 
+    // 技術名だけを比べる。必須・歓迎の判定はSkillAnalyzerTestで確かめる。
+    private List<String> names() {
+        return service.analyze(USER_ID, 1L).skills().stream().map(SkillAnalysis::name).toList();
+    }
+
     @ParameterizedTest
     @MethodSource("句読点を含む原文")
     void 句読点が付いた技術名を正確に抽出する(String originalText, List<String> expectedSkills) {
         when(jobPosting.getOriginalText()).thenReturn(originalText);
 
-        assertThat(service.analyze(USER_ID, 1L).skills()).containsExactlyElementsOf(expectedSkills);
+        assertThat(names()).containsExactlyElementsOf(expectedSkills);
     }
 
     private static Stream<Arguments> 句読点を含む原文() {
@@ -69,13 +76,15 @@ class JobPostingSkillExtractionTest {
                 Arguments.of("Java. AWS. Docker.", List.of("Java", "AWS", "Docker")),
                 Arguments.of("JavaとSpring Bootを使用する", List.of("Java", "Spring Boot")),
                 Arguments.of("C++", List.of("C++")),
-                Arguments.of("C / C++", List.of("C", "C++")));
+                Arguments.of("C / C++", List.of("C", "C++")),
+                // 辞書に加えた技術。
+                Arguments.of("JavaScript", List.of("JavaScript")),
+                Arguments.of("C#", List.of("C#")),
+                Arguments.of("Node.js .NET JavaScript C#", List.of("Node.js", ".NET", "JavaScript", "C#")));
     }
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "JavaScript",
-            "C#",
             "Java.util",
             "AWS.Lambda",
             "Java._internal",
@@ -85,23 +94,23 @@ class JobPostingSkillExtractionTest {
             "Java.util.",
             "AWS.Lambda.",
             "foo.Java.",
-            "Node.js .NET JavaScript C#",
             "Java8 AWS2 C2",
             "MyJava CustomAWS"
     })
     void 別の技術名やドットで接続された識別子の一部を抽出しない(String originalText) {
         when(jobPosting.getOriginalText()).thenReturn(originalText);
 
-        assertThat(service.analyze(USER_ID, 1L).skills()).isEmpty();
+        assertThat(names()).isEmpty();
     }
 
     @Test
-    void 大文字小文字を無視し重複を除いて既存の技術順に返す() {
+    void 大文字小文字を無視し重複を除いて_現れた順に返す() {
         when(jobPosting.getOriginalText()).thenReturn(
                 "c++ c typescript react postgresql docker aws spring boot java JAVA AWS c++");
 
-        assertThat(service.analyze(USER_ID, 1L).skills()).containsExactly(
-                "Java", "Spring Boot", "AWS", "Docker", "PostgreSQL", "React", "TypeScript", "C", "C++");
+        // 単独の「c」は、C社などと取り違えないよう技術名にしない。
+        assertThat(names()).containsExactly(
+                "C++", "TypeScript", "React", "PostgreSQL", "Docker", "AWS", "Spring Boot", "Java");
     }
 
     @ParameterizedTest
@@ -110,6 +119,6 @@ class JobPostingSkillExtractionTest {
     void 原文が未設定か技術名を含まない場合は空配列を返す(String originalText) {
         when(jobPosting.getOriginalText()).thenReturn(originalText);
 
-        assertThat(service.analyze(USER_ID, 1L).skills()).isEmpty();
+        assertThat(names()).isEmpty();
     }
 }

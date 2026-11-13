@@ -20,7 +20,7 @@ function deferred<T>() {
 
 const analysis: JobPostingAnalysis = {
   fixedOvertime: { status: 'NOT_MENTIONED', hours: null, excessPayStated: null, evidence: [] },
-  skills: ['Java'],
+  skills: [{ name: 'Java', level: 'MENTIONED', alternatives: [], evidence: [] }],
 };
 const posting = { id: 1, originalText: '求人' };
 
@@ -94,7 +94,7 @@ describe('useJobPostingAnalysis', () => {
       second.resolve(analysis);
     });
     await act(async () => {
-      first.resolve({ ...analysis, skills: ['古い応答'] });
+      first.resolve({ ...analysis, skills: [{ name: '古い応答', level: 'MENTIONED', alternatives: [], evidence: [] }] });
     });
 
     expect(result.current.state).toEqual({ status: 'loaded', analysis });

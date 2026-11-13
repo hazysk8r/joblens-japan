@@ -125,7 +125,23 @@ export type FixedOvertimeAnalysis = {
   evidence: AnalysisEvidence[];
 };
 
+/**
+ * 技術の判定。「必須」「歓迎」は求人票にその表示があるときだけ。
+ * IN_REQUIREMENTSは応募資格に書かれているが表示がないもの、UNDETERMINEDは表示が矛盾しているもの、
+ * MENTIONEDは仕事内容・開発環境・研修など要件の外に書かれたもの(「不問」などの否定も含む)。
+ */
+export type SkillLevel = 'REQUIRED' | 'PREFERRED' | 'IN_REQUIREMENTS' | 'UNDETERMINED' | 'MENTIONED';
+
+export type SkillAnalysis = {
+  name: string;
+  level: SkillLevel;
+  // 「JavaまたはPython」「いずれか」のように一緒に書かれた、ほかの技術。
+  alternatives: string[];
+  // 判定の根拠の行。判定できずのときは、必須の行と否定の行の2つ。
+  evidence: AnalysisEvidence[];
+};
+
 export type JobPostingAnalysis = {
   fixedOvertime: FixedOvertimeAnalysis;
-  skills: string[];
+  skills: SkillAnalysis[];
 };

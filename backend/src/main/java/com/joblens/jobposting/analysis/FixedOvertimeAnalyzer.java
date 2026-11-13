@@ -60,7 +60,6 @@ public final class FixedOvertimeAnalyzer {
     private static final int HOURS_CONTEXT_LENGTH = 8;
 
     private static final int MAX_EVIDENCE = 3;
-    private static final int MAX_EVIDENCE_LENGTH = 200;
 
     private FixedOvertimeAnalyzer() {
     }
@@ -130,9 +129,8 @@ public final class FixedOvertimeAnalyzer {
                 break;
             }
             if (relevant.test(line)) {
-                String text = truncate(line.source().text());
-                evidence.putIfAbsent(Arrays.asList(line.section(), text), new AnalysisEvidence(
-                        line.section(), text, line.source().start(), line.source().end()));
+                AnalysisEvidence item = AnalysisEvidence.of(line.section(), line.source());
+                evidence.putIfAbsent(Arrays.asList(line.section(), item.text()), item);
             }
         }
         return List.copyOf(evidence.values());
@@ -144,13 +142,6 @@ public final class FixedOvertimeAnalyzer {
                 OVERTIME_PAY.matcher(sentence).find() && HOURS_PORTION.matcher(sentence).find());
     }
 
-    /** 絵文字などのサロゲートペアを途中で切らないよう、コードポイントの数で切り詰める。 */
-    private static String truncate(String text) {
-        if (text.codePointCount(0, text.length()) <= MAX_EVIDENCE_LENGTH) {
-            return text;
-        }
-        return text.substring(0, text.offsetByCodePoints(0, MAX_EVIDENCE_LENGTH)) + "…";
-    }
 
     /** 1行分の判定材料。 */
     private record Line(

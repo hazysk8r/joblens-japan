@@ -180,7 +180,7 @@ const apiOperations = [
     name: '求人票の分析',
     run: () => fetchJobPostingAnalysis(1, new AbortController().signal),
     fallback: '求人票の分析に失敗しました。',
-    successBody: { fixedOvertime: { status: 'NOT_MENTIONED', hours: null, excessPayStated: null, evidence: [] }, skills: ['Java'] },
+    successBody: { fixedOvertime: { status: 'NOT_MENTIONED', hours: null, excessPayStated: null, evidence: [] }, skills: [] },
   },
 ];
 

@@ -906,7 +906,7 @@ class JobPostingControllerTest {
     @Nested
     class AnalysisTests {
         @Test
-        void 句読点付きの技術名だけを配列で返す() throws Exception {
+        void 句読点付きの技術名だけを返し_識別子の一部は技術名にしない() throws Exception {
                 JobPosting posting = jobPostingRepository.save(
                                 new JobPosting(testUsers.defaultUserId(), "テスト会社", "開発者", null,
                                                 "Java. AWS. Docker. C++. JavaScript C# Java.util AWS.Lambda",
@@ -915,11 +915,13 @@ class JobPostingControllerTest {
                 mockMvc.perform(get("/api/job-postings/{id}/analysis", posting.getId()))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.skills").isArray())
-                                .andExpect(jsonPath("$.skills", hasSize(4)))
-                                .andExpect(jsonPath("$.skills[0]").value("Java"))
-                                .andExpect(jsonPath("$.skills[1]").value("AWS"))
-                                .andExpect(jsonPath("$.skills[2]").value("Docker"))
-                                .andExpect(jsonPath("$.skills[3]").value("C++"));
+                                .andExpect(jsonPath("$.skills", hasSize(6)))
+                                .andExpect(jsonPath("$.skills[0].name").value("Java"))
+                                .andExpect(jsonPath("$.skills[1].name").value("AWS"))
+                                .andExpect(jsonPath("$.skills[2].name").value("Docker"))
+                                .andExpect(jsonPath("$.skills[3].name").value("C++"))
+                                .andExpect(jsonPath("$.skills[4].name").value("JavaScript"))
+                                .andExpect(jsonPath("$.skills[5].name").value("C#"));
         }
 
         @Test
@@ -933,12 +935,12 @@ class JobPostingControllerTest {
 
                 mockMvc.perform(get("/api/job-postings/{id}/analysis", charlie.getId()))
                                 .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.skills[0]").value("Java" ))
-                                .andExpect(jsonPath("$.skills[1]").value("Spring Boot"));
+                                .andExpect(jsonPath("$.skills[0].name").value("Java" ))
+                                .andExpect(jsonPath("$.skills[1].name").value("Spring Boot"));
                 mockMvc.perform(get("/api/job-postings/{id}/analysis", alpha.getId()))
                                 .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.skills[0]").value("AWS"))
-                                .andExpect(jsonPath("$.skills[1]").value("Docker"));
+                                .andExpect(jsonPath("$.skills[0].name").value("AWS"))
+                                .andExpect(jsonPath("$.skills[1].name").value("Docker"));
             
         }
 
@@ -959,7 +961,8 @@ class JobPostingControllerTest {
                                                 "JavaScript開発者求人中", null, null, null));
                 mockMvc.perform(get("/api/job-postings/{id}/analysis", charlie.getId()))
                                 .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.skills").isEmpty());
+                                .andExpect(jsonPath("$.skills", hasSize(1)))
+                                .andExpect(jsonPath("$.skills[0].name").value("JavaScript"));
         }
 
         @Test
@@ -970,8 +973,8 @@ class JobPostingControllerTest {
                 mockMvc.perform(get("/api/job-postings/{id}/analysis", charlie.getId()))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.skills", hasSize(2)))
-                                .andExpect(jsonPath("$.skills[0]").value("C"))
-                                .andExpect(jsonPath("$.skills[1]").value("C++"));
+                                .andExpect(jsonPath("$.skills[0].name").value("C"))
+                                .andExpect(jsonPath("$.skills[1].name").value("C++"));
         }
 
         @Test
@@ -982,7 +985,7 @@ class JobPostingControllerTest {
                 mockMvc.perform(get("/api/job-postings/{id}/analysis", charlie.getId()))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.skills", hasSize(1)))
-                                .andExpect(jsonPath("$.skills[0]").value("C++"));
+                                .andExpect(jsonPath("$.skills[0].name").value("C++"));
         }
         @Test
         void 固定残業代の判定と根拠と技術名を一つの応答で返す() throws Exception {
@@ -1006,8 +1009,16 @@ class JobPostingControllerTest {
                                 .andExpect(jsonPath("$.fixedOvertime.evidence[1].start").value(51))
                                 .andExpect(jsonPath("$.fixedOvertime.evidence[1].end").value(59))
                                 .andExpect(jsonPath("$.skills", hasSize(2)))
-                                .andExpect(jsonPath("$.skills[0]").value("Java"))
-                                .andExpect(jsonPath("$.skills[1]").value("Docker"));
+                                .andExpect(jsonPath("$.skills[0].name").value("Java"))
+                                .andExpect(jsonPath("$.skills[0].level").value("REQUIRED"))
+                                .andExpect(jsonPath("$.skills[0].alternatives").isEmpty())
+                                .andExpect(jsonPath("$.skills[0].evidence", hasSize(1)))
+                                .andExpect(jsonPath("$.skills[0].evidence[0].section").value("必須スキル・条件"))
+                                .andExpect(jsonPath("$.skills[0].evidence[0].text").value("JavaとDockerの実務経験"))
+                                .andExpect(jsonPath("$.skills[0].evidence[0].start").value(9))
+                                .andExpect(jsonPath("$.skills[0].evidence[0].end").value(25))
+                                .andExpect(jsonPath("$.skills[1].name").value("Docker"))
+                                .andExpect(jsonPath("$.skills[1].level").value("REQUIRED"));
         }
 
         @Test
@@ -1036,7 +1047,7 @@ class JobPostingControllerTest {
                 mockMvc.perform(get("/api/job-postings/{id}/analysis", posting.getId()))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.skills", hasSize(1)))
-                                .andExpect(jsonPath("$.skills[0]").value("Java"));
+                                .andExpect(jsonPath("$.skills[0].name").value("Java"));
         }
 
         @Test
@@ -1044,11 +1055,13 @@ class JobPostingControllerTest {
                 JobPosting posting = jobPostingRepository.save(
                                 new JobPosting(testUsers.defaultUserId(), "テスト会社", "開発者", null,
                                                 "【Java経験者歓迎】\n月給30万円", null, null, null));
+                // 見出しの「歓迎」で判定する。
 
                 mockMvc.perform(get("/api/job-postings/{id}/analysis", posting.getId()))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.skills", hasSize(1)))
-                                .andExpect(jsonPath("$.skills[0]").value("Java"));
+                                .andExpect(jsonPath("$.skills[0].name").value("Java"))
+                                .andExpect(jsonPath("$.skills[0].level").value("PREFERRED"));
         }
 
         @Test
