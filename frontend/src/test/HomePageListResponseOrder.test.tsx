@@ -75,7 +75,7 @@ describe('検索結果が0件のとき', () => {
   test('ないことを表示し、ページの移動を出さない', async () => {
     vi.mocked(fetchJobPostings).mockResolvedValue(pageOf());
 
-    render(<MemoryRouter><AuthenticatedApp /></MemoryRouter>);
+    render(<MemoryRouter initialEntries={['/?keyword=Java']}><AuthenticatedApp /></MemoryRouter>);
 
     expect(await screen.findByText('検索結果はありません。')).toBeInTheDocument();
     expect(screen.queryByRole('list')).not.toBeInTheDocument();

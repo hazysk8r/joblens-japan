@@ -4,6 +4,7 @@ import './CreateJobPostingPage.css';
 import { useAuth } from '../auth/useAuth';
 import JobPostingCreateForm
   from '../components/JobPostingCreateForm';
+import type { JobPosting } from '../types/jobPosting';
 import { postingDraftKey } from '../utils/postingDraftStorage';
 
 function CreateJobPostingPage() {
@@ -13,8 +14,10 @@ function CreateJobPostingPage() {
   // この画面はログイン中だけ表示されるため、0になることはない。
   const userId = authState.status === 'authenticated' ? authState.user.id : 0;
 
-  const handleJobPostingCreated = () => {
-    navigate('/');
+  // 登録した求人の分析をすぐ見られるよう、詳細画面へ移る。
+  // 戻る操作で空になった登録画面に戻らないよう、履歴を置き換える(戻ると元の画面へ)。
+  const handleJobPostingCreated = (jobPosting: JobPosting) => {
+    navigate(`/job-postings/${jobPosting.id}`, { replace: true, state: { notice: 'created' } });
   };
 
   return (

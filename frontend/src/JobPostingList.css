@@ -14,9 +14,42 @@
   font-size: 0.85rem;
 }
 
+/* 操作の結果の知らせ(削除しました)。空のときは高さを持たせず、画面を動かさない。 */
+.home-notice {
+  margin: 0;
+  padding: 0 1rem;
+  font-weight: 600;
+}
+
+.home-notice:not(:empty) {
+  margin: 0.75rem 0;
+}
+
+/* 初めての利用者への案内。次の操作(登録)をすぐ押せるように置く。 */
+.home-empty {
+  margin: 1.5rem 0;
+  padding: 0 1rem;
+}
+
+.home-empty p {
+  margin: 0 0 0.5rem;
+}
+
+.home-empty p:first-child {
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+.home-empty .create-job-posting-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+}
+
 @media (max-width: 600px) {
   .job-posting-list,
-  .job-posting-list__notice {
+  .job-posting-list__notice,
+  .home-notice,
+  .home-empty {
     padding-inline: 0.75rem;
   }
 }

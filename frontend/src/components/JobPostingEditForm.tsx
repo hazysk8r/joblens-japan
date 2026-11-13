@@ -7,6 +7,8 @@ import type {
 } from '../types/jobPosting';
 
 import { SALARY_OPTIONS } from '../constants/salaryOptions';
+import OriginalTextLength from './OriginalTextLength';
+import { isOriginalTextTooLong, ORIGINAL_TEXT_TOO_LONG_MESSAGE } from '../utils/originalTextLength';
 import {
   postingValuesOf,
   samePostingValues,
@@ -39,7 +41,7 @@ function JobPostingEditForm({
   jobPosting,
   saving,
   expectedVersion,
-  fieldErrors = {},
+  fieldErrors: serverFieldErrors = {},
   initialValues,
   onChange,
   autoFocusFirstField = false,
@@ -61,7 +63,14 @@ function JobPostingEditForm({
     setValidationError,
   ] = useState<string | null>(null);
 
+  // 原文が上限を超えたまま保存しようとしたか。原文を変えたら消す。
+  const [originalTextTooLong, setOriginalTextTooLong] = useState(false);
+  const fieldErrors: Record<string, string> = originalTextTooLong
+    ? { ...serverFieldErrors, originalText: ORIGINAL_TEXT_TOO_LONG_MESSAGE }
+    : serverFieldErrors;
+
   const companyNameRef = useRef<HTMLInputElement>(null);
+  const originalTextRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (autoFocusFirstField) {
@@ -72,6 +81,9 @@ function JobPostingEditForm({
   // 画面の入力と、一時保存のための通知を必ず一緒に行う。
   const update = (patch: Partial<PostingDraft>) => {
     const next = { ...editForm, ...patch };
+    if (patch.originalText !== undefined) {
+      setOriginalTextTooLong(false);
+    }
     setEditForm(next);
     onChange?.(next);
   };
@@ -123,6 +135,13 @@ function JobPostingEditForm({
     }
 
     setValidationError(null);
+
+    // サーバーも同じ上限で拒否するが、送る前に止めて、超えていることをその場で伝える。入力は残す。
+    if (isOriginalTextTooLong(editForm.originalText)) {
+      setOriginalTextTooLong(true);
+      originalTextRef.current?.focus();
+      return;
+    }
 
     const request: UpdateJobPostingRequest = {
       companyName:
@@ -217,13 +236,19 @@ function JobPostingEditForm({
         </label>
 
         <textarea
+          ref={originalTextRef}
           id={`edit-text-${jobPosting.id}`}
-          {...getFieldErrorAttributes('originalText')}
+          aria-invalid={fieldErrors.originalText ? true : undefined}
+          // 文字数と上限は常に、エラーはあるときだけ説明として読み上げる。
+          aria-describedby={fieldErrors.originalText
+            ? `edit-${jobPosting.id}-originalText-error edit-${jobPosting.id}-originalText-length`
+            : `edit-${jobPosting.id}-originalText-length`}
           value={editForm.originalText}
           readOnly={saving}
           required
           onChange={(event) => update({ originalText: event.target.value })}
         />
+        <OriginalTextLength id={`edit-${jobPosting.id}-originalText-length`} text={editForm.originalText} />
         {renderFieldError('originalText')}
       </div>
 

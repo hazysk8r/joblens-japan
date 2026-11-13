@@ -28,14 +28,6 @@ export const EMPTY_POSTING_DRAFT: PostingDraft = {
   applicationDeadline: '',
 };
 
-// サーバーの検証と同じ上限。
-const MAX_LENGTHS = {
-  companyName: 200,
-  title: 200,
-  sourceUrl: 2048,
-  originalText: 20000,
-} as const;
-
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 export function postingDraftKey(userId: number): string {
@@ -67,8 +59,10 @@ function readJson(key: string): unknown {
 }
 
 /**
- * 求人の入力値として正しい形かを確かめ、上限や選択肢に合わせて整える。正しくない場合はnullを返す。
+ * 求人の入力値として正しい形かを確かめ、選択肢に合わせて整える。正しくない場合はnullを返す。
  * ストレージの値は以前のバージョンや他のコードが書いた可能性があるため、型を信用せずに検証する。
+ * 文字数の上限を超えた値は切り詰めない。切り詰めた原文がそのまま登録されると、利用者も分析も末尾の欠けに気付けないため。
+ * 超えていることは文字数の表示とサーバーの検証で伝える。
  */
 function parsePostingValues(value: unknown): PostingDraft | null {
   if (typeof value !== 'object' || value === null) {
@@ -86,10 +80,10 @@ function parsePostingValues(value: unknown): PostingDraft | null {
   }
 
   return {
-    companyName: companyName.slice(0, MAX_LENGTHS.companyName),
-    title: title.slice(0, MAX_LENGTHS.title),
-    sourceUrl: sourceUrl.slice(0, MAX_LENGTHS.sourceUrl),
-    originalText: originalText.slice(0, MAX_LENGTHS.originalText),
+    companyName,
+    title,
+    sourceUrl,
+    originalText,
     salaryMin: salaryOf(record.salaryMin),
     salaryMax: salaryOf(record.salaryMax),
     applicationDeadline:

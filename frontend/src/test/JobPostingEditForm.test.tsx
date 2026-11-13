@@ -37,6 +37,11 @@ const unknownFieldCases: { name: string; fieldErrors: Record<string, string> }[]
 
 afterEach(cleanup);
 
+// エラーの説明が付いていないこと。原文の欄には文字数の説明が常に付く。
+function expectNoErrorDescription(input: HTMLElement) {
+  expect(input.getAttribute('aria-describedby') ?? '').not.toContain('-error');
+}
+
 describe('JobPostingEditFormのフィールドエラー', () => {
   test('七つの入力欄を個別のエラーメッセージと関連付ける', () => {
     const fieldErrors = Object.fromEntries(
@@ -59,8 +64,11 @@ describe('JobPostingEditFormのフィールドエラー', () => {
       expect(message).toHaveClass('job-posting-edit-form__error');
       expect(message).not.toHaveAttribute('role', 'alert');
       expect(input).toHaveAttribute('aria-invalid', 'true');
-      expect(input).toHaveAttribute('aria-describedby', message.id);
-      expect(input).toHaveAccessibleDescription(fieldErrors[field]);
+      expect(input.getAttribute('aria-describedby')?.split(' ')).toContain(message.id);
+      // 原文の欄は、エラーに続けて文字数も説明として読み上げる。
+      if (field !== 'originalText') {
+        expect(input).toHaveAccessibleDescription(fieldErrors[field]);
+      }
     }
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
@@ -81,12 +89,12 @@ describe('JobPostingEditFormのフィールドエラー', () => {
       expect(screen.getByLabelText('求人タイトル')).toHaveAccessibleDescription(fieldErrors.title);
     } else {
       expect(screen.getByLabelText('求人タイトル')).not.toHaveAttribute('aria-invalid');
-      expect(screen.getByLabelText('求人タイトル')).not.toHaveAttribute('aria-describedby');
+      expectNoErrorDescription(screen.getByLabelText('求人タイトル'));
     }
     for (const [field, label] of fields) {
       if (field !== 'title') {
         expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-invalid');
-        expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-describedby');
+        expectNoErrorDescription(screen.getByLabelText(label));
       }
     }
   });
@@ -106,7 +114,7 @@ describe('JobPostingEditFormのフィールドエラー', () => {
     );
     for (const [, label] of fields) {
       expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-invalid');
-      expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-describedby');
+      expectNoErrorDescription(screen.getByLabelText(label));
     }
     await user.clear(screen.getByLabelText('求人タイトル'));
     await user.type(screen.getByLabelText('求人タイトル'), '保存前の下書き');
@@ -138,7 +146,7 @@ describe('JobPostingEditFormのフィールドエラー', () => {
     );
     expect(screen.queryByText('最初のタイトルエラー')).not.toBeInTheDocument();
     expect(screen.getByLabelText('求人タイトル')).not.toHaveAttribute('aria-invalid');
-    expect(screen.getByLabelText('求人タイトル')).not.toHaveAttribute('aria-describedby');
+    expectNoErrorDescription(screen.getByLabelText('求人タイトル'));
     expect(screen.getByLabelText('最高月給')).toHaveAccessibleDescription('更新された最高月給エラー');
 
     rerender(
@@ -154,7 +162,7 @@ describe('JobPostingEditFormのフィールドエラー', () => {
     expect(screen.queryByText('更新された最高月給エラー')).not.toBeInTheDocument();
     for (const [, label] of fields) {
       expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-invalid');
-      expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-describedby');
+      expectNoErrorDescription(screen.getByLabelText(label));
     }
     expect(screen.getByLabelText('求人タイトル')).toHaveValue('保存前の下書きを継続');
     expect(screen.getByLabelText('求人原文')).toHaveValue(posting.originalText);

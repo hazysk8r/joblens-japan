@@ -24,6 +24,7 @@ import { isHttpUrl } from '../utils/httpUrl';
 import { formatSalaryRange } from '../utils/jobPostingFormat';
 import { listPathFromState } from '../utils/listReturn';
 import { memoDraftKey } from '../utils/memoDraftStorage';
+import { NAVIGATION_NOTICE_TEXT, navigationNoticeOf, withoutNotice } from '../utils/navigationNotice';
 import {
   postingEditDraftKey,
   postingValuesOf,
@@ -270,6 +271,22 @@ function JobPostingDetail({
   const nextSessionKeyRef = useRef(0);
   // 編集を終えたら、表示し直された編集ボタンへフォーカスを戻す(押したボタンはフォームと一緒に消えるため)。
   const focusEditButtonRef = useRef(false);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+
+  // 登録した直後に来たら知らせる。押した「登録」は画面と一緒に消えるため、フォーカスはタイトルへ移す。
+  useEffect(() => {
+    if (navigationNoticeOf(location.state, 'created') === null) {
+      return;
+    }
+    titleRef.current?.focus();
+    // 読み上げソフトには、領域と文言が同時に現れると読まないものがあるため、領域を表示した後に文言を入れる。
+    setTimeout(() => setNotice(NAVIGATION_NOTICE_TEXT.created), 0);
+    // 新しく読み込んだり、戻る・進むで同じ履歴に来たりしたときに、もう一度知らせないよう取り除く。
+    navigate(
+      { pathname: location.pathname, search: location.search },
+      { replace: true, state: withoutNotice(location.state) },
+    );
+  }, [location.pathname, location.search, location.state, navigate]);
 
   useEffect(() => {
     if (notice === null) {
@@ -375,13 +392,13 @@ function JobPostingDetail({
     removeDraft(memoDraftKey(userId, jobPosting.id));
     removeDraft(editDraftKey);
     // 戻る操作で削除した求人の画面に戻らないよう、履歴を置き換える。
-    navigate(listPathFromState(location.state), { replace: true });
+    navigate(listPathFromState(location.state), { replace: true, state: { notice: 'deleted' } });
   }
 
   return (
     <article className="detail-posting">
       <header className="detail-posting__header">
-        <h2 className="detail-posting__title">{jobPosting.title}</h2>
+        <h2 ref={titleRef} tabIndex={-1} className="detail-posting__title">{jobPosting.title}</h2>
         <p className="detail-posting__company">
           {jobPosting.companyName ?? '会社名未登録'}
         </p>

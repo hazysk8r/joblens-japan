@@ -11,6 +11,7 @@ import { ApiError } from '../api/apiError';
 import {
   createJobPosting,
   fetchApplicationStatusSummary,
+  fetchJobPosting,
   fetchJobPostings,
 } from '../api/jobPostingApi';
 import JobPostingCreateForm from '../components/JobPostingCreateForm';
@@ -146,14 +147,16 @@ describe('求人登録の入力の一時保存', () => {
     expect(sessionStorage.getItem(KEY)).toBeNull();
   });
 
-  test('登録に成功したら一時保存を消して一覧へ移動する', async () => {
+  test('登録に成功したら一時保存を消して、登録した求人の詳細画面へ移動する', async () => {
     sessionStorage.setItem(KEY, JSON.stringify(fullDraft));
     vi.mocked(createJobPosting).mockResolvedValue(created);
+    // 移った先の詳細画面の取得は、この検証では待たない。
+    vi.mocked(fetchJobPosting).mockReturnValue(new Promise(() => {}));
     const user = renderPage();
 
     await user.click(screen.getByRole('button', { name: '登録' }));
 
-    await screen.findByRole('heading', { name: '求人検索' });
+    await waitFor(() => expect(screen.queryByRole('heading', { name: '求人登録' })).not.toBeInTheDocument());
     expect(sessionStorage.getItem(KEY)).toBeNull();
   });
 
@@ -166,8 +169,8 @@ describe('求人登録の入力の一時保存', () => {
 
     await user.click(screen.getByRole('button', { name: '登録' }));
 
-    await screen.findByText('求人を登録しました。');
-    expect(sessionStorage.getItem('k')).toBeNull();
+    await waitFor(() => expect(createJobPosting).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(sessionStorage.getItem('k')).toBeNull());
     expect(screen.queryByText(RESTORED)).not.toBeInTheDocument();
   });
 
@@ -237,7 +240,8 @@ describe('求人登録の入力の一時保存', () => {
     expect(screen.queryByText(RESTORED)).not.toBeInTheDocument();
   });
 
-  test('長すぎる値は入力の上限までにする', () => {
+  // 切り詰めた原文がそのまま登録されると、末尾の欠けに気付けないため。超えていることは文字数の表示で伝える。
+  test('長すぎる値も切り詰めずに戻す', () => {
     sessionStorage.setItem(KEY, JSON.stringify({
       ...fullDraft,
       companyName: 'あ'.repeat(201),
@@ -248,10 +252,10 @@ describe('求人登録の入力の一時保存', () => {
 
     renderPage();
 
-    expect(field('会社名').value).toHaveLength(200);
-    expect(field('求人タイトル').value).toHaveLength(200);
-    expect(field('求人URL').value).toHaveLength(2048);
-    expect(field('求人原文').value).toHaveLength(20000);
+    expect(field('会社名').value).toHaveLength(201);
+    expect(field('求人タイトル').value).toHaveLength(201);
+    expect(field('求人URL').value).toHaveLength(2049);
+    expect(field('求人原文').value).toHaveLength(20001);
   });
 
   test.each([

@@ -149,7 +149,7 @@ describe('一覧の自動判定の案内', () => {
     vi.mocked(fetchJobPostings).mockResolvedValue(pageOf());
     renderHome();
 
-    await screen.findByText('検索結果はありません。');
+    await screen.findByText('まだ求人が登録されていません。');
     expect(screen.queryByText(NOTICE)).not.toBeInTheDocument();
   });
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, useRef } from 'react';
 import type { FormEvent } from 'react';
-import { Link, useSearchParams, useNavigationType } from 'react-router';
+import { Link, useLocation, useNavigate, useSearchParams, useNavigationType } from 'react-router';
 import '../JobPostingList.css';
 
 import {
@@ -28,6 +28,7 @@ import ApplicationStatusSummary
   from '../components/ApplicationStatusSummary';
 
 import { SALARY_OPTIONS } from '../constants/salaryOptions';
+import { NAVIGATION_NOTICE_TEXT, navigationNoticeOf, withoutNotice } from '../utils/navigationNotice';
 import {
   DEFAULT_SORTING,
   hasAdvancedConditions,
@@ -41,6 +42,9 @@ const DEADLINE_RANGE_ERROR_MESSAGE =
   '締切日（以降）を締切日（以前）より後の日付にすることはできません。';
 
 type JobPostingListQuery = Parameters<typeof fetchJobPostings>;
+
+// 操作の結果の知らせを表示しておく時間。詳細画面と同じ。
+const NOTICE_DURATION_MS = 3000;
 
 function HomePage() {
 
@@ -94,6 +98,40 @@ function HomePage() {
   const [previousUrlSearch, setPreviousUrlSearch] = useState(currentUrlSearch);
   // 詳細条件が適用されていれば開いて見せる。閉じていると、絞り込まれている理由が見えないため。
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(() => hasAdvancedConditions(urlConditions));
+
+  // 詳細画面で削除してから来たときの知らせ。
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (navigationNoticeOf(location.state, 'deleted') === null) {
+      return;
+    }
+    // 読み上げソフトには、領域と文言が同時に現れると読まないものがあるため、領域を表示した後に文言を入れる。
+    setTimeout(() => setNotice(NAVIGATION_NOTICE_TEXT.deleted), 0);
+    // 新しく読み込んだり、戻る・進むで同じ履歴に来たりしたときに、もう一度知らせないよう取り除く。
+    navigate(
+      { pathname: location.pathname, search: location.search },
+      { replace: true, state: withoutNotice(location.state) },
+    );
+  }, [location.pathname, location.search, location.state, navigate]);
+
+  useEffect(() => {
+    if (notice === null) {
+      return;
+    }
+    const timerId = setTimeout(() => setNotice(null), NOTICE_DURATION_MS);
+    return () => clearTimeout(timerId);
+  }, [notice]);
+
+  // 検索条件(並び順とページを除く)があるか。結果がないときの案内を分けるために使う。
+  const hasSearchConditions = keywordFromUrl !== ''
+    || statusFromUrl !== ''
+    || salaryMinFromUrl !== null
+    || salaryMaxFromUrl !== null
+    || deadlineStartFromUrl !== null
+    || deadlineEndFromUrl !== null;
 
   // 戻る・進む操作でURLが変わった場合、検索フォームをURLの状態に同期する。
   if (currentUrlSearch !== previousUrlSearch) {
@@ -505,6 +543,9 @@ function HomePage() {
         </Link>
       </header>
 
+      {/* 内容が変わったときに読み上げられるよう、領域は空でも表示しておく。 */}
+      <p role="status" className="home-notice">{notice}</p>
+
       <ApplicationStatusSummary
         summary={statusSummary}
         loading={summaryLoading}
@@ -731,7 +772,18 @@ function HomePage() {
           {error}
         </p>
       ) : jobPostings.length === 0 ? (
-        <p>検索結果はありません。</p>
+        hasSearchConditions ? (
+          <p>検索結果はありません。</p>
+        ) : (
+          // 初めての利用者には、何をすればよいかと、次の操作を案内する。
+          <div className="home-empty">
+            <p>まだ求人が登録されていません。</p>
+            <p>求人票を貼り付けて登録すると、固定残業代などを自動で確認できます。</p>
+            <Link to="/job-postings/new" className="create-job-posting-link">
+              ＋ 求人を登録する
+            </Link>
+          </div>
+        )
       ) : (
         <>
           {/* 自動判定であることと、根拠の確かめ方を一覧の前で伝える。カードごとに書くと繰り返しが多すぎるため。 */}

@@ -1,0 +1,27 @@
+.original-text-length {
+  /* 一覧のバッジや分析と同じ注意の色にし、画面の間で見え方をそろえる。 */
+  --original-text-length-warning: #b42318;
+
+  margin: 0.25rem 0 0;
+  color: var(--text);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* 超えたことは文章でも伝え、色だけに頼らない。 */
+.original-text-length--over {
+  color: var(--original-text-length-warning);
+  font-weight: 700;
+}
+
+.original-text-length__over {
+  display: block;
+  margin-top: 0.25rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .original-text-length {
+    --original-text-length-warning: #fda29b;
+  }
+}

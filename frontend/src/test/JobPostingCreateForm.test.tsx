@@ -10,6 +10,7 @@ import { ApiError } from '../api/apiError';
 import {
   createJobPosting,
   fetchApplicationStatusSummary,
+  fetchJobPosting,
   fetchJobPostings,
 } from '../api/jobPostingApi';
 import type { JobPosting } from '../types/jobPosting';
@@ -74,6 +75,11 @@ function LocationDisplay() {
   return <output data-testid="create-location">{location.pathname}</output>;
 }
 
+// エラーの説明が付いていないこと。原文の欄には文字数の説明が常に付く。
+function expectNoErrorDescription(input: HTMLElement) {
+  expect(input.getAttribute('aria-describedby') ?? '').not.toContain('-error');
+}
+
 beforeEach(() => {
   vi.resetAllMocks();
 });
@@ -95,7 +101,7 @@ describe('JobPostingCreateFormの項目エラー', () => {
 
     for (const [, label] of fields) {
       expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-invalid');
-      expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-describedby');
+      expectNoErrorDescription(screen.getByLabelText(label));
     }
 
     await fillRequiredFields(user);
@@ -109,8 +115,11 @@ describe('JobPostingCreateFormの項目エラー', () => {
       expect(message).toHaveAttribute('id', `create-${field}-error`);
       expect(message).not.toHaveAttribute('role', 'alert');
       expect(input).toHaveAttribute('aria-invalid', 'true');
-      expect(input).toHaveAttribute('aria-describedby', message.id);
-      expect(input).toHaveAccessibleDescription(fieldErrors[field]);
+      expect(input.getAttribute('aria-describedby')?.split(' ')).toContain(message.id);
+      // 原文の欄は、エラーに続けて文字数も説明として読み上げる。
+      if (field !== 'originalText') {
+        expect(input).toHaveAccessibleDescription(fieldErrors[field]);
+      }
     }
   });
 
@@ -146,7 +155,7 @@ describe('JobPostingCreateFormの項目エラー', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(message);
     for (const [, label] of fields) {
       expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-invalid');
-      expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-describedby');
+      expectNoErrorDescription(screen.getByLabelText(label));
     }
   });
 
@@ -179,7 +188,7 @@ describe('JobPostingCreateFormの項目エラー', () => {
     expect(screen.queryByText('以前の最低月給のエラー')).not.toBeInTheDocument();
     for (const [, label] of fields) {
       expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-invalid');
-      expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-describedby');
+      expectNoErrorDescription(screen.getByLabelText(label));
       expect(screen.getByLabelText(label)).toBeEnabled();
     }
 
@@ -204,7 +213,7 @@ describe('JobPostingCreateFormの項目エラー', () => {
     expect(screen.getByRole('button', { name: '登録' })).toBeEnabled();
   });
 
-  test('再送信の成功時にエラーと入力値を初期化し、登録完了を伝える', async () => {
+  test('再送信の成功時にエラーと入力値を初期化し、登録した求人を渡す', async () => {
     const user = userEvent.setup();
     const onCreated = vi.fn().mockResolvedValue(undefined);
     vi.mocked(createJobPosting)
@@ -218,22 +227,26 @@ describe('JobPostingCreateFormの項目エラー', () => {
     await screen.findByText('タイトルの確認が必要');
     await user.click(screen.getByRole('button', { name: '登録' }));
 
-    expect(await screen.findByText('求人を登録しました。')).toBeInTheDocument();
-    expect(onCreated).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onCreated).toHaveBeenCalledTimes(1));
+    expect(onCreated).toHaveBeenCalledWith(createdPosting);
+    // 登録の知らせは移った先の画面で出すため、フォームには出さない。
+    expect(screen.queryByText('求人を登録しました。')).not.toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.queryByText('タイトルの確認が必要')).not.toBeInTheDocument();
     for (const [, label] of fields) {
       expect(screen.getByLabelText(label)).toHaveValue('');
       expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-invalid');
-      expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-describedby');
+      expectNoErrorDescription(screen.getByLabelText(label));
     }
   });
 });
 
-test('登録ページで登録に成功すると既存のホームのパスへ移動する', async () => {
+test('登録ページでは登録が終わるまで留まり、終わったら登録した求人の詳細画面へ移る', async () => {
   const user = userEvent.setup();
   const request = deferred<JobPosting>();
   vi.mocked(createJobPosting).mockReturnValueOnce(request.promise);
+  // 移った先の詳細画面の取得は、この検証では待たない。
+  vi.mocked(fetchJobPosting).mockReturnValue(new Promise(() => {}));
   vi.mocked(fetchJobPostings).mockResolvedValue({
     content: [], page: 0, size: 5, totalElements: 0, totalPages: 0, first: true, last: true,
   });
@@ -255,9 +268,8 @@ test('登録ページで登録に成功すると既存のホームのパスへ�
   });
 
   await waitFor(() => {
-    expect(screen.getByTestId('create-location').textContent).toBe('/');
+    expect(screen.getByTestId('create-location').textContent).toBe(`/job-postings/${createdPosting.id}`);
   });
   expect(screen.queryByRole('heading', { name: '求人登録' })).not.toBeInTheDocument();
-  expect(screen.getByRole('textbox', { name: '検索キーワード' })).toBeInTheDocument();
-  expect(fetchJobPostings).toHaveBeenCalled();
+  expect(fetchJobPosting).toHaveBeenCalledWith(createdPosting.id, expect.any(AbortSignal));
 });

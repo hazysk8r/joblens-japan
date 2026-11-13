@@ -3,7 +3,9 @@ import type { FormEvent } from 'react';
 import './JobPostingCreateForm.css';
 import { createJobPosting } from '../api/jobPostingApi';
 import { ApiError, userMessageOf } from '../api/apiError';
-import type { CreateJobPostingRequest, SalaryFilter } from '../types/jobPosting';
+import type { CreateJobPostingRequest, JobPosting, SalaryFilter } from '../types/jobPosting';
+import OriginalTextLength from './OriginalTextLength';
+import { isOriginalTextTooLong, ORIGINAL_TEXT_TOO_LONG_MESSAGE } from '../utils/originalTextLength';
 import { SALARY_OPTIONS } from '../constants/salaryOptions';
 import {
   EMPTY_POSTING_DRAFT,
@@ -13,11 +15,8 @@ import {
 } from '../utils/postingDraftStorage';
 
 interface JobPostingCreateFormProps {
-  /**
-   * 登録成功後に親コンポーネントの一覧を
-   * 再取得するために呼び出す。
-   */
-  onCreated: () => Promise<void> | void;
+  // 登録に成功したときに、登録した求人を渡して呼ぶ。
+  onCreated: (jobPosting: JobPosting) => Promise<void> | void;
   // 入力途中の内容を一時保存するキー。ユーザーごとに分ける。
   draftKey: string;
 }
@@ -40,9 +39,9 @@ function JobPostingCreateForm({
   // 身に覚えのない入力に見えないよう、復元したことを知らせて消去できるようにする。
   const [restored, setRestored] = useState(restoredDraft !== null);
   const companyNameRef = useRef<HTMLInputElement>(null);
+  const originalTextRef = useRef<HTMLTextAreaElement>(null);
 
   const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -107,13 +106,20 @@ function JobPostingCreateForm({
   ) => {
     event.preventDefault();
 
+    // サーバーも同じ上限で拒否するが、送る前に止めて、超えていることをその場で伝える。入力は残す。
+    if (isOriginalTextTooLong(originalText)) {
+      setError(null);
+      setFieldErrors({ originalText: ORIGINAL_TEXT_TOO_LONG_MESSAGE });
+      originalTextRef.current?.focus();
+      return;
+    }
+
     setSubmitting(true);
-    setMessage(null);
     setError(null);
     setFieldErrors({});
 
     try {
-      await createJobPosting({
+      const created = await createJobPosting({
         /*
          * 任意の入力値は、空の場合にnullとして渡す。
          */
@@ -131,13 +137,8 @@ function JobPostingCreateForm({
        */
       clearInputs();
 
-      setMessage('求人を登録しました。');
-
-      /*
-       * 親コンポーネントに登録完了を伝え、
-       * 一覧を再取得させる。
-       */
-      await onCreated();
+      // 登録したことは、移った先の画面で知らせる。この画面はすぐに離れるため、ここでは表示しない。
+      await onCreated(created);
     } catch (caughtError) {
       if (caughtError instanceof ApiError) {
         setFieldErrors(caughtError.fieldErrors);
@@ -208,14 +209,20 @@ function JobPostingCreateForm({
         <div>
           <label htmlFor="originalText">求人原文</label>
           <textarea
+            ref={originalTextRef}
             id="originalText"
-            {...getFieldErrorAttributes('originalText')}
+            aria-invalid={fieldErrors.originalText ? true : undefined}
+            // 文字数と上限は常に、エラーはあるときだけ説明として読み上げる。
+            aria-describedby={fieldErrors.originalText
+              ? 'create-originalText-error create-originalText-length'
+              : 'create-originalText-length'}
             value={originalText}
             onChange={(event) =>
               setOriginalText(event.target.value)
             }
             required
           />
+          <OriginalTextLength id="create-originalText-length" text={originalText} />
           {renderFieldError('originalText')}
         </div>
 
@@ -302,7 +309,6 @@ function JobPostingCreateForm({
         </button>
       </form>
 
-      {message && <p>{message}</p>}
       {error && (
         <p role="alert" className="job-posting-create-form__error">
           {error}
