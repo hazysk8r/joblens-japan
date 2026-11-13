@@ -7,6 +7,7 @@ import { ApiError } from '../api/apiError';
 import { useAuth } from '../auth/useAuth';
 
 import './AccountPage.css';
+import PageTitle from '../components/PageTitle';
 
 const PASSWORD_ERROR_ID = 'account-delete-password-error';
 
@@ -70,6 +71,7 @@ function AccountPage() {
 
   return (
     <main className="account-page">
+      <PageTitle name="アカウント設定" />
       <header className="account-page-header">
         <h1>JobLens Japan</h1>
         <Link to="/" className="back-to-home-link">← 求人一覧に戻る</Link>

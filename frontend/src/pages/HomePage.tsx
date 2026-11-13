@@ -36,6 +36,7 @@ import {
   parsePage,
   searchParamsOf,
 } from '../utils/listSearchParams';
+import PageTitle from '../components/PageTitle';
 
 // サーバーのValidDeadlineRangeと同じ文言にする。
 const DEADLINE_RANGE_ERROR_MESSAGE =
@@ -524,6 +525,8 @@ function HomePage() {
 
   return (
     <main>
+      {/* 検索語は載せない(PageTitleの説明を参照)。 */}
+      <PageTitle name="求人一覧" />
       <header className="home-header">
         <h1>
           <button

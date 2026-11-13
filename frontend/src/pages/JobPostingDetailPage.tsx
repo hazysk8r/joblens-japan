@@ -34,6 +34,7 @@ import {
   type PostingDraft,
   type PostingEditDraft,
 } from '../utils/postingDraftStorage';
+import PageTitle from '../components/PageTitle';
 
 // 成功の案内を表示しておく時間。他の案内と同じ。
 const NOTICE_DURATION_MS = 3000;
@@ -84,6 +85,7 @@ function DetailLayout({ children }: { children: ReactNode }) {
 function NotFound() {
   return (
     <section className="detail-page-message">
+      <PageTitle name="求人が見つかりません" />
       <h2>求人が見つかりません</h2>
       <p>削除されたか、URLが間違っている可能性があります。</p>
     </section>
@@ -577,6 +579,23 @@ function JobPostingDetail({
 function JobPostingDetailContent({ id }: { id: number }) {
   const { state, retry, replaceJobPosting } = useJobPostingDetail(id);
 
+  // 求人のタイトルや会社名は載せない(PageTitleの説明を参照)。
+  if (state.status !== 'notFound') {
+    return (
+      <>
+        <PageTitle name="求人の詳細" />
+        <JobPostingDetailState state={state} retry={retry} replaceJobPosting={replaceJobPosting} />
+      </>
+    );
+  }
+  return <NotFound />;
+}
+
+function JobPostingDetailState({
+  state,
+  retry,
+  replaceJobPosting,
+}: ReturnType<typeof useJobPostingDetail>) {
   switch (state.status) {
     case 'loading':
       return <p className="detail-page-message">読み込み中…</p>;

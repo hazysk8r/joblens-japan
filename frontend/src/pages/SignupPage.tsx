@@ -11,6 +11,7 @@ import { validateSignup } from '../utils/signupValidation';
 import type { SignupFieldErrors, SignupInput } from '../utils/signupValidation';
 
 import './LoginPage.css';
+import PageTitle from '../components/PageTitle';
 
 const EMAIL_ALREADY_EXISTS = 'EMAIL_ALREADY_EXISTS';
 
@@ -117,6 +118,7 @@ function SignupPage() {
 
   return (
     <main className="login-page">
+      <PageTitle name="会員登録" />
       <header className="login-page-header">
         <h1>JobLens Japan</h1>
       </header>

@@ -9,6 +9,7 @@ import { useAuth } from '../auth/useAuth';
 import { redirectPathFromState } from '../utils/safeRedirect';
 
 import './LoginPage.css';
+import PageTitle from '../components/PageTitle';
 
 function LoginPage() {
   const { state, login, retry } = useAuth();
@@ -57,6 +58,7 @@ function LoginPage() {
 
   return (
     <main className="login-page">
+      <PageTitle name="ログイン" />
       <header className="login-page-header">
         <h1>JobLens Japan</h1>
       </header>

@@ -6,6 +6,7 @@ import JobPostingCreateForm
   from '../components/JobPostingCreateForm';
 import type { JobPosting } from '../types/jobPosting';
 import { postingDraftKey } from '../utils/postingDraftStorage';
+import PageTitle from '../components/PageTitle';
 
 function CreateJobPostingPage() {
 
@@ -22,6 +23,7 @@ function CreateJobPostingPage() {
 
   return (
     <main className="create-page">
+      <PageTitle name="求人の登録" />
       <header className="create-page-header">
         <h1>JobLens Japan</h1>
 
