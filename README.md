@@ -47,7 +47,7 @@ DevOps
 
 - Job posting CRUD
 - Job posting detail page with automatic analysis, memos, status changes, and history
-- Job posting list as summary cards with a short excerpt of the original text
+- Job posting list as summary cards with a short excerpt of the original text and a fixed overtime pay badge
 - Application status filtering and updates
 - Pagination and sorting
 - Job posting memo CRUD
@@ -55,6 +55,11 @@ DevOps
 - Application status change history with automatic refresh, limited to the latest 100 entries per posting
 - Rule-based technical keyword extraction from job posting text
 - Rule-based job posting analysis on the detail page: splits pasted text into sections by heading, ignores other listings that job sites append, and detects fixed overtime pay (固定残業代) with its hours and the source lines as evidence, keeping "not mentioned" separate from "cannot determine"
+- Required and preferred skill judgment: classifies each technology as required, preferred, listed in the requirements without a marker, contradictory, or only mentioned elsewhere, handling negations and "any one of" choices, with the source lines as evidence
+- Analysis evidence highlighted in the original text on the detail page ("原文で見る")
+- First posting flow: the new posting's detail page opens after creation with a notice, and an empty list shows how to get started
+- Original text character counter, with submissions over the limit blocked instead of truncating drafts
+- A separate page title for each page, without the posting name on the detail page
 - Application status summaries using a single grouped database query
 
 ### Search and Filtering
@@ -98,6 +103,7 @@ DevOps
 - Job posting analysis stale-response prevention with `AbortController`
 - Job posting list stale-response protection
 - Background refresh of memos and history that keeps the current list and unsaved input on screen
+- Data-loading hooks that do not refetch when a new fetcher function is passed on each render
 - Memo mutation retry handling
 - Memo stale save-response protection
 - URL query state for all search conditions (keyword, status, salary, deadline, sorting, page), ignoring invalid values
@@ -113,6 +119,7 @@ DevOps
 - PostgreSQL integration tests with Testcontainers
 - Optimistic locking integration tests
 - Regression tests for request validation, field-level error display, independent summary loading
+- Rule tests for the job posting analysis (fixed overtime pay, required and preferred skills)
 - Docker Compose smoke tests
 - GitHub Actions CI
 
@@ -132,6 +139,8 @@ Database schema changes are managed with Flyway.
 
 Authentication uses server-side sessions stored in PostgreSQL through Spring Session JDBC.
 
+Job posting analysis is computed from the saved original text on each request and is not stored.
+
 Detail page data (memos, history, analysis) is loaded through custom hooks, while UI-related state remains in the component.
 
 All search conditions are synchronized with URL query parameters through React Router.
@@ -140,7 +149,7 @@ Docker Compose provides a local environment, with Nginx serving the frontend and
 
 ## Current Development
 
-- Highlighting analysis evidence in the original text on the detail page
+- Adding more analysis items to the detail page, such as required Japanese level and visa support
 
 - Preparing production settings for deployment, including proxy headers, HSTS, secure cookies, and database and actuator exposure
 
