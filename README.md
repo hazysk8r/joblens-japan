@@ -1,160 +1,107 @@
 # JobLens Japan
 
-A web application with a Japanese UI, under development for saving, searching, and managing job postings.
+日本の求人票を貼り付けると、固定残業代や必須・歓迎スキルを根拠の文と一緒に読み取る、求人管理アプリです。
 
-This project focuses not only on basic CRUD operations, but also on API consistency,
-concurrency control, search performance, authentication, frontend state management, and regression testing.
+ステータス：開発中
 
-Status: In Development
+<!-- 下書き：ご自身の就職活動で困った経験に書き換えてください。 -->
+## 解決したい課題
 
-## Tech Stack
+日本の求人票では、大事な条件が読み取りにくい形で書かれていることがあります。
 
-Backend
+- 「月給30万円（固定残業代40時間分を含む）」のように、固定残業代が給与の中に埋もれている
+- 「必須」「歓迎」「尚可」「いずれか」「不問」などの書き方で、どのスキルが本当に必要なのかが分かりにくい
+- 求人サイトからコピーすると、他の求人や関係のない文まで混ざる
 
-* Java 21
-* Spring Boot
-* Spring Security
-* Spring Session JDBC
-* Spring Data JPA
-* Hibernate
-* PostgreSQL
-* Flyway
+JobLens Japanは、こうした条件をルールに基づいて読み取り、**判定の根拠となった原文の行を必ず一緒に示します**。
 
-Frontend
+## 主な機能
 
-* React
-* TypeScript
-* Vite
-* React Router
+<!-- スクリーンショット：分析パネル、「原文で見る」の強調表示、一覧のバッジ -->
 
-Testing
+- **固定残業代の判定**：有無と時間数を判定し、「記載なし」と「判定できず」を区別して表示します
+- **必須・歓迎スキルの判定**：技術ごとに「必須」「歓迎」「応募資格に記載」「判定できず」「その他の記載」に分けます。否定の表現や「いずれか」の選択も扱います
+- **原文で見る**：判定の根拠を、原文の中で強調表示します
+- **求人票の管理**：登録、検索、応募状況の管理、メモ、変更履歴。一覧のカードには固定残業代のバッジが付きます
+- **アカウントとデータの分離**：セッション認証で、ほかのユーザーの求人票は見えません
 
-* JUnit Jupiter
-* MockMvc
-* Testcontainers
-* Vitest
-* React Testing Library
+すべての機能は [docs/features.md](docs/features.md) にまとめています。
 
-DevOps
+## デモ
 
-* Docker / Docker Compose
-* Nginx
-* GitHub Actions
+公開の準備中です。
 
-## Implemented Features
+## 技術構成
 
-### Job Posting Management
-
-- Job posting CRUD
-- Job posting detail page with automatic analysis, memos, status changes, and history
-- Job posting list as summary cards with a short excerpt of the original text and a fixed overtime pay badge
-- Application status filtering and updates
-- Pagination and sorting
-- Job posting memo CRUD
-- Application deadline registration and editing
-- Application status change history with automatic refresh, limited to the latest 100 entries per posting
-- Rule-based technical keyword extraction from job posting text
-- Rule-based job posting analysis on the detail page: splits pasted text into sections by heading, ignores other listings that job sites append, and detects fixed overtime pay (固定残業代) with its hours and the source lines as evidence, keeping "not mentioned" separate from "cannot determine"
-- Required and preferred skill judgment: classifies each technology as required, preferred, listed in the requirements without a marker, contradictory, or only mentioned elsewhere, handling negations and "any one of" choices, with the source lines as evidence
-- Analysis evidence highlighted in the original text on the detail page ("原文で見る")
-- First posting flow: the new posting's detail page opens after creation with a notice, and an empty list shows how to get started
-- Original text character counter, with submissions over the limit blocked instead of truncating drafts
-- A separate page title for each page, without the posting name on the detail page
-- Application status summaries using a single grouped database query
-
-### Search and Filtering
-
-- Keyword search
-- Monthly salary range filtering and validation
-- Application deadline range filtering and validation
-- Reversed deadline ranges blocked before a search request is sent
-- Advanced search filter UI
-- PostgreSQL `pg_trgm` + GIN search optimization
-
-### Authentication and Authorization
-
-- Email-based signup, login, and logout
-- Session authentication with Spring Session JDBC
-- CSRF protection for the single-page application
-- Per-user job posting ownership, with other users' resources returned as 404
-- Login state synchronization across browser tabs
-- Screen reset when the logged-in user changes
-- Account deletion with password confirmation
-
-### Security and Error Handling
-
-- Nginx rate limiting for login, signup, account deletion, and write APIs
-- Nginx request body size limit
-- Security headers, including a Content Security Policy
-- Job posting source URLs restricted to http and https
-- Per-user storage limits for job postings, memos, and status history, plus a total user limit
-- Consistent JSON API error responses
-- Database error mapping based on SQLState
-
-### Concurrency and API Consistency
-
-- Optimistic locking with JPA `@Version`
-- ETag / If-Match conditional updates
-- Malformed If-Match header validation
-- Flush-time optimistic lock conflict handling
-
-### Frontend Reliability
-
-- Job posting analysis stale-response prevention with `AbortController`
-- Job posting list stale-response protection
-- Background refresh of memos and history that keeps the current list and unsaved input on screen
-- Data-loading hooks that do not refetch when a new fetcher function is passed on each render
-- Memo mutation retry handling
-- Memo stale save-response protection
-- URL query state for all search conditions (keyword, status, salary, deadline, sorting, page), ignoring invalid values
-- Search condition restoration on browser back/forward and when returning from the detail page
-- Pagination boundary correction
-- Edit-session protection and recovery after version conflicts
-- Field-level validation messages in both create and edit forms
-- Unsaved create, edit, and memo input kept across session expiry, and cleared on logout or user change
-
-### Testing and CI
-
-- Backend and frontend regression tests
-- PostgreSQL integration tests with Testcontainers
-- Optimistic locking integration tests
-- Regression tests for request validation, field-level error display, independent summary loading
-- Rule tests for the job posting analysis (fixed overtime pay, required and preferred skills)
-- Docker Compose smoke tests
-- GitHub Actions CI
-
-## Architecture
+| 分類 | 技術 |
+|---|---|
+| バックエンド | Java 21, Spring Boot 4.1, Spring Security, Spring Session JDBC, Spring Data JPA, Hibernate, PostgreSQL 16, Flyway |
+| フロントエンド | React 19, TypeScript 6, Vite 8, React Router 8 |
+| テスト | JUnit Jupiter, MockMvc, Testcontainers, Vitest, React Testing Library |
+| インフラ・CI | Docker / Docker Compose, Nginx, GitHub Actions |
 
 ```text
-React
-↓ REST API
-Nginx
-↓ Reverse proxy
+ブラウザ（React）
+↓ HTTP
+Nginx（静的ファイルの配信 / APIのリバースプロキシ）
+↓
 Spring Boot
-↓ Service / Spring Data JPA
+↓ Spring Data JPA
 PostgreSQL
 ```
 
-Database schema changes are managed with Flyway.
+- データベースのスキーマはFlywayで管理しています。
+- セッションはSpring Session JDBCでPostgreSQLに保存しています。
+- すべての検索条件をURLのクエリに保持しているので、ブラウザの戻る・進むで元の条件に戻れます。
+- Docker Composeでは、Nginxがフロントエンドを配信し、APIへのリクエストをバックエンドに転送します。
 
-Authentication uses server-side sessions stored in PostgreSQL through Spring Session JDBC.
+## 設計で工夫した点
 
-Job posting analysis is computed from the saved original text on each request and is not stored.
+1. **分析はLLMではなくルールベースにして、根拠を必ず示す**<br>
+   誤った判定をもっともらしく見せないためです。判定できないときは「判定できず」と表示します。分析結果は保存せず、表示のたびに保存済みの原文から計算するので、判定規則を直せば過去の求人票にもすぐに反映されます。
+2. **ETagと楽観的ロックで、同時編集による上書きを防ぐ**<br>
+   JPAの `@Version` とIf-Matchヘッダーを組み合わせ、別のタブなどで先に更新されていれば保存を止めます。競合した後も、入力中の内容は失われません。
+3. **セッション認証とCSRF対策、所有者の確認**<br>
+   JWTではなくサーバー側のセッションを使い、SPA向けのCSRF対策を入れています。ほかのユーザーの求人票には、存在するかどうかも分からないよう404を返します。
 
-Detail page data (memos, history, analysis) is loaded through custom hooks, while UI-related state remains in the component.
+## ローカルでの起動方法
 
-All search conditions are synchronized with URL query parameters through React Router.
+Docker と Docker Compose が必要です。
 
-Docker Compose provides a local environment, with Nginx serving the frontend and proxying API requests.
+```bash
+cp .env.example .env
+docker compose up -d --build
+```
 
-## Current Development
+起動したら http://localhost:3000 を開き、会員登録してから使います。ポートやデータベースの接続情報は `.env` で変更できます。
 
-- Adding more analysis items to the detail page, such as required Japanese level and visa support
+停止するときは次のコマンドを使います。
 
-- Preparing production settings for deployment, including proxy headers, HSTS, secure cookies, and database and actuator exposure
+```bash
+docker compose down
+```
 
-## Planned
+## テスト・CI
 
-* Job posting detail page
-* Location, employment type, and remote work filters
-* Continue AWS deployment learning and deployment verification
+```bash
+cd backend
+./gradlew test
+```
+
+フロントエンドのテストには、CIと同じNode.js 24が必要です。
+
+```bash
+cd frontend
+npm ci
+npm run lint
+npm test -- --run
+```
+
+- バックエンドの結合テストはTestcontainersでPostgreSQLを起動するため、Dockerが必要です。
+- GitHub Actionsで、バックエンドのテストとビルド、フロントエンドのlint・テスト・ビルド、Docker Composeのスモークテストを実行しています。
+
+## 今後の予定
+
+- 分析項目の追加（求められる日本語のレベル、ビザのサポートなど）
+- 勤務地、雇用形態、リモートワークによる絞り込み
+- 本番環境向けの設定（プロキシヘッダー、HSTS、セキュアCookie、データベースとActuatorの公開範囲）と公開
