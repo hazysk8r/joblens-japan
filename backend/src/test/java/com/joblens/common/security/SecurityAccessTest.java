@@ -1,5 +1,7 @@
 package com.joblens.common.security;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static com.joblens.CsrfTestSupport.CSRF_COOKIE;
 import static com.joblens.CsrfTestSupport.CSRF_HEADER;
@@ -195,5 +197,76 @@ class SecurityAccessTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(JOB_POSTING_BODY))
                 .andExpect(status().isCreated());
+    }
+
+    /**
+     * ログイン前のトークンを、ログイン後に使い続けられないことを確かめる。
+     * ログイン前に知られたトークン(共有のPCや、攻撃者が仕込んだCookie)でCSRFが通らないようにするため。
+     */
+    private void assertCsrfTokenRenewed(MvcResult authResult, Cookie tokenBeforeAuth) throws Exception {
+        Cookie session = authResult.getResponse().getCookie("SESSION");
+        assertNotNull(session, "セッションCookieが発行されていない");
+
+        Cookie renewed = authResult.getResponse().getCookie(CSRF_COOKIE);
+        assertNotNull(renewed, "CSRFトークンのCookieが発行し直されていない");
+        assertFalse(renewed.getValue().isEmpty(), "CSRFトークンのCookieが空になっている");
+        assertNotEquals(tokenBeforeAuth.getValue(), renewed.getValue(), "ログイン前と同じトークンになっている");
+
+        // ブラウザのCookieは新しいトークンに置き換わるため、古いトークンをヘッダーに入れても通らない。
+        mockMvc.perform(post("/api/job-postings")
+                        .cookie(session, renewed)
+                        .header(CSRF_HEADER, tokenBeforeAuth.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(JOB_POSTING_BODY))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("CSRF_TOKEN_INVALID"));
+
+        mockMvc.perform(post("/api/job-postings")
+                        .cookie(session, renewed)
+                        .header(CSRF_HEADER, renewed.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(JOB_POSTING_BODY))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void 会員登録するとCSRFトークンが発行し直され以前のトークンは使えない() throws Exception {
+        Cookie csrfCookie = fetchCsrfCookie();
+
+        MvcResult signup = mockMvc.perform(post("/api/auth/signup")
+                        .cookie(csrfCookie)
+                        .header(CSRF_HEADER, csrfCookie.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                              "email": "user@example.com",
+                              "password": "password123"
+                            }
+                            """))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        assertCsrfTokenRenewed(signup, csrfCookie);
+    }
+
+    @Test
+    void ログインするとCSRFトークンが発行し直され以前のトークンは使えない() throws Exception {
+        loginAsNewUser();
+        Cookie csrfCookie = fetchCsrfCookie();
+
+        MvcResult login = mockMvc.perform(post("/api/auth/login")
+                        .cookie(csrfCookie)
+                        .header(CSRF_HEADER, csrfCookie.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                              "email": "user@example.com",
+                              "password": "password123"
+                            }
+                            """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        assertCsrfTokenRenewed(login, csrfCookie);
     }
 }
