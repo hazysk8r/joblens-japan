@@ -67,32 +67,45 @@ JobLens Japanで行っているセキュリティ対策と、その理由をま�
 
 ### 3.1 JWTではなくサーバー側のセッションを使う
 
-- **選んだ理由**：（記入）
-- **選ばなかった案**：（記入）
+- **選んだ理由**：ログイン状態をサーバー側（PostgreSQL）に保存しているため、ログアウトや退会のときに、その場でログインを終わらせられる。退会では、ほかの端末でログイン中のセッションもまとめて削除している。
+- **どう実装したか**：Spring Session JDBCでセッションをPostgreSQLに保存し、ブラウザにはセッションIDだけをCookieで渡す。操作がないまま30分たつとセッションは切れる。
+- **どう確認したか**：ログアウトした後は同じセッションで使えないこと、退会するとほかの端末のセッションも使えなくなることをテストしている。
+- **選ばなかった案**：JWTはサーバーに状態を持たないため、サーバーを増やしやすい。しかし、発行済みのトークンは有効期限まで使えてしまい、サーバーから取り消せない。取り消すには無効にしたトークンの一覧をサーバーに持つ必要があり、状態を持たない利点がなくなる。JobLensはサーバー1台とデータベースの構成で、即座にログインを終わらせられることのほうが大事なため、セッションを選んだ。
 
-> 根拠：`SecurityConfig`、Spring Session JDBC（`V10__create_users_and_sessions.sql`）
+> 根拠：`SecurityConfig`、Spring Session JDBC（`V10__create_users_and_sessions.sql`）、`application.yaml`（`server.servlet.session.timeout: 30m`）、`AuthControllerTest`、`AccountDeletionIntegrationTest`
 
 ### 3.2 セッションCookieの属性
 
-- **HttpOnly**：（記入）
-- **SameSite=Lax**：（記入）
-- **Secure（既定でtrue）**：（記入）
+- **HttpOnly**：JavaScriptからCookieを読めなくする。XSSが起きても、スクリプトがセッションIDを読んで外部に送ることはできない。
+- **SameSite=Lax**：別のサイトからのPOSTなどにはCookieを付けない。CSRFに対する追加の防御（2.1）。
+- **Secure（既定でtrue）**：HTTPSのときだけCookieを送る。公共のWi-Fiなどで、HTTPの通信からセッションIDを盗み見られるのを防ぐ。
+  - 既定をtrueにし、HTTPで動かすローカル環境でだけ `SESSION_COOKIE_SECURE=false` を指定する。逆に「既定はfalseで、本番でだけtrueにする」と、本番で設定を忘れても何のエラーも出ず、気付かないまま危ない状態で公開してしまう。設定を忘れたときに安全なほうに倒れるようにした。
+  - HTTPSかどうかの自動判定に任せないのは、プロキシの後ろでは常にHTTPと判断され、Secureが付かない場合があるため。
+- **どう確認したか**：ログインで発行されるセッションCookieに、HttpOnly・SameSite=Lax・Secureが付くことをテストしている。`SESSION_COOKIE_SECURE=false` のときだけSecureが外れ、HttpOnlyは残ることもテストしている。
 
-> 根拠：`SessionCookieConfig`、`SessionCookieSecureDisabledTest`
+> 根拠：`SessionCookieConfig`、`AuthControllerTest`、`SessionCookieSecureDisabledTest`
 
 ### 3.3 セッション固定攻撃の対策
 
-- **何を防ぐか**：（記入）
-- **どう実装したか**：（記入）
+- **何を防ぐか**：ログイン前のセッションIDを攻撃者が知っていたり、被害者のブラウザに仕込んだりしておき、被害者がログインした後にそのセッションIDで本人になりすますこと（セッション固定攻撃）。
+- **なければ何が起きるか**：ログインしてもセッションIDが変わらないと、攻撃者は自分のブラウザでそのセッションIDを使うだけで、被害者としてログインした状態になる。2.2のCSRFトークンは被害者のブラウザを通さないと使えないが、セッションIDはログインそのものなので、アカウントを直接乗っ取られる。
+- **どう実装したか**：ログインと会員登録に成功したら、セッションIDを変える（`changeSessionId`）。JSONで受け取る独自のログインAPIでは、Spring Securityが自動で行わないため、自分で行っている。
+- **どう確認したか**：ログインするとセッションIDが変わり、ログイン前のセッションIDでは使えないことをテストしている。
 
-> 根拠：`LoginSessionManager`（`changeSessionId`）
+> 根拠：`LoginSessionManager`（`changeSessionId`）、`AuthControllerTest`
 
 ### 3.4 パスワードの保存と退会
 
-- **パスワード**：（記入）
-- **退会**：（記入）
+- **パスワード**：
+  - 平文ではなくbcryptのハッシュで保存する。データベースが漏れても、元のパスワードはすぐには分からない。
+  - SHA-256のような速いハッシュは、GPUで1秒に何十億回も試せるため、漏れたハッシュから総当たりでパスワードを見つけやすい。bcryptは1回の計算をわざと遅くしているため、総当たりに時間がかかる。ユーザーごとにランダムなソルトも入るため、同じパスワードでも違うハッシュになり、事前に計算した表も使えない。
+  - `{bcrypt}` のような接頭辞を付けて保存しているため、将来アルゴリズムを変えても、今のハッシュをそのまま検証できる。
+- **退会**：
+  - 退会の前に、パスワードをもう一度確認する。ログインしたまま離れた共有のパソコンなどで、ほかの人に退会させられないようにするため。パスワードの総当たりに使われないよう、退会のリクエスト数も制限している（4.1）。
+  - 退会すると、求人票・メモ・変更履歴と、ほかの端末を含むすべてのセッションを削除する。
+- **どう確認したか**：パスワードがハッシュで保存されること、正しいパスワードで退会すると本人のデータとすべてのセッションが消え、ほかのユーザーのデータは残ることをテストしている。
 
-> 根拠：`SecurityConfig`（`createDelegatingPasswordEncoder`）、`AuthService.deleteAccount`、`AccountDeletionIntegrationTest`
+> 根拠：`SecurityConfig`（`createDelegatingPasswordEncoder`）、`AuthService.deleteAccount`、`AuthControllerTest`、`AccountDeletionTest`、`AccountDeletionIntegrationTest`
 
 ## 4. 使いすぎ・悪用の防止
 
