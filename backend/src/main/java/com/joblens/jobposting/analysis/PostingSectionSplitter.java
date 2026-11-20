@@ -47,7 +47,6 @@ public final class PostingSectionSplitter {
             "キャリアガイドの記事");
 
     private static final Pattern BRACKET_HEADING = Pattern.compile("^【([^】]{1,30})】(.*)$");
-    private static final Pattern TRAILING_COLON = Pattern.compile("\\s*:$");
     private static final Pattern LINE_BREAK = Pattern.compile("\\R");
 
     private PostingSectionSplitter() {
@@ -101,7 +100,7 @@ public final class PostingSectionSplitter {
                 rest = bracket.group(2).strip();
                 restStart = start + bracket.start(2) + bracket.group(2).indexOf(rest);
             } else {
-                String candidate = TRAILING_COLON.matcher(normalized).replaceFirst("");
+                String candidate = removeTrailingColon(normalized);
                 if (HEADINGS.contains(candidate)) {
                     newHeading = candidate;
                     newHeadingLine = new SourceLine(line, start);
@@ -130,6 +129,29 @@ public final class PostingSectionSplitter {
             sections.add(new PostingSection(heading, lines, headingLine));
         }
         return sections;
+    }
+
+    /**
+     * 末尾のコロンと、その直前の空白を除く(「給与 :」を「給与」にする)。
+     *
+     * 正規表現(\s*:$)は使わない。行の途中に空白が長く続くと、空白の1文字ごとに末尾まで読み直し、
+     * 原文の上限(2万文字)の1行で1秒近くかかるため。末尾から1回だけ読む。
+     * 行には改行を含まないため、正規表現の$が改行の前にも一致する違いは起きない。
+     */
+    static String removeTrailingColon(String text) {
+        if (!text.endsWith(":")) {
+            return text;
+        }
+        int end = text.length() - 1;
+        while (end > 0 && isAsciiSpace(text.charAt(end - 1))) {
+            end--;
+        }
+        return text.substring(0, end);
+    }
+
+    /** 正規表現の\sと同じ空白(Unicodeの空白は含まない)。 */
+    static boolean isAsciiSpace(char c) {
+        return c == ' ' || c == '\t' || c == '\n' || c == '\u000B' || c == '\f' || c == '\r';
     }
 
     /** 全角英数字・全角記号・全角空白を半角にそろえる。 */

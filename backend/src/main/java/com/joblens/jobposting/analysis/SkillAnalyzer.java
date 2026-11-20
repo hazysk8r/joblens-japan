@@ -114,9 +114,10 @@ public final class SkillAnalyzer {
     private static final Set<String> REQUIREMENT_LABELS =
             Set.of("応募資格", "対象となる方", "応募条件", "必要なスキル", "求めるスキル", "求める経験");
 
-    /** 「■必須」「＜歓迎＞」「・必須条件:」のような、表示の前後に付く記号。 */
-    private static final Pattern LABEL_DECORATION =
-            Pattern.compile("^[\\s■◆●○◇□・*\\-<>\\[\\]〈〉《》【】「」]+|[\\s:<>\\[\\]〉》】」]+$");
+    /** 「■必須」「＜歓迎＞」「・必須条件:」のような、表示の前に付く記号(空白は別に判定する)。 */
+    private static final String LEADING_DECORATION = "■◆●○◇□・*-<>[]〈〉《》【】「」";
+    /** 表示の後ろに付く記号(空白は別に判定する)。 */
+    private static final String TRAILING_DECORATION = ":<>[]〉》】」";
 
     // ---- 1行の中の表示(小文字にしてNFKCで正規化した文に当てる)
 
@@ -179,7 +180,7 @@ public final class SkillAnalyzer {
         if (text == null) {
             return null;
         }
-        String label = LABEL_DECORATION.matcher(text).replaceAll("");
+        String label = removeLabelDecoration(text);
         if (REQUIRED_LABELS.contains(label)) {
             return Found.REQUIRED;
         }
@@ -190,6 +191,29 @@ public final class SkillAnalyzer {
             return Found.IN_REQUIREMENTS;
         }
         return null;
+    }
+
+    /**
+     * 表示の前後に付く記号と空白を除く。
+     *
+     * 正規表現(末尾の[...]+$)は使わない。行の途中に記号や空白が長く続くと、1文字ごとに末尾まで読み直し、
+     * 原文の上限(2万文字)の1行で数秒かかるため。前と後ろから1回ずつ読む。
+     * 前の記号を除いた残りから後ろの記号を除くため、以前の正規表現(replaceAll)と同じ結果になる。
+     */
+    static String removeLabelDecoration(String text) {
+        int start = 0;
+        while (start < text.length() && isDecoration(text.charAt(start), LEADING_DECORATION)) {
+            start++;
+        }
+        int end = text.length();
+        while (end > start && isDecoration(text.charAt(end - 1), TRAILING_DECORATION)) {
+            end--;
+        }
+        return text.substring(start, end);
+    }
+
+    private static boolean isDecoration(char c, String decorations) {
+        return PostingSectionSplitter.isAsciiSpace(c) || decorations.indexOf(c) >= 0;
     }
 
     private static String normalize(String text) {
