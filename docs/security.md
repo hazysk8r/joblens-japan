@@ -36,8 +36,6 @@ JobLens Japanで行っているセキュリティ対策と、その理由をま�
 
 > 根拠：`ExpectedUserInterceptor`（`X-Expected-User-Id`）、`ExpectedUserCheckTest`、`frontend/src/api/apiClient.ts`、`frontend/src/auth/authSync.ts`
 
-> 根拠：`ExpectedUserInterceptor`（`X-Expected-User-Id`）、`ExpectedUserCheckTest`
-
 ## 2. CSRF対策
 
 ### 2.1 CookieとヘッダーのトークンでCSRFを防ぐ

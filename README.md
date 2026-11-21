@@ -64,6 +64,8 @@ PostgreSQL
 3. **セッション認証とCSRF対策、所有者の確認**<br>
    JWTではなくサーバー側のセッションを使い、SPA向けのCSRF対策を入れています。ほかのユーザーの求人票には、存在するかどうかも分からないよう404を返します。
 
+設計の判断と選ばなかった案は [docs/design-decisions.md](docs/design-decisions.md) に、セキュリティ対策の詳細と意図して残している制限は [docs/security.md](docs/security.md) にまとめています。
+
 ## ローカルでの起動方法
 
 Docker と Docker Compose が必要です。
