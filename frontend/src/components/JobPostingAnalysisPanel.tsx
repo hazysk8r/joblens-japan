@@ -14,6 +14,15 @@ type JobPostingAnalysisPanelProps = {
   // 根拠ごとに、原文の中で示せるか。示せる根拠にだけ「原文で見る」を出す。
   showableEvidence?: boolean[];
   onShowEvidence?: (index: number) => void;
+  // 技術の根拠を原文の中で示せるか。示せる根拠にだけ「原文で見る」を出す。
+  canShowSkillEvidence?: (evidence: AnalysisEvidence) => boolean;
+  // labelは画面に出す技術の名前(「Java・Pythonのいずれか」など)。
+  onShowSkillEvidence?: (label: string, evidence: AnalysisEvidence) => void;
+};
+
+type SkillEvidenceActions = {
+  canShow: (evidence: AnalysisEvidence) => boolean;
+  onShow: (label: string, evidence: AnalysisEvidence) => void;
 };
 
 function EvidenceList({
@@ -109,7 +118,13 @@ function skillItemsOf(skills: SkillAnalysis[], level: SkillLevel): SkillItem[] {
   return items;
 }
 
-function SkillGroups({ skills }: { skills: SkillAnalysis[] }) {
+function SkillGroups({
+  skills,
+  evidenceActions,
+}: {
+  skills: SkillAnalysis[];
+  evidenceActions: SkillEvidenceActions | null;
+}) {
   const idPrefix = useId();
   // 知らない判定(サーバーが新しい判定を返した場合など)の技術は表示しない。
   const groups = SKILL_GROUPS
@@ -139,19 +154,36 @@ function SkillGroups({ skills }: { skills: SkillAnalysis[] }) {
       <details className="job-posting-analysis__skill-evidence">
         <summary>判定の根拠を見る</summary>
         <ul>
-          {groups.flatMap((group) => group.items).map((item) => (
-            <li key={item.key}>
-              <span className="job-posting-analysis__skill-name">{item.label}</span>
-              {item.evidence.map((line, index) => (
-                <span key={index} className="job-posting-analysis__skill-line">
-                  {line.section !== null && (
-                    <span className="job-posting-analysis__evidence-section">{line.section}</span>
-                  )}
-                  {line.text}
-                </span>
-              ))}
-            </li>
-          ))}
+          {groups.flatMap((group) => group.items).map((item, itemIndex) => {
+            const nameId = `${idPrefix}-skill-${itemIndex}`;
+            return (
+              <li key={item.key}>
+                <span id={nameId} className="job-posting-analysis__skill-name">{item.label}</span>
+                {item.evidence.map((line, index) => {
+                  const lineId = `${nameId}-line-${index}`;
+                  return (
+                    <span key={index} className="job-posting-analysis__skill-line">
+                      {line.section !== null && (
+                        <span className="job-posting-analysis__evidence-section">{line.section}</span>
+                      )}
+                      <span id={lineId}>{line.text}</span>
+                      {evidenceActions !== null && evidenceActions.canShow(line) && (
+                        // 同じ名前のボタンが並ぶため、どの技術のどの行のボタンかを説明として読み上げる。
+                        <button
+                          type="button"
+                          className="job-posting-analysis__show-evidence"
+                          aria-describedby={`${nameId} ${lineId}`}
+                          onClick={() => evidenceActions.onShow(item.label, line)}
+                        >
+                          原文で見る
+                        </button>
+                      )}
+                    </span>
+                  );
+                })}
+              </li>
+            );
+          })}
         </ul>
       </details>
     </>
@@ -162,7 +194,12 @@ export default function JobPostingAnalysisPanel({
   analysis,
   showableEvidence = [],
   onShowEvidence,
+  canShowSkillEvidence,
+  onShowSkillEvidence,
 }: JobPostingAnalysisPanelProps) {
+  const skillEvidenceActions = canShowSkillEvidence !== undefined && onShowSkillEvidence !== undefined
+    ? { canShow: canShowSkillEvidence, onShow: onShowSkillEvidence }
+    : null;
   const headingId = useId();
   const fixedOvertimeHeadingId = `${headingId}-fixed-overtime`;
   const skillsHeadingId = `${headingId}-skills`;
@@ -204,7 +241,7 @@ export default function JobPostingAnalysisPanel({
         <h4 id={skillsHeadingId} className="job-posting-analysis__heading">
           技術スタック
         </h4>
-        <SkillGroups skills={skills} />
+        <SkillGroups skills={skills} evidenceActions={skillEvidenceActions} />
         <p className="job-posting-analysis__note">辞書にある技術名だけを表示します。</p>
       </section>
 

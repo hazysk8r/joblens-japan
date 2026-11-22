@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { flushSync } from 'react-dom';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 
 import './JobPostingDetailPage.css';
@@ -16,9 +17,19 @@ import { useJobPostingDetail } from '../hooks/useJobPostingDetail';
 import { useJobPostingEdit } from '../hooks/useJobPostingEdit';
 import { useJobPostingStatusChange } from '../hooks/useJobPostingStatusChange';
 import { useJobPostingStatusHistory } from '../hooks/useJobPostingStatusHistory';
-import type { JobPosting, JobPostingAnalysis, UpdateJobPostingRequest } from '../types/jobPosting';
+import type {
+  AnalysisEvidence,
+  JobPosting,
+  JobPostingAnalysis,
+  UpdateJobPostingRequest,
+} from '../types/jobPosting';
 import { formatDateTime } from '../utils/date';
-import { locateEvidence, segmentsOf, type EvidenceRange } from '../utils/evidenceHighlight';
+import {
+  locateEvidence,
+  placeSelectedEvidence,
+  segmentsOf,
+  type EvidenceRange,
+} from '../utils/evidenceHighlight';
 import { removeDraft } from '../utils/draftStorage';
 import { isHttpUrl } from '../utils/httpUrl';
 import { formatSalaryRange } from '../utils/jobPostingFormat';
@@ -97,10 +108,14 @@ function JobPostingAnalysisBody({
   analysis,
   evidenceRanges,
   onShowEvidence,
+  canShowSkillEvidence,
+  onShowSkillEvidence,
 }: {
   analysis: ReturnType<typeof useJobPostingAnalysis>;
   evidenceRanges: (EvidenceRange | null)[];
   onShowEvidence: (index: number) => void;
+  canShowSkillEvidence: (evidence: AnalysisEvidence) => boolean;
+  onShowSkillEvidence: (label: string, evidence: AnalysisEvidence) => void;
 }) {
   const { state, retry } = analysis;
 
@@ -122,6 +137,8 @@ function JobPostingAnalysisBody({
           analysis={state.analysis}
           showableEvidence={evidenceRanges.map((range) => range !== null)}
           onShowEvidence={onShowEvidence}
+          canShowSkillEvidence={canShowSkillEvidence}
+          onShowSkillEvidence={onShowSkillEvidence}
         />
       );
 
@@ -134,29 +151,50 @@ function JobPostingAnalysisBody({
 }
 
 /**
- * 求人票の原文。分析の根拠の行を強調する。
+ * 求人票の原文。固定残業代の根拠の行を強調し、選んだ技術の根拠の行も強調する。
  * 原文の中には文字を足さない。複製したときに元の原文と同じになるようにするため。
  * 強調した行が判定の根拠であることは、画面に出さない説明(aria-describedby)で読み上げる。
+ *
+ * evidenceRangesの前からfixedOvertimeCount個は固定残業代の根拠、その後ろは選んだ技術の根拠。
  */
 function OriginalText({
   text,
   evidenceRanges,
+  fixedOvertimeCount,
   currentEvidence,
+  selectedSkillLabel,
   markIdOf,
 }: {
   text: string;
   evidenceRanges: (EvidenceRange | null)[];
+  fixedOvertimeCount: number;
   currentEvidence: number | null;
+  selectedSkillLabel: string | null;
   markIdOf: (index: number) => string;
 }) {
-  const descriptionId = useId();
-  const count = evidenceRanges.filter((range) => range !== null).length;
+  const fixedOvertimeDescriptionId = useId();
+  const skillDescriptionId = useId();
+  const bothDescriptionId = useId();
+  const count = evidenceRanges.slice(0, fixedOvertimeCount).filter((range) => range !== null).length;
+
+  function descriptionIdOf(index: number): string {
+    if (index >= fixedOvertimeCount) {
+      return skillDescriptionId;
+    }
+    // 技術の根拠が固定残業代の根拠と同じ行なら、両方の判定の根拠として読み上げる。
+    return index === currentEvidence && selectedSkillLabel !== null ? bothDescriptionId : fixedOvertimeDescriptionId;
+  }
 
   return (
     <>
       {count > 0 && (
         <p className="detail-posting__evidence-notice">
           {`色付きの行は固定残業代の判定の根拠です（${count}か所）。`}
+        </p>
+      )}
+      {selectedSkillLabel !== null && (
+        <p className="detail-posting__evidence-notice">
+          {`選択中の行は「${selectedSkillLabel}」の判定の根拠です。`}
         </p>
       )}
       <p className="detail-posting__original-text">
@@ -167,7 +205,7 @@ function OriginalText({
               id={markIdOf(segment.evidenceIndex)}
               // 「原文で見る」からフォーカスを移せるようにする。Tabの順番には入れない。
               tabIndex={-1}
-              aria-describedby={descriptionId}
+              aria-describedby={descriptionIdOf(segment.evidenceIndex)}
               className={segment.evidenceIndex === currentEvidence
                 ? 'detail-posting__evidence detail-posting__evidence--current'
                 : 'detail-posting__evidence'}
@@ -177,10 +215,21 @@ function OriginalText({
           )
         ))}
       </p>
-      <span id={descriptionId} hidden>固定残業代の判定の根拠</span>
+      <span id={fixedOvertimeDescriptionId} hidden>固定残業代の判定の根拠</span>
+      {selectedSkillLabel !== null && (
+        <>
+          <span id={skillDescriptionId} hidden>{`「${selectedSkillLabel}」の判定の根拠`}</span>
+          <span id={bothDescriptionId} hidden>{`固定残業代と「${selectedSkillLabel}」の判定の根拠`}</span>
+        </>
+      )}
     </>
   );
 }
+
+// 「原文で見る」で見ている根拠。labelは画面に出す技術の名前(「Java・Pythonのいずれか」など)。
+type ShownEvidence =
+  | { analysis: JobPostingAnalysis; kind: 'fixedOvertime'; index: number }
+  | { analysis: JobPostingAnalysis; kind: 'skill'; label: string; evidence: AnalysisEvidence };
 
 const PAGE_SECTIONS = [
   { headingId: 'detail-analysis-heading', label: '分析' },
@@ -236,22 +285,53 @@ function JobPostingDetail({
   const loadedAnalysis = analysis.state.status === 'loaded' ? analysis.state.analysis : null;
   const evidenceRanges = locateEvidence(jobPosting.originalText, loadedAnalysis?.fixedOvertime.evidence ?? []);
   // 「原文で見る」で見ている根拠。分析を取り直したら位置が変わり得るため、どの分析の根拠かも持つ。
-  const [shownEvidence, setShownEvidence] = useState<{ analysis: JobPostingAnalysis; index: number } | null>(null);
-  const currentEvidence = shownEvidence !== null && shownEvidence.analysis === loadedAnalysis
-    ? shownEvidence.index
+  // 見ている根拠は、固定残業代と技術を合わせて1つだけにする。
+  const [shownEvidence, setShownEvidence] = useState<ShownEvidence | null>(null);
+  const shown = shownEvidence !== null && shownEvidence.analysis === loadedAnalysis ? shownEvidence : null;
+  const skillPlacement = shown?.kind === 'skill'
+    ? placeSelectedEvidence(jobPosting.originalText, evidenceRanges, shown.evidence)
     : null;
+  const selectedSkillLabel = shown?.kind === 'skill' && skillPlacement !== null ? shown.label : null;
+  // 技術の根拠は、選んだときだけ固定残業代の根拠の後ろに足して強調する。
+  const highlightRanges = skillPlacement?.kind === 'added'
+    ? [...evidenceRanges, skillPlacement.range]
+    : evidenceRanges;
+  const skillMarkIndex = skillPlacement === null
+    ? null
+    : skillPlacement.kind === 'existing' ? skillPlacement.index : evidenceRanges.length;
+  const currentEvidence = shown?.kind === 'fixedOvertime' ? shown.index : skillMarkIndex;
   const evidenceIdPrefix = useId();
   const markIdOf = (index: number) => `${evidenceIdPrefix}-evidence-${index}`;
+
+  // 強調する行を描画してから、その行を画面の中央に出してフォーカスする。
+  function moveToEvidence(next: ShownEvidence, markIndex: number) {
+    flushSync(() => setShownEvidence(next));
+    const mark = document.getElementById(markIdOf(markIndex));
+    // 上に固定した移動バーに隠れないよう、画面の中央に出す。
+    mark?.scrollIntoView({ block: 'center' });
+    mark?.focus({ preventScroll: true });
+  }
 
   function showEvidence(index: number) {
     if (loadedAnalysis === null) {
       return;
     }
-    setShownEvidence({ analysis: loadedAnalysis, index });
-    const mark = document.getElementById(markIdOf(index));
-    // 上に固定した移動バーに隠れないよう、画面の中央に出す。
-    mark?.scrollIntoView({ block: 'center' });
-    mark?.focus({ preventScroll: true });
+    moveToEvidence({ analysis: loadedAnalysis, kind: 'fixedOvertime', index }, index);
+  }
+
+  function canShowSkillEvidence(evidence: AnalysisEvidence) {
+    return placeSelectedEvidence(jobPosting.originalText, evidenceRanges, evidence) !== null;
+  }
+
+  function showSkillEvidence(label: string, evidence: AnalysisEvidence) {
+    const placement = placeSelectedEvidence(jobPosting.originalText, evidenceRanges, evidence);
+    if (loadedAnalysis === null || placement === null) {
+      return;
+    }
+    moveToEvidence(
+      { analysis: loadedAnalysis, kind: 'skill', label, evidence },
+      placement.kind === 'existing' ? placement.index : evidenceRanges.length,
+    );
   }
   const { updating, error: statusError, notice: statusNotice, changeStatus } = useJobPostingStatusChange({
     jobPosting,
@@ -546,6 +626,8 @@ function JobPostingDetail({
             analysis={analysis}
             evidenceRanges={evidenceRanges}
             onShowEvidence={showEvidence}
+            canShowSkillEvidence={canShowSkillEvidence}
+            onShowSkillEvidence={showSkillEvidence}
           />
         </section>
 
@@ -556,8 +638,10 @@ function JobPostingDetail({
           <h3 id="detail-original-heading" tabIndex={-1}>求人票の原文</h3>
           <OriginalText
             text={jobPosting.originalText}
-            evidenceRanges={evidenceRanges}
+            evidenceRanges={highlightRanges}
+            fixedOvertimeCount={evidenceRanges.length}
             currentEvidence={currentEvidence}
+            selectedSkillLabel={selectedSkillLabel}
             markIdOf={markIdOf}
           />
         </section>
