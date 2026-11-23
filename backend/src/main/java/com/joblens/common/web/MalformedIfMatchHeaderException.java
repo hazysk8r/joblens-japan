@@ -1,4 +1,4 @@
-package com.joblens.jobposting.exception;
+package com.joblens.common.web;
 
 public class MalformedIfMatchHeaderException extends IllegalArgumentException{
   public MalformedIfMatchHeaderException(String malformedIfMatch) {

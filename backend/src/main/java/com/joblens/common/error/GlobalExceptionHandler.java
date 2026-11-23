@@ -5,14 +5,15 @@ import com.joblens.auth.exception.InvalidPasswordException;
 import com.joblens.auth.exception.SignupClosedException;
 import com.joblens.auth.exception.UserNoLongerExistsException;
 import com.joblens.common.web.AuthContextChangedException;
-import com.joblens.jobposting.exception.IfMatchRequiredException;
+import com.joblens.common.web.IfMatchRequiredException;
 import com.joblens.jobposting.exception.InvalidPageException;
 import com.joblens.jobposting.exception.InvalidSortFieldException;
 import com.joblens.jobposting.exception.JobPostingLimitReachedException;
 import com.joblens.jobposting.exception.JobPostingNotFoundException;
 import com.joblens.jobposting.exception.JobPostingVersionConflictException;
-import com.joblens.jobposting.exception.MalformedIfMatchHeaderException;
+import com.joblens.common.web.MalformedIfMatchHeaderException;
 import com.joblens.note.exception.JobPostingMemoNotFoundException;
+import com.joblens.note.exception.JobPostingMemoVersionConflictException;
 import com.joblens.note.exception.MemoLimitReachedException;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -203,6 +204,17 @@ public class GlobalExceptionHandler {
             return ResponseEntity
                             .status(HttpStatus.PRECONDITION_FAILED)
                             .body(response);
+    }
+
+    @ExceptionHandler(JobPostingMemoVersionConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleJobPostingMemoVersionConflict(
+                    JobPostingMemoVersionConflictException exception,
+                    HttpServletRequest request) {
+            return errorResponse(
+                            HttpStatus.PRECONDITION_FAILED,
+                            "JOB_POSTING_MEMO_VERSION_CONFLICT",
+                            exception.getMessage(),
+                            request);
     }
 
     @ExceptionHandler(IfMatchRequiredException.class)

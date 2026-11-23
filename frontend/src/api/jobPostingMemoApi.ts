@@ -69,9 +69,14 @@ export async function deleteJobPostingMemo(
   }
 }
 
+/**
+ * メモを編集する。expectedVersionは編集を始めたときのバージョン。
+ * ほかで先に保存されていれば、サーバーは上書きせずに412を返す。
+ */
 export async function updateJobPostingMemo(
   jobPostingId: number,
   memoId: number,
+  expectedVersion: number,
   request: UpdateJobPostingMemoRequest,
 ): Promise<JobPostingMemo> {
   const response = await apiFetch(
@@ -80,6 +85,7 @@ export async function updateJobPostingMemo(
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'If-Match': `"${expectedVersion}"`,
       },
       body: JSON.stringify(request),
     },

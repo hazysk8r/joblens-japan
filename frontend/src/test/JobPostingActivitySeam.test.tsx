@@ -41,7 +41,7 @@ function stubServer(
     applicationDeadline: null,
     version: 0,
   };
-  let notes: { id: number; content: string; createdAt: string; updatedAt: string }[] = [];
+  let notes: { id: number; content: string; createdAt: string; updatedAt: string; version: number }[] = [];
 
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
     const method = init?.method ?? 'GET';
@@ -77,7 +77,7 @@ function stubServer(
     if (url === NOTES_URL && method === 'POST' && session.postNotes) return session.postNotes();
     if (url === NOTES_URL && method === 'POST') {
       const { content } = JSON.parse(String(init?.body)) as { content: string };
-      const note = { id: 1, content, createdAt: '2026-11-08T00:00:00Z', updatedAt: '2026-11-08T00:00:00Z' };
+      const note = { id: 1, content, createdAt: '2026-11-08T00:00:00Z', updatedAt: '2026-11-08T00:00:00Z', version: 0 };
       notes = [note];
       return json(note, 201);
     }

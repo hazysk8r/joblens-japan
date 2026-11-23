@@ -1,11 +1,15 @@
 package com.joblens.note.controller;
 
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -15,6 +19,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
@@ -312,6 +317,7 @@ public class JobPostingMemoControllerTest {
     mockMvc.perform(put("/api/job-postings/{jobPostingId}/notes/{memoId}", 
                     jobPostingId, 
                     memoId)
+                  .header(HttpHeaders.IF_MATCH, "\"0\"")
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(requestBody))
                 .andExpect(status().isOk())
@@ -363,6 +369,7 @@ public class JobPostingMemoControllerTest {
     mockMvc.perform(put("/api/job-postings/{jobPostingId}/notes/{memoId}",
         jobPostingId,
         memoId)
+                  .header(HttpHeaders.IF_MATCH, "\"0\"")
         .contentType(MediaType.APPLICATION_JSON)
         .content(requestBody))
         .andExpect(status().isNotFound())
@@ -404,6 +411,7 @@ public class JobPostingMemoControllerTest {
     mockMvc.perform(put("/api/job-postings/{jobPostingId}/notes/{memoId}",
         jobPostingId,
         memoAId)
+                  .header(HttpHeaders.IF_MATCH, "\"0\"")
         .contentType(MediaType.APPLICATION_JSON)
         .content(requestBody))
         .andExpect(status().isOk())
@@ -444,6 +452,7 @@ public class JobPostingMemoControllerTest {
       String updateResponse = mockMvc.perform(
               put("/api/job-postings/{jobPostingId}/notes/{memoId}",
                       jobPostingId, memoId)
+                  .header(HttpHeaders.IF_MATCH, "\"0\"")
                       .contentType(MediaType.APPLICATION_JSON)
                       .content("""
                               {
@@ -468,5 +477,118 @@ public class JobPostingMemoControllerTest {
                               .value(updatedAt));
   }
 
+  // ---- 同時編集による上書きの防止(If-Matchとバージョン)
+
+  private JobPostingMemo saveMemo(String content) {
+    JobPosting jobPosting = jobPostingRepository.save(new JobPosting(
+        testUsers.defaultUserId(), "テスト会社", "メモテスト情報", "https://example.com/memotest",
+        "メモが正常に作動するかな", null, null, null));
+    return jobPostingMemoRepository.save(new JobPostingMemo(content, jobPosting));
+  }
+
+  private ResultActions updateMemo(JobPostingMemo memo, String ifMatch, String content) throws Exception {
+    var request = put("/api/job-postings/{jobPostingId}/notes/{memoId}", memo.getJobPosting().getId(), memo.getId())
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(objectMapper.writeValueAsString(java.util.Map.of("content", content)));
+    if (ifMatch != null) {
+      request.header(HttpHeaders.IF_MATCH, ifMatch);
+    }
+    return mockMvc.perform(request);
+  }
+
+  private String contentOf(JobPostingMemo memo) {
+    return jobPostingMemoRepository.findById(memo.getId()).orElseThrow().getContent();
+  }
+
+  @Test
+  void 登録と一覧の応答にバージョンを含める() throws Exception {
+    JobPostingMemo memo = saveMemo("メモ");
+
+    mockMvc.perform(post("/api/job-postings/{jobPostingId}/notes", memo.getJobPosting().getId())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "content": "新しいメモ"
+                }
+                """))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.version").value(0));
+
+    mockMvc.perform(get("/api/job-postings/{jobPostingId}/notes", memo.getJobPosting().getId()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[*].version", containsInAnyOrder(0, 0)));
+  }
+
+  @Test
+  void 編集に成功するとバージョンを上げてETagで返す() throws Exception {
+    JobPostingMemo memo = saveMemo("メモ");
+
+    updateMemo(memo, "\"0\"", "1回目")
+        .andExpect(status().isOk())
+        .andExpect(header().string(HttpHeaders.ETAG, "\"1\""))
+        .andExpect(jsonPath("$.version").value(1));
+    updateMemo(memo, "\"1\"", "2回目")
+        .andExpect(status().isOk())
+        .andExpect(header().string(HttpHeaders.ETAG, "\"2\""))
+        .andExpect(jsonPath("$.version").value(2));
+
+    assertEquals("2回目", contentOf(memo));
+  }
+
+  @Test
+  void 以前のバージョンで編集すると_412を返し内容を変えない() throws Exception {
+    JobPostingMemo memo = saveMemo("メモ");
+    // 別の画面で先に保存された。
+    updateMemo(memo, "\"0\"", "別の画面の内容").andExpect(status().isOk());
+
+    updateMemo(memo, "\"0\"", "この画面の内容")
+        .andExpect(status().isPreconditionFailed())
+        .andExpect(jsonPath("$.code").value("JOB_POSTING_MEMO_VERSION_CONFLICT"));
+
+    assertEquals("別の画面の内容", contentOf(memo));
+  }
+
+  @Test
+  void If_Matchがなければ_428を返し内容を変えない() throws Exception {
+    JobPostingMemo memo = saveMemo("メモ");
+
+    updateMemo(memo, null, "変更後")
+        .andExpect(status().isPreconditionRequired())
+        .andExpect(jsonPath("$.code").value("IF_MATCH_REQUIRED"));
+
+    assertEquals("メモ", contentOf(memo));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"0", "W/\"0\"", "\"abc\"", "\"-1\"", "\"99999999999999999999\"", "*"})
+  void If_Matchの形式が正しくなければ_400を返し内容を変えない(String ifMatch) throws Exception {
+    JobPostingMemo memo = saveMemo("メモ");
+
+    updateMemo(memo, ifMatch, "変更後")
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("MALFORMED_IF_MATCH_HEADER"));
+
+    assertEquals("メモ", contentOf(memo));
+  }
+
+  @Test
+  void 別の求人のメモを誤ったバージョンで編集しても_412ではなく_404を返す() throws Exception {
+    JobPostingMemo memo = saveMemo("メモ");
+    JobPostingMemo otherMemo = saveMemo("別の求人のメモ");
+
+    mockMvc.perform(put("/api/job-postings/{jobPostingId}/notes/{memoId}",
+            memo.getJobPosting().getId(), otherMemo.getId())
+            .header(HttpHeaders.IF_MATCH, "\"99\"")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "content": "変更後"
+                }
+                """))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("JOB_POSTING_MEMO_NOT_FOUND"));
+
+    assertEquals("別の求人のメモ", contentOf(otherMemo));
+  }
 
 }

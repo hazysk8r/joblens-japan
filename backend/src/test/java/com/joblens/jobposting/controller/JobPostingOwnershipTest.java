@@ -318,6 +318,7 @@ class JobPostingOwnershipTest {
         long memoId = createMemo(userB, postingId, "Bのメモ");
 
         mockMvc.perform(as(userA, put("/api/job-postings/{id}/notes/{memoId}", postingId, memoId))
+                        .header(HttpHeaders.IF_MATCH, "\"99\"")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(MEMO_BODY))
                 .andExpect(status().isNotFound());
@@ -335,6 +336,7 @@ class JobPostingOwnershipTest {
         long othersMemoId = createMemo(userB, othersPostingId, "Bのメモ");
 
         mockMvc.perform(as(userA, put("/api/job-postings/{id}/notes/{memoId}", myPostingId, othersMemoId))
+                        .header(HttpHeaders.IF_MATCH, "\"99\"")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(MEMO_BODY))
                 .andExpect(status().isNotFound());

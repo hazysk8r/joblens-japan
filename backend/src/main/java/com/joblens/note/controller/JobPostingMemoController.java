@@ -11,10 +11,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.joblens.auth.security.AuthenticatedUser;
+import com.joblens.common.web.IfMatchHeader;
 import com.joblens.note.dto.CreateJobPostingMemoRequest;
 import com.joblens.note.dto.JobPostingMemoResponse;
 import com.joblens.note.dto.UpdateJobPostingMemoRequest;
@@ -63,13 +65,25 @@ public class JobPostingMemoController {
     return ResponseEntity.noContent().build();
   }
 
+  /**
+   * メモを編集する。求人と同じく、画面が読み込んだときのバージョンをIf-Matchで受け取り、
+   * ほかで先に保存されていれば412にして上書きしない。
+   */
   @PutMapping("/{memoId}")
-  public JobPostingMemoResponse update(
+  public ResponseEntity<JobPostingMemoResponse> update(
     @AuthenticationPrincipal AuthenticatedUser user,
     @PathVariable Long memoId,
     @PathVariable Long jobPostingId,
+    @RequestHeader(value = "If-Match", required = false) String ifMatch,
     @Valid @RequestBody UpdateJobPostingMemoRequest request
   ) {
-    return jobPostingMemoService.update(user.getId(), jobPostingId, memoId, request);
+    Long expectedVersion = IfMatchHeader.parse(ifMatch);
+    JobPostingMemoResponse response =
+        jobPostingMemoService.update(user.getId(), jobPostingId, memoId, expectedVersion, request);
+
+    return ResponseEntity
+            .ok()
+            .eTag(String.valueOf(response.version()))
+            .body(response);
   }
 }

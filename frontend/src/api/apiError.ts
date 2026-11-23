@@ -107,3 +107,13 @@ export const isJobPostingVersionConflict = (
       'JOB_POSTING_VERSION_CONFLICT'
   );
 };
+
+export const isJobPostingMemoVersionConflict = (
+  error: unknown,
+): boolean => {
+  return (
+    error instanceof ApiError &&
+    error.status === 412 &&
+    error.code === 'JOB_POSTING_MEMO_VERSION_CONFLICT'
+  );
+};

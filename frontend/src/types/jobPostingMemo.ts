@@ -4,6 +4,8 @@ export interface JobPostingMemo {
   content: string;
   createdAt: string;
   updatedAt: string;
+  // 編集のときにIf-Matchで送り返すバージョン。
+  version: number;
 }
 
 export interface CreateJobPostingMemoRequest {

@@ -16,6 +16,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -40,6 +41,10 @@ public class JobPostingMemo {
   @UpdateTimestamp
   @Column(name="updated_at", nullable = false)
   private Instant updatedAt;
+
+  // 同時編集による上書きを防ぐための楽観的ロック。If-Matchで送られたバージョンと比べる。
+  @Version
+  private Long version;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name="job_posting_id", nullable = false)

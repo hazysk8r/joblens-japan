@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 import { useAuth } from '../auth/useAuth';
 import { useJobPostingMemos } from '../hooks/useJobPostingMemos';
 import type { JobPostingMemo } from '../types/jobPostingMemo';
@@ -17,14 +19,16 @@ function JobPostingMemoSection({ jobPostingId }: { jobPostingId: number }) {
     refreshMemos,
     memoMutationError,
     deletingMemoId,
-    editingMemoId,
+    editSession,
     savingMemoId,
     memoUpdateError,
     startMemoEdit,
     cancelMemoEdit,
     saveMemoEdit,
+    reloadMemoEdit,
     deleteMemo,
   } = useJobPostingMemos(jobPostingId);
+  const latestHeadingId = useId();
 
   // 削除確認はUIの責任なのでComponent側で行う。実際のDELETE処理はHookへ委譲する。
   async function handleMemoDeletion(memoId: number) {
@@ -34,16 +38,45 @@ function JobPostingMemoSection({ jobPostingId }: { jobPostingId: number }) {
   }
 
   function renderMemo(memo: JobPostingMemo) {
-    if (editingMemoId === memo.id) {
+    if (editSession !== null && editSession.memoId === memo.id) {
+      // 取り直した一覧のバージョンが編集の元と違うときだけ、最新の内容として見せる。
+      // 取り直しに失敗したときは、古い内容を最新として見せない。
+      const latestShown = editSession.conflict && memo.version !== editSession.baseVersion;
       return (
         <>
           <JobPostingMemoEditForm
+            key={editSession.formKey}
             jobPostingMemo={memo}
+            initialContent={editSession.initialContent}
             saving={savingMemoId === memo.id}
+            locked={editSession.reloading}
+            focusOnMount={editSession.reloaded}
             onSave={(request) => saveMemoEdit(memo.id, request)}
             onCancel={cancelMemoEdit}
           />
           {memoUpdateError !== null && <p role="alert">{memoUpdateError}</p>}
+          {editSession.conflict && (
+            <div className="detail-memos__conflict">
+              {latestShown && (
+                <section aria-labelledby={latestHeadingId} className="detail-memos__latest">
+                  <p id={latestHeadingId} className="detail-memos__latest-label">最新の内容</p>
+                  <p className="detail-memos__latest-content">{memo.content}</p>
+                </section>
+              )}
+              <button
+                type="button"
+                // 押した後もフォーカスを失わないよう、disabledではなくaria-disabledにする。
+                aria-disabled={editSession.reloading}
+                onClick={() => {
+                  if (!editSession.reloading) {
+                    void reloadMemoEdit(memo.id);
+                  }
+                }}
+              >
+                入力を破棄して最新の内容を読み込む
+              </button>
+            </div>
+          )}
         </>
       );
     }
@@ -54,7 +87,7 @@ function JobPostingMemoSection({ jobPostingId }: { jobPostingId: number }) {
       <>
         <span>{memo.content}</span>
         <p>更新日時: {formatDateTime(memo.updatedAt)}</p>
-        <button type="button" onClick={() => startMemoEdit(memo.id)} disabled={deleting}>
+        <button type="button" onClick={() => startMemoEdit(memo)} disabled={deleting}>
           編集
         </button>
         <button

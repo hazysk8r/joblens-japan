@@ -174,6 +174,7 @@ class ExpectedUserCheckTest {
             case "メモの登録" -> post("/api/job-postings/{id}/notes", postingId)
                     .contentType(MediaType.APPLICATION_JSON).content(MEMO_BODY);
             case "メモの編集" -> put("/api/job-postings/{id}/notes/{memoId}", postingId, memoId)
+                    .header(HttpHeaders.IF_MATCH, "\"0\"")
                     .contentType(MediaType.APPLICATION_JSON).content(MEMO_BODY);
             case "メモの削除" -> delete("/api/job-postings/{id}/notes/{memoId}", postingId, memoId);
             default -> throw new IllegalArgumentException(name);

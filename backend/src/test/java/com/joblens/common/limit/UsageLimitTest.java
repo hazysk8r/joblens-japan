@@ -28,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
@@ -315,6 +316,7 @@ class UsageLimitTest {
         createMemo(userA, id);
 
         mockMvc.perform(as(userA, put("/api/job-postings/{id}/notes/{memoId}", id, memoId))
+                        .header(HttpHeaders.IF_MATCH, "\"0\"")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {

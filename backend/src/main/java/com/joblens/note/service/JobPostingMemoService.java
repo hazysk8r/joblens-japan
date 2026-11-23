@@ -1,7 +1,9 @@
 package com.joblens.note.service;
 
 import java.util.List;
+import java.util.Objects;
 
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +18,7 @@ import com.joblens.note.dto.CreateJobPostingMemoRequest;
 import com.joblens.note.dto.JobPostingMemoResponse;
 import com.joblens.note.dto.UpdateJobPostingMemoRequest;
 import com.joblens.note.exception.JobPostingMemoNotFoundException;
+import com.joblens.note.exception.JobPostingMemoVersionConflictException;
 import com.joblens.note.exception.MemoLimitReachedException;
 import com.joblens.note.repository.JobPostingMemoRepository;
 
@@ -74,18 +77,27 @@ public class JobPostingMemoService {
     Long userId,
     Long jobPostingId,
     Long memoId,
+    Long expectedVersion,
     UpdateJobPostingMemoRequest request) {
+      // 所有者の確認(404)をversionの確認(412)より先に行い、他人のメモの存在やversionを漏らさない。
       JobPostingMemo jobPostingMemo = findMemo(userId, jobPostingId, memoId);
+      if (!Objects.equals(expectedVersion, jobPostingMemo.getVersion())) {
+        throw new JobPostingMemoVersionConflictException(memoId, expectedVersion, jobPostingMemo.getVersion());
+      }
 
       jobPostingMemo.update(
         request.content()
       );
 
       /*
-       * Response生成前にupdatedAtの最新値を反映するため、
-       * 明示的にflushする。
+       * Response生成前にupdatedAtとversionの最新値を反映するため、
+       * 明示的にflushする。確認と保存の間に別の保存が入った競合も、ここで検出する。
        */
-      jobPostingMemoRepository.flush();
+      try {
+        jobPostingMemoRepository.flush();
+      } catch (OptimisticLockingFailureException exception) {
+        throw new JobPostingMemoVersionConflictException(memoId, exception);
+      }
 
       return JobPostingMemoResponse.from(jobPostingMemo);
   }

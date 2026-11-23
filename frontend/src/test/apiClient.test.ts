@@ -172,7 +172,7 @@ describe('CSRFトークンのヘッダー', () => {
     { name: '求人の削除', run: () => deleteJobPosting(1) },
     { name: '応募ステータスの変更', run: () => updateApplicationStatus(1, { status: 'APPLIED' }, 3) },
     { name: 'メモ登録', run: () => createJobPostingMemo(1, { content: 'memo' }) },
-    { name: 'メモを編集', run: () => updateJobPostingMemo(1, 2, { content: 'memo' }) },
+    { name: 'メモを編集', run: () => updateJobPostingMemo(1, 2, 0, { content: 'memo' }) },
     { name: 'メモを削除', run: () => deleteJobPostingMemo(1, 2) },
   ];
 

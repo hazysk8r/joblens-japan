@@ -13,8 +13,7 @@ import com.joblens.jobposting.dto.JobPostingStatusHistoryResponse;
 import com.joblens.jobposting.service.JobPostingService;
 import com.joblens.jobposting.dto.UpdateApplicationStatusRequest;
 import com.joblens.jobposting.dto.UpdateJobPostingRequest;
-import com.joblens.jobposting.exception.IfMatchRequiredException;
-import com.joblens.jobposting.exception.MalformedIfMatchHeaderException;
+import com.joblens.common.web.IfMatchHeader;
 import com.joblens.jobposting.domain.ApplicationStatus;
 
 import jakarta.validation.Valid;
@@ -39,7 +38,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 
 import java.net.URI;
 import java.util.List;
-import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/api/job-postings")
@@ -47,8 +45,6 @@ import java.util.regex.Pattern;
 public class JobPostingController {
 
     private final JobPostingService jobPostingService;
-    // 数値のみを含む強いETag形式を許可する
-    private static final Pattern IF_MATCH_PATTERN = Pattern.compile("^\"\\d+\"$");
 
     @PostMapping
     public ResponseEntity<JobPostingResponse> create(
@@ -75,7 +71,7 @@ public class JobPostingController {
             @RequestHeader(value="If-Match", required = false) String ifMatch,
             @Valid @RequestBody UpdateJobPostingRequest request
     ) {
-        Long expectedVersion = parseIfMatch(ifMatch);
+        Long expectedVersion = IfMatchHeader.parse(ifMatch);
         JobPostingResponse response = jobPostingService.update(user.getId(), id, expectedVersion, request);
 
         return okWithETag(response);
@@ -152,28 +148,10 @@ public class JobPostingController {
         @RequestHeader(value = "If-Match", required = false) String ifMatch,
         @Valid @RequestBody UpdateApplicationStatusRequest request
     ) {
-        Long expectedVersion = parseIfMatch(ifMatch);
+        Long expectedVersion = IfMatchHeader.parse(ifMatch);
         JobPostingResponse response = jobPostingService.updateApplicationStatus(user.getId(), id, expectedVersion, request);
 
         return okWithETag(response);
-    }
-
-    private Long parseIfMatch(String ifMatch) {
-        if (ifMatch == null || ifMatch.isBlank()) {
-            throw new IfMatchRequiredException();
-        }
-
-        if (!IF_MATCH_PATTERN.matcher(ifMatch).matches()) {
-            throw new MalformedIfMatchHeaderException(ifMatch);
-        }
-
-        String version = ifMatch.substring(1, ifMatch.length() - 1);
-        // 数値形式は正しくてもLongの範囲を超える場合は不正なIf-Matchとして扱う
-        try {
-            return Long.valueOf(version);
-        } catch (NumberFormatException exception) {
-            throw new MalformedIfMatchHeaderException(ifMatch);
-        }
     }
 
     private ResponseEntity<JobPostingResponse> okWithETag(JobPostingResponse response) {

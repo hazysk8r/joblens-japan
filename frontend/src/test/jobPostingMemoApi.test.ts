@@ -19,6 +19,7 @@ const memo = {
   content: 'memo',
   createdAt: '2026-10-25T00:00:00Z',
   updatedAt: '2026-10-25T00:00:00Z',
+  version: 0,
 };
 
 // 求人APIのエラー処理テストと同じ観点で、メモAPIの各関数を検証する。
@@ -43,7 +44,7 @@ const memoOperations = [
   },
   {
     name: 'メモを編集',
-    run: () => updateJobPostingMemo(1, 2, { content: 'memo' }),
+    run: () => updateJobPostingMemo(1, 2, 0, { content: 'memo' }),
     fallback: 'メモの編集に失敗しました。',
     successBody: memo,
   },
@@ -114,4 +115,20 @@ describe('jobPostingMemoApiのエラー処理', () => {
       await expect(run()).rejects.toBe(error);
     },
   );
+});
+
+describe('メモの編集のIf-Match', () => {
+  test('編集を始めたときのバージョンを、強いETagの形式でIf-Matchに付ける', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(memo), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })));
+
+    await updateJobPostingMemo(1, 2, 7, { content: 'memo' });
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(url).toBe('/api/job-postings/1/notes/2');
+    expect(new Headers(init?.headers).get('If-Match')).toBe('"7"');
+    expect(init?.method).toBe('PUT');
+  });
 });

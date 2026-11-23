@@ -238,6 +238,26 @@
   font-size: 0.8rem;
 }
 
+/* 競合したときに、自分の入力と見比べるための最新の内容。入力欄と見分けられるよう背景を付ける。 */
+.detail-memos__latest {
+  margin: 0.5rem 0;
+  padding: 0.6rem 0.75rem;
+  border-left: 3px solid var(--detail-action);
+  background: var(--detail-muted-bg);
+}
+
+.detail-memos__latest-label {
+  margin: 0 0 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.detail-memos__latest-content {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .detail-history__list > li {
   display: flex;
   flex-wrap: wrap;

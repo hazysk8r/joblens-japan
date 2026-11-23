@@ -15,6 +15,7 @@ import {
 vi.mock('../api/jobPostingMemoApi');
 
 const contentFieldError = 'メモは250文字以内で入力してください。';
+const EDITED_MEMO = { id: 2, content: 'memo', createdAt: '2026-11-08T00:00:00Z', updatedAt: '2026-11-08T00:00:00Z', version: 0 };
 
 beforeEach(() => {
   sessionStorage.clear();
@@ -69,7 +70,7 @@ describe('メモ編集のエラー表示', () => {
     const { result } = renderHook(() => useJobPostingMemos(1));
 
     act(() => {
-      result.current.startMemoEdit(2);
+      result.current.startMemoEdit(EDITED_MEMO);
     });
     await act(async () => {
       await result.current.saveMemoEdit(2, { content: 'memo' });
@@ -85,6 +86,9 @@ describe('メモ編集のエラー表示', () => {
     );
     const { result } = renderHook(() => useJobPostingMemos(1));
 
+    act(() => {
+      result.current.startMemoEdit(EDITED_MEMO);
+    });
     await act(async () => {
       await result.current.saveMemoEdit(2, { content: 'memo' });
     });

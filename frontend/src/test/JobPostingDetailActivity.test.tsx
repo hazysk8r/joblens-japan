@@ -52,6 +52,7 @@ const memo = (id: number, content: string): JobPostingMemo => ({
   content,
   createdAt: '2026-11-08T00:00:00Z',
   updatedAt: '2026-11-08T00:00:00Z',
+  version: 0,
 });
 
 const historyEntry: JobPostingStatusHistory = {
@@ -944,7 +945,7 @@ describe('メモの編集', () => {
     await user.type(editor, '新しい内容');
     await user.click(within(memoRegion()).getByRole('button', { name: '保存' }));
 
-    expect(updateJobPostingMemo).toHaveBeenCalledWith(5, 1, { content: '新しい内容' });
+    expect(updateJobPostingMemo).toHaveBeenCalledWith(5, 1, 0, { content: '新しい内容' });
     await waitFor(() => expect(getJobPostingMemos).toHaveBeenCalledTimes(2));
     // 取り直しの応答まではフォームを閉じない。閉じると古い内容が一瞬見えるため。
     expect(within(memoRegion()).getByRole('textbox', { name: 'メモを編集' })).toBeDisabled();

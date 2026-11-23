@@ -1,4 +1,4 @@
-package com.joblens.jobposting.exception;
+package com.joblens.common.web;
 
 public class IfMatchRequiredException extends RuntimeException {
 
