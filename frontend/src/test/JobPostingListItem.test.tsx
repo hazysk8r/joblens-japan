@@ -33,7 +33,7 @@ describe('求人原文のリンク', () => {
       companyName: '黄猿',
       title: 'エンジニア求人',
       sourceUrl,
-      originalText: 'AWSエンジニア求人',
+      excerpt: 'AWSエンジニア求人',
       createdAt: '2026-08-14T00:00:00Z',
       applicationStatus: 'SAVED',
       salaryMin: null,
@@ -86,7 +86,7 @@ describe('詳細画面へのリンク', () => {
       companyName: '○○株式会社',
       title: 'バックエンドエンジニア',
       sourceUrl: null,
-      originalText: '原文',
+      excerpt: '原文',
       createdAt: '2026-11-08T00:00:00Z',
       applicationStatus: 'SAVED',
       salaryMin: null,
@@ -113,7 +113,7 @@ describe('応募ステータスとメモ', () => {
     companyName: '○○株式会社',
     title: 'バックエンドエンジニア',
     sourceUrl: null,
-    originalText: '原文',
+    excerpt: '原文',
     createdAt: '2026-11-08T00:00:00Z',
     applicationStatus: 'INTERVIEWING',
     salaryMin: null,
@@ -139,17 +139,14 @@ describe('応募ステータスとメモ', () => {
   });
 });
 
+// 要約の作り方(長さ、空白、検索語の位置)はサーバーで作り、PostingExcerptTestで確かめる。
 describe('一覧の要約カード', () => {
-  const longText = `【業務内容】
-${'バックエンド開発'.repeat(30)}
-【応募資格】
-Javaの実務経験`;
   const posting: ListedJobPosting = {
     id: 7,
     companyName: '○○株式会社',
     title: '要約の確認',
     sourceUrl: 'https://example.com/jobs/7',
-    originalText: longText,
+    excerpt: '【業務内容】 バックエンド開発…',
     createdAt: '2026-11-08T00:00:00Z',
     applicationStatus: 'APPLIED',
     salaryMin: 300000,
@@ -158,16 +155,6 @@ Javaの実務経験`;
     version: 0,
     fixedOvertime: null,
   };
-
-  // 画面で隠すだけだと、読み上げでは原文全体が読まれてしまう。
-  test('原文は先頭だけを要約して表示し、全体は画面に置かない', () => {
-    render(<JobPostingListItem jobPosting={posting} />);
-
-    const excerpt = screen.getByText(/^【業務内容】 バックエンド開発/);
-    expect(excerpt.textContent).toHaveLength(101);
-    expect(excerpt.textContent?.endsWith('…')).toBe(true);
-    expect(document.body.textContent).not.toContain('Javaの実務経験');
-  });
 
   test('編集と削除の操作は置かず、詳細へのリンクと原文のリンクは残す', () => {
     render(<JobPostingListItem jobPosting={posting} />);

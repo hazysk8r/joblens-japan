@@ -5,7 +5,7 @@ import { MemoryRouter, useLocation } from 'react-router';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { AuthenticatedApp } from './testAuth';
-import type { JobPosting } from '../types/jobPosting';
+import type { ListedJobPosting } from '../types/jobPosting';
 
 /**
  * 実際のHomePageと実際のAPIモジュールを組み合わせ、fetchだけを差し替えて検証する。
@@ -16,18 +16,19 @@ import type { JobPosting } from '../types/jobPosting';
 
 const RANGE_ERROR = '締切日（以降）を締切日（以前）より後の日付にすることはできません。';
 
-const posting: JobPosting = {
+const posting: ListedJobPosting = {
   id: 1,
   companyName: '東京テック',
   title: 'Java求人',
   sourceUrl: null,
-  originalText: '求人の原文',
+  excerpt: '求人の原文',
   createdAt: '2026-10-17T00:00:00Z',
   applicationStatus: 'SAVED',
   salaryMin: null,
   salaryMax: null,
   applicationDeadline: null,
   version: 0,
+  fixedOvertime: null,
 };
 
 function jsonResponse(body: unknown): Response {

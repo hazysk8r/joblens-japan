@@ -70,7 +70,7 @@ function stubLoggedInServer() {
     }
     if (pathname === '/api/job-postings') {
       return jsonResponse(200, {
-        content: [posting], page: 0, size: 5, totalElements: 1, totalPages: 1, first: true, last: true,
+        content: [{ ...posting, excerpt: posting.originalText, fixedOvertime: null }], page: 0, size: 5, totalElements: 1, totalPages: 1, first: true, last: true,
       });
     }
     if (pathname === '/api/job-postings/1/notes' && method === 'POST') {
@@ -189,7 +189,7 @@ describe('書き込みの回数制限', () => {
       }
       if (pathname === '/api/job-postings') {
         return jsonResponse(200, {
-          content: [posting], page: 0, size: 5, totalElements: 1, totalPages: 1, first: true, last: true,
+          content: [{ ...posting, excerpt: posting.originalText, fixedOvertime: null }], page: 0, size: 5, totalElements: 1, totalPages: 1, first: true, last: true,
         });
       }
       if (pathname === '/api/job-postings/1/notes') return jsonResponse(200, []);

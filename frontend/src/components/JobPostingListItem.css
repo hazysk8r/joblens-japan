@@ -3,6 +3,8 @@
   --card-action: #334e68;
   /* 詳細画面の分析と同じ注意の色にし、画面の間で判定の見え方をそろえる。 */
   --card-warning: #b42318;
+  /* 要約の中の検索語。詳細画面の根拠の強調と同じ色にする。 */
+  --card-keyword-bg: #fff3bf;
 
   min-width: 0;
   padding: 1.5rem;
@@ -124,6 +126,13 @@
   line-height: 1.75;
 }
 
+.job-posting-card__keyword {
+  padding: 0 0.1em;
+  border-radius: 2px;
+  background: var(--card-keyword-bg);
+  color: var(--text-h);
+}
+
 .job-posting-card__source {
   margin-top: 0.75rem;
   font-size: 0.85rem;
@@ -159,6 +168,7 @@
     --card-muted-bg: #1f2028;
     --card-action: #b1cbe4;
     --card-warning: #fda29b;
+    --card-keyword-bg: #4d3d00;
   }
 }
 

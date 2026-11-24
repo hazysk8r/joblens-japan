@@ -39,7 +39,7 @@ beforeEach(() => {
             companyName: '東京テック',
             title: '最後のページの求人',
             sourceUrl: null,
-            originalText: '求人の原文',
+            excerpt: '求人の原文',
             createdAt: '2026-10-17T00:00:00Z',
             applicationStatus: 'SAVED',
             salaryMin: null,

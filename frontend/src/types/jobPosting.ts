@@ -59,8 +59,10 @@ export type FixedOvertimeSummary = {
   hours: number | null;
 };
 
-// 一覧の求人。fixedOvertimeは、サーバーでその求人の分析に失敗したときnull。
-export interface ListedJobPosting extends JobPosting {
+// 一覧の求人。原文は最大2万文字のため、一覧では全体ではなくカードに出す要約(excerpt)だけを受け取る。
+// 要約は、検索語が原文にあればその少し前からになる。fixedOvertimeは、サーバーでその求人の分析に失敗したときnull。
+export interface ListedJobPosting extends Omit<JobPosting, 'originalText'> {
+  excerpt: string;
   fixedOvertime: FixedOvertimeSummary | null;
 }
 

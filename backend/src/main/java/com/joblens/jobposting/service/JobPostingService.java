@@ -230,7 +230,7 @@ public class JobPostingService {
         * ページ番号や全件数などの情報はそのまま維持される。
         */
         Page<JobPostingListItemResponse> responsePage = jobPostingPage.map(jobPosting ->
-                JobPostingListItemResponse.from(jobPosting, summarizeFixedOvertime(jobPosting)));
+                JobPostingListItemResponse.from(jobPosting, normalizedKeyword, summarizeFixedOvertime(jobPosting)));
 
         return PageResponse.from(responsePage);
     }

@@ -30,7 +30,7 @@ function posting(overrides: Partial<ListedJobPosting> = {}): ListedJobPosting {
     companyName: '札幌クラウド',
     title: '求人A',
     sourceUrl: null,
-    originalText: '求人原文',
+    excerpt: '求人原文',
     createdAt: '2026-10-05T00:00:00Z',
     applicationStatus: 'SAVED',
     salaryMin: 300000,

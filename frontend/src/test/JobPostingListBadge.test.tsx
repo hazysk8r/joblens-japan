@@ -25,7 +25,7 @@ function listed(fixedOvertime: FixedOvertimeSummary | null): ListedJobPosting {
     companyName: '東京テック',
     title: 'バックエンドエンジニア',
     sourceUrl: null,
-    originalText: '求人の原文',
+    excerpt: '求人の原文',
     createdAt: '2026-10-17T00:00:00Z',
     applicationStatus: 'SAVED',
     salaryMin: 300000,

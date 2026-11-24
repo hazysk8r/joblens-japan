@@ -63,7 +63,7 @@ beforeEach(() => {
     saved: 1, applied: 0, interviewing: 0, offered: 0, rejected: 0,
   });
   vi.mocked(fetchJobPostings).mockResolvedValue({
-    content: [{ ...jobPosting, fixedOvertime: null }],
+    content: [{ ...jobPosting, excerpt: jobPosting.originalText, fixedOvertime: null }],
     page: 0, size: 5, totalElements: 1, totalPages: 1, first: true, last: true,
   });
   vi.mocked(fetchJobPosting).mockResolvedValue(jobPosting);

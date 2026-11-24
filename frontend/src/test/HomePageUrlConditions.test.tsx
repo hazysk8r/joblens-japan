@@ -31,7 +31,7 @@ function posting(page: number): ListedJobPosting {
     companyName: '東京テック',
     title: `${page + 1}ページ目の求人`,
     sourceUrl: null,
-    originalText: '求人の原文',
+    excerpt: '求人の原文',
     createdAt: '2026-10-17T00:00:00Z',
     applicationStatus: 'SAVED',
     salaryMin: null,
@@ -311,7 +311,7 @@ describe('ブラウザで戻ったとき', () => {
 
 describe('詳細画面から一覧へ戻ったとき', () => {
   test('一覧の条件で取得し、同じ条件を表示する', async () => {
-    vi.mocked(fetchJobPosting).mockResolvedValue(posting(0));
+    vi.mocked(fetchJobPosting).mockResolvedValue({ ...posting(0), originalText: posting(0).excerpt });
     vi.mocked(fetchJobPostingAnalysis).mockResolvedValue({
       fixedOvertime: { status: 'NOT_MENTIONED', hours: null, excessPayStated: null, evidence: [] },
       skills: [],

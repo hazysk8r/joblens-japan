@@ -795,7 +795,8 @@ function HomePage() {
           </p>
           <ul className="job-posting-list" role="list">
             {jobPostings.map((jobPosting) => (
-              <JobPostingListItem key={jobPosting.id} jobPosting={jobPosting} />
+              // 入力欄の語ではなく、実際に検索した語(URLの条件)を強調する。
+              <JobPostingListItem key={jobPosting.id} jobPosting={jobPosting} keyword={keywordFromUrl} />
             ))}
           </ul>
         </>

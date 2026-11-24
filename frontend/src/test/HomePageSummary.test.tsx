@@ -31,7 +31,7 @@ const jobPosting: ListedJobPosting = {
   companyName: '東京テック',
   title: 'Java求人',
   sourceUrl: null,
-  originalText: '求人の原文',
+  excerpt: '求人の原文',
   createdAt: '2026-10-18T00:00:00Z',
   applicationStatus: 'SAVED',
   salaryMin: 300000,

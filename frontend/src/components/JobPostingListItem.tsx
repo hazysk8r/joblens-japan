@@ -2,18 +2,18 @@ import type { ListedJobPosting } from '../types/jobPosting';
 
 import { Link, useLocation } from 'react-router';
 import './JobPostingListItem.css';
-import { APPLICATION_STATUS_LABELS, excerptOf, formatSalaryRange } from '../utils/jobPostingFormat';
+import { APPLICATION_STATUS_LABELS, formatSalaryRange } from '../utils/jobPostingFormat';
 import { listReturnState } from '../utils/listReturn';
 import { isHttpUrl } from '../utils/httpUrl';
 import { fixedOvertimeVerdict } from '../utils/fixedOvertimeVerdict';
-
-// 一覧で表示する原文の長さ。選ぶための手がかりなので、数行に収まる長さにする。
-const EXCERPT_LENGTH = 100;
+import { keywordSegments } from '../utils/keywordHighlight';
 
 /**
  * 一覧の求人の要約カード。一覧は選ぶ場所のため、編集や削除などの操作は詳細画面で行う。
+ *
+ * keywordは実際に検索した語(URLの検索条件)。入力中の語ではないため、検索していない語は強調しない。
  */
-function JobPostingListItem({ jobPosting }: { jobPosting: ListedJobPosting }) {
+function JobPostingListItem({ jobPosting, keyword }: { jobPosting: ListedJobPosting; keyword?: string }) {
 	const location = useLocation();
 	const { fixedOvertime } = jobPosting;
 	// 応答に判定がない(nullや項目自体がない)ときはバッジを出さない。一覧の表示は止めない。
@@ -58,9 +58,13 @@ function JobPostingListItem({ jobPosting }: { jobPosting: ListedJobPosting }) {
 			</div>
 
 			<div className="job-posting-card__body">
-				{/* 画面で隠すだけだと読み上げでは全体が読まれるため、文字列を切って置く。 */}
+				{/* 要約はサーバーが作る(原文の全体は一覧では受け取らない)。検索語が原文にあれば、その少し前から始まる。 */}
 				<p className="job-posting-card__excerpt">
-					{excerptOf(jobPosting.originalText, EXCERPT_LENGTH)}
+					{keywordSegments(jobPosting.excerpt, keyword).map((segment, index) => (
+						segment.match
+							? <mark key={index} className="job-posting-card__keyword">{segment.text}</mark>
+							: segment.text
+					))}
 				</p>
 				{jobPosting.sourceUrl && isHttpUrl(jobPosting.sourceUrl) && (
 					<p className="job-posting-card__source">

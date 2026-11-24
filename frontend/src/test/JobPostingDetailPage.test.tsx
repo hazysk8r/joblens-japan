@@ -80,7 +80,7 @@ function notFoundError() {
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(fetchJobPostings).mockResolvedValue({
-    content: [{ ...jobPosting, fixedOvertime: null }],
+    content: [{ ...jobPosting, excerpt: jobPosting.originalText, fixedOvertime: null }],
     page: 0,
     size: 5,
     totalElements: 1,

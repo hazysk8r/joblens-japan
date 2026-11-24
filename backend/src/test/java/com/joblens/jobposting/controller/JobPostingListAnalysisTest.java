@@ -70,8 +70,8 @@ class JobPostingListAnalysisTest {
                 .andExpect(jsonPath("$.content[0].fixedOvertime.hours").value(40))
                 .andExpect(jsonPath("$.content[1].fixedOvertime.status").value("NOT_MENTIONED"))
                 .andExpect(jsonPath("$.content[1].fixedOvertime.hours").value(nullValue()))
-                // 一覧の他の項目はこれまでどおり返す。
-                .andExpect(jsonPath("$.content[1].originalText").value("給与\n月給30万円"));
+                // 一覧の他の項目はこれまでどおり返す。原文は全体ではなく要約を返す。
+                .andExpect(jsonPath("$.content[1].excerpt").value("給与 月給30万円"));
     }
 
     @Test
